@@ -153,7 +153,7 @@ class AuditLogService:
             )
 
         deactivated = AuditLogRepository.count_actions(
-            ctx.tenant_id, "DEACTIVATE_ITEM", start, end
+            ctx.tenant_id, "ITEM_DEACTIVATED", start, end
         )
         if deactivated > 0:
             alerts.append(

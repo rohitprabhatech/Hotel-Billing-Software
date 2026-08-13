@@ -9,7 +9,9 @@ from app.services.audit_service import AuditService
 from app.utils.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.request_context import require_request_context
+from app.services.email_service import EmailService
 from app.utils.security import hash_password
+from app.utils.tokens import utc_now_naive
 
 
 class UserService:
@@ -47,6 +49,9 @@ class UserService:
             email=email.strip().lower(),
             password_hash=hash_password(password),
             is_active=True,
+            email_verified=True,
+            email_verified_at=utc_now_naive(),
+            token_version=0,
         )
         UserRepository.add(user)
         AuditService.log(
@@ -118,14 +123,20 @@ class UserService:
             raise ValidationError("Password must be at least 8 characters")
 
         user.password_hash = hash_password(password)
+        user.password_changed_at = utc_now_naive()
+        user.token_version = int(user.token_version or 0) + 1
         AuditService.log(
             tenant_id=ctx.tenant_id,
-            action="UPDATE_USER",
+            action="PASSWORD_CHANGED",
             entity_type="USER",
             entity_id=user.id,
-            new_data={"password_reset": True, "email": user.email},
+            new_data={"password_reset": True, "email": user.email, "via": "owner_admin"},
         )
         db.session.commit()
+        try:
+            EmailService.send_password_changed_email(to=user.email, name=user.name)
+        except Exception:  # noqa: BLE001
+            pass
         return {"message": "Password updated successfully"}
 
     @staticmethod

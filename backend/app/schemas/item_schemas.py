@@ -2,8 +2,6 @@
 
 from marshmallow import EXCLUDE, Schema, fields, validate
 
-from app.schemas.category_schemas import status_schema  # re-export convenience
-
 
 class CreateItemSchema(Schema):
     class Meta:
@@ -27,6 +25,14 @@ class UpdateItemSchema(Schema):
     gst_percentage = fields.Decimal(load_default=None, as_string=False)
 
 
+class ItemStatusSchema(Schema):
+    class Meta:
+        unknown = EXCLUDE
+
+    is_active = fields.Boolean(required=True)
+    reason = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=500))
+
+
 create_item_schema = CreateItemSchema()
 update_item_schema = UpdateItemSchema()
-item_status_schema = status_schema
+item_status_schema = ItemStatusSchema()

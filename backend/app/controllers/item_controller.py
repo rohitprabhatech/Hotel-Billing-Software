@@ -4,6 +4,7 @@ from flask import request
 
 from app.schemas.item_schemas import create_item_schema, item_status_schema, update_item_schema
 from app.services.item_service import ItemService
+from app.utils.exceptions import ForbiddenError
 from app.utils.responses import success_response
 
 
@@ -63,5 +64,15 @@ def update_item(item_id: str):
 
 def set_item_status(item_id: str):
     payload = item_status_schema.load(request.get_json() or {})
-    data = ItemService.set_status(item_id, payload["is_active"])
+    data = ItemService.set_status(
+        item_id,
+        payload["is_active"],
+        reason=payload.get("reason"),
+    )
     return success_response(data=data)
+
+
+def delete_item(item_id: str):
+    raise ForbiddenError(
+        "Permanent item deletion is not allowed. Deactivate the item instead."
+    )

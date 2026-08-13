@@ -48,6 +48,10 @@ def auth_required(fn):
         if user.role_name != claim_role:
             raise UnauthorizedError("Role mismatch in authentication token")
 
+        claim_tv = claims.get("tv", 0)
+        if int(claim_tv or 0) != int(user.token_version or 0):
+            raise UnauthorizedError("Session expired. Please sign in again.")
+
         ip, ua = _client_meta()
         set_request_context(
             RequestContext(

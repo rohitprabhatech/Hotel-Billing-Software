@@ -6,6 +6,11 @@ from zoneinfo import ZoneInfo
 
 from flask import current_app
 
+from app.constants.payments import (
+    DEFAULT_PAYMENT_METHOD,
+    normalize_payment_method,
+    payment_method_label,
+)
 from app.extensions import db
 from app.models.bill import Bill, BillItem
 from app.models.role import ROLE_BILLING_USER
@@ -21,10 +26,23 @@ from app.utils.request_context import require_request_context
 
 class BillService:
     @staticmethod
-    def create_bill(*, items: list[dict], discount=0, table_number: str | None = None):
+    def create_bill(
+        *,
+        items: list[dict],
+        discount=0,
+        table_number: str | None = None,
+        payment_method: str | None = None,
+    ):
         ctx = require_request_context()
         if not items:
             raise ValidationError("At least one item is required")
+
+        try:
+            payment = normalize_payment_method(
+                payment_method if payment_method is not None else DEFAULT_PAYMENT_METHOD
+            )
+        except ValueError as exc:
+            raise ValidationError("Please select a payment method.") from exc
 
         # Merge duplicate item_ids from cart
         merged: dict[str, Decimal] = {}
@@ -80,6 +98,7 @@ class BillService:
             grand_total=calculated["grand_total"],
             round_off=calculated["round_off"],
             status="FINALIZED",
+            payment_method=payment,
             created_by=ctx.user_id,
             printed_count=0,
         )
@@ -114,6 +133,7 @@ class BillService:
                 "grand_total": float(bill.grand_total),
                 "discount": float(bill.discount),
                 "status": bill.status,
+                "payment_method": bill.payment_method,
                 "item_count": len(calculated["lines"]),
             },
         )
@@ -133,11 +153,26 @@ class BillService:
         return BillService.serialize(bill, include_items=True, include_tenant=True)
 
     @staticmethod
-    def list_bills(*, status=None, page=1, per_page=50, today_only=False, q=None):
+    def list_bills(
+        *,
+        status=None,
+        page=1,
+        per_page=50,
+        today_only=False,
+        q=None,
+        payment_method=None,
+    ):
         ctx = require_request_context()
         date_from = date_to = None
         if today_only:
             date_from, date_to = BillService._today_bounds()
+
+        method = None
+        if payment_method:
+            try:
+                method = normalize_payment_method(payment_method)
+            except ValueError as exc:
+                raise ValidationError("Invalid payment method filter") from exc
 
         bills, total = BillRepository.list_by_tenant(
             ctx.tenant_id,
@@ -145,6 +180,7 @@ class BillService:
             date_from=date_from,
             date_to=date_to,
             q=q,
+            payment_method=method,
             page=page,
             per_page=per_page,
         )
@@ -227,10 +263,14 @@ class BillService:
     def today_summary():
         ctx = require_request_context()
         day_start, day_end = BillService._today_bounds()
-        total, count = BillRepository.today_sales_total(ctx.tenant_id, day_start, day_end)
+        summary = BillRepository.today_sales_breakdown(ctx.tenant_id, day_start, day_end)
         return {
-            "total_sales": float(money(total)),
-            "bill_count": int(count),
+            "total_sales": float(money(summary["total_sales"])),
+            "bill_count": int(summary["bill_count"]),
+            "cash_sales": float(money(summary["cash_sales"])),
+            "online_sales": float(money(summary["online_sales"])),
+            "cash_bill_count": int(summary["cash_bill_count"]),
+            "online_bill_count": int(summary["online_bill_count"]),
         }
 
     @staticmethod
@@ -261,6 +301,8 @@ class BillService:
             "round_off": float(bill.round_off),
             "grand_total": float(bill.grand_total),
             "status": bill.status,
+            "payment_method": bill.payment_method or DEFAULT_PAYMENT_METHOD,
+            "payment_method_label": payment_method_label(bill.payment_method),
             "created_by": bill.created_by,
             "created_by_name": bill.creator.name if bill.creator else None,
             "created_at": bill.created_at.isoformat() if bill.created_at else None,

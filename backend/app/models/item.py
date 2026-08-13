@@ -22,6 +22,9 @@ class Item(db.Model, TimestampMixin):
     category_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
     )
+    created_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -31,3 +34,4 @@ class Item(db.Model, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     category = relationship("Category", back_populates="items")
+    creator = relationship("User", foreign_keys=[created_by])

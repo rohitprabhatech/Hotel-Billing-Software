@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { Link as RouterLink, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchHealth } from '../services/healthService';
+import { homePathForRole, isValidRole } from '../utils/authRouting';
 
 export default function HomePage() {
   const { isAuthenticated, role } = useAuth();
@@ -38,13 +39,9 @@ export default function HomePage() {
     };
   }, []);
 
-  if (isAuthenticated) {
-    return (
-      <Navigate
-        to={role === 'OWNER' ? '/owner/dashboard' : '/billing'}
-        replace
-      />
-    );
+  // Only redirect when session has a known role. Unauthenticated users stay on `/`.
+  if (isAuthenticated && isValidRole(role)) {
+    return <Navigate to={homePathForRole(role)} replace />;
   }
 
   return (
@@ -83,6 +80,9 @@ export default function HomePage() {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button component={RouterLink} to="/login" variant="contained">
               Login
+            </Button>
+            <Button component={RouterLink} to="/register" variant="outlined">
+              Register Your Hotel
             </Button>
           </Stack>
         </CardContent>

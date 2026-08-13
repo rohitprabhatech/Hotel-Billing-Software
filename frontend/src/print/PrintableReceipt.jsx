@@ -108,6 +108,13 @@ export default function PrintableReceipt({ bill, width = '80' }) {
         <span>Total :</span>
         <span>{formatMoney(bill.grand_total)}</span>
       </div>
+      <div className="receipt__row">
+        <span>Payment Method :</span>
+        <span>
+          {bill.payment_method_label
+            || (bill.payment_method === 'online' ? 'Online' : 'Cash')}
+        </span>
+      </div>
       <div className="receipt__divider" />
 
       {tenant.gst_number ? <div>GSTIN: {tenant.gst_number}</div> : null}

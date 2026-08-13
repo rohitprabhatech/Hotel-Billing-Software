@@ -61,6 +61,8 @@ def _seed(session):
             email="owner@hotela.com",
             password_hash=hash_password("Owner@12345"),
             is_active=True,
+            email_verified=True,
+            token_version=0,
         ),
         User(
             id="a2222222-2222-2222-2222-222222222222",
@@ -70,6 +72,8 @@ def _seed(session):
             email="billing@hotela.com",
             password_hash=hash_password("Billing@12345"),
             is_active=True,
+            email_verified=True,
+            token_version=0,
         ),
         User(
             id="b1111111-1111-1111-1111-111111111111",
@@ -79,6 +83,8 @@ def _seed(session):
             email="owner@hotelb.com",
             password_hash=hash_password("Owner@12345"),
             is_active=True,
+            email_verified=True,
+            token_version=0,
         ),
     ]
     session.add_all([owner_role, billing_role, tenant_a, tenant_b, *users])

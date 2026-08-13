@@ -32,6 +32,7 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
   const [bills, setBills] = useState([]);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [todayOnly, setTodayOnly] = useState(todayDefault);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -46,6 +47,7 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
       const res = await listBills({
         q: q || undefined,
         status: status || undefined,
+        payment_method: paymentMethod || undefined,
         today: todayOnly || undefined,
         per_page: 100,
       });
@@ -58,7 +60,7 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, todayOnly]);
+  }, [status, todayOnly, paymentMethod]);
 
   const openDetails = async (bill) => {
     setError('');
@@ -118,6 +120,18 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
           </Select>
         </FormControl>
         <FormControl sx={{ minWidth: 160 }}>
+          <InputLabel>Payment Method</InputLabel>
+          <Select
+            label="Payment Method"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="cash">Cash</MenuItem>
+            <MenuItem value="online">Online</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 160 }}>
           <InputLabel>Period</InputLabel>
           <Select
             label="Period"
@@ -143,6 +157,7 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
               <TableCell>Bill No</TableCell>
               <TableCell>Table</TableCell>
               <TableCell>Status</TableCell>
+              <TableCell>Payment Method</TableCell>
               <TableCell align="right">Total</TableCell>
               <TableCell>Prints</TableCell>
               <TableCell>Created By</TableCell>
@@ -156,6 +171,10 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
                 <TableCell>{bill.bill_number}</TableCell>
                 <TableCell>{bill.table_number || '—'}</TableCell>
                 <TableCell>{bill.status}</TableCell>
+                <TableCell>
+                  {bill.payment_method_label
+                    || (bill.payment_method === 'online' ? 'Online' : 'Cash')}
+                </TableCell>
                 <TableCell align="right">₹{Number(bill.grand_total).toFixed(2)}</TableCell>
                 <TableCell>{bill.printed_count}</TableCell>
                 <TableCell>{bill.created_by_name || '—'}</TableCell>
@@ -174,7 +193,7 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
             ))}
             {!bills.length ? (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <Typography color="text.secondary">No bills found.</Typography>
                 </TableCell>
               </TableRow>

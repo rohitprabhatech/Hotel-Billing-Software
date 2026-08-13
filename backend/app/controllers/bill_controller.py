@@ -13,6 +13,7 @@ def create_bill():
         items=payload["items"],
         discount=payload.get("discount", 0),
         table_number=payload.get("table_number"),
+        payment_method=payload.get("payment_method"),
     )
     return success_response(data=data, status_code=201)
 
@@ -20,6 +21,7 @@ def create_bill():
 def list_bills():
     status = request.args.get("status")
     q = request.args.get("q")
+    payment_method = request.args.get("payment_method")
     today_only = str(request.args.get("today", "")).lower() in {"1", "true", "yes"}
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 50))
@@ -29,6 +31,7 @@ def list_bills():
         per_page=per_page,
         today_only=today_only,
         q=q,
+        payment_method=payment_method,
     )
     return success_response(data=data, meta=meta)
 

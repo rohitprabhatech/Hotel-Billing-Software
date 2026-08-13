@@ -43,6 +43,8 @@ def test_finalize_bill_server_totals(client):
     assert response.status_code == 201, response.get_json()
     bill = response.get_json()["data"]
     assert bill["status"] == "FINALIZED"
+    assert bill["payment_method"] == "cash"
+    assert bill["payment_method_label"] == "Cash"
     assert bill["subtotal"] == 840.0
     assert bill["discount"] == 20.0
     assert bill["taxable_amount"] == 820.0
@@ -52,6 +54,59 @@ def test_finalize_bill_server_totals(client):
     assert bill["items"][0]["item_name"] == "Chicken Sadhi Thali"
     assert bill["items"][0]["unit_price"] == 420.0
     assert bill["bill_number"]
+
+
+def test_payment_method_cash_and_online(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+    item = _create_menu(client, owner)
+
+    cash_bill = client.post(
+        "/api/v1/bills",
+        headers=billing,
+        json={
+            "payment_method": "cash",
+            "items": [{"item_id": item["id"], "quantity": 1}],
+        },
+    ).get_json()["data"]
+    assert cash_bill["payment_method"] == "cash"
+
+    online_bill = client.post(
+        "/api/v1/bills",
+        headers=billing,
+        json={
+            "payment_method": "online",
+            "items": [{"item_id": item["id"], "quantity": 1}],
+        },
+    ).get_json()["data"]
+    assert online_bill["payment_method"] == "online"
+    assert online_bill["payment_method_label"] == "Online"
+
+    invalid = client.post(
+        "/api/v1/bills",
+        headers=billing,
+        json={
+            "payment_method": "upi",
+            "items": [{"item_id": item["id"], "quantity": 1}],
+        },
+    )
+    assert invalid.status_code == 400
+
+    listed = client.get(
+        "/api/v1/bills",
+        headers=owner,
+        query_string={"payment_method": "online"},
+    ).get_json()["data"]
+    assert all(row["payment_method"] == "online" for row in listed)
+    assert any(row["id"] == online_bill["id"] for row in listed)
+
+    report = client.get(
+        "/api/v1/reports/daily-sales",
+        headers=owner,
+        query_string={"payment_method": "online"},
+    ).get_json()["data"]
+    assert report["metrics"]["online_sales"] >= online_bill["grand_total"]
+    assert all(b["payment_method"] == "online" for b in report["bills"])
 
 
 def test_historical_price_snapshot(client):

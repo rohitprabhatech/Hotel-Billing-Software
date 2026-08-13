@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
@@ -28,6 +28,7 @@ class BillRepository:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         q: str | None = None,
+        payment_method: str | None = None,
         page: int = 1,
         per_page: int = 50,
     ) -> tuple[list[Bill], int]:
@@ -36,6 +37,8 @@ class BillRepository:
             query = query.filter(Bill.status == status)
         if created_by:
             query = query.filter(Bill.created_by == created_by)
+        if payment_method:
+            query = query.filter(Bill.payment_method == payment_method)
         if date_from:
             query = query.filter(Bill.created_at >= date_from)
         if date_to:
@@ -105,3 +108,47 @@ class BillRepository:
             .one()
         )
         return row[0], row[1]
+
+    @staticmethod
+    def today_sales_breakdown(tenant_id: str, day_start: datetime, day_end: datetime):
+        row = (
+            db.session.query(
+                func.coalesce(func.sum(Bill.grand_total), 0),
+                func.count(Bill.id),
+                func.coalesce(
+                    func.sum(
+                        case((Bill.payment_method == "cash", Bill.grand_total), else_=0)
+                    ),
+                    0,
+                ),
+                func.coalesce(
+                    func.sum(
+                        case((Bill.payment_method == "online", Bill.grand_total), else_=0)
+                    ),
+                    0,
+                ),
+                func.coalesce(
+                    func.sum(case((Bill.payment_method == "cash", 1), else_=0)),
+                    0,
+                ),
+                func.coalesce(
+                    func.sum(case((Bill.payment_method == "online", 1), else_=0)),
+                    0,
+                ),
+            )
+            .filter(
+                Bill.tenant_id == tenant_id,
+                Bill.status == "FINALIZED",
+                Bill.created_at >= day_start,
+                Bill.created_at < day_end,
+            )
+            .one()
+        )
+        return {
+            "total_sales": row[0],
+            "bill_count": row[1],
+            "cash_sales": row[2],
+            "online_sales": row[3],
+            "cash_bill_count": int(row[4] or 0),
+            "online_bill_count": int(row[5] or 0),
+        }

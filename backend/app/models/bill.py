@@ -65,6 +65,9 @@ class Bill(db.Model, TimestampMixin):
         Numeric(12, 2), nullable=False, default=Decimal("0.00")
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="FINALIZED")
+    payment_method: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="cash"
+    )
     created_by: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

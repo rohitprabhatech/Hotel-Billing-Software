@@ -64,6 +64,8 @@ def upsert_user(*, user_id: str, tenant_id: str, role_id: str, name: str, email:
     user.email = email.lower()
     user.password_hash = hash_password(password)
     user.is_active = True
+    user.email_verified = True
+    user.token_version = int(getattr(user, "token_version", 0) or 0)
     return user
 
 

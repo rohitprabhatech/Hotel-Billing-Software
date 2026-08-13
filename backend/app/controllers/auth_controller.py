@@ -3,7 +3,14 @@
 from flask import request
 
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth_schemas import login_schema
+from app.schemas.auth_schemas import (
+    change_password_schema,
+    email_only_schema,
+    login_schema,
+    register_hotel_schema,
+    reset_password_schema,
+    token_schema,
+)
 from app.services.auth_service import AuthService
 from app.utils.request_context import require_request_context
 from app.utils.responses import success_response
@@ -35,3 +42,48 @@ def me():
     ctx = require_request_context()
     user = UserRepository.get_by_id(ctx.user_id)
     return success_response(data=AuthService.me(user))
+
+
+def register_hotel():
+    payload = register_hotel_schema.load(request.get_json() or {})
+    data = AuthService.register_hotel(payload)
+    return success_response(data=data, status_code=201)
+
+
+def verify_email():
+    payload = token_schema.load(request.get_json() or {})
+    data = AuthService.verify_email(payload["token"])
+    return success_response(data=data)
+
+
+def resend_verification():
+    payload = email_only_schema.load(request.get_json() or {})
+    data = AuthService.resend_verification(payload["email"])
+    return success_response(data=data)
+
+
+def forgot_password():
+    payload = email_only_schema.load(request.get_json() or {})
+    data = AuthService.forgot_password(payload["email"])
+    return success_response(data=data)
+
+
+def reset_password():
+    payload = reset_password_schema.load(request.get_json() or {})
+    data = AuthService.reset_password(
+        payload["token"], payload["password"], payload["confirm_password"]
+    )
+    return success_response(data=data)
+
+
+def change_password():
+    ctx = require_request_context()
+    user = UserRepository.get_by_id(ctx.user_id)
+    payload = change_password_schema.load(request.get_json() or {})
+    data = AuthService.change_password(
+        user,
+        current_password=payload["current_password"],
+        new_password=payload["new_password"],
+        confirm_password=payload["confirm_password"],
+    )
+    return success_response(data=data)

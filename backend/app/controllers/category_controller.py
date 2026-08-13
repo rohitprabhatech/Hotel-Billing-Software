@@ -32,12 +32,13 @@ def create_category():
 def update_category(category_id: str):
     raw = request.get_json() or {}
     payload = update_category_schema.load(raw)
+    parent_provided = "parent_id" in raw or "parent_category_id" in raw
     data = CategoryService.update_category(
         category_id,
         name=payload.get("name") if "name" in raw else None,
         description=payload.get("description") if "description" in raw else None,
-        parent_id=payload.get("parent_id") if "parent_id" in raw else None,
-        parent_id_provided="parent_id" in raw,
+        parent_id=payload.get("parent_id") if parent_provided else None,
+        parent_id_provided=parent_provided,
     )
     return success_response(data=data)
 

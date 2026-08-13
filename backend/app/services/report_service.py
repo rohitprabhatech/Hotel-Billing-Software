@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
+from app.constants.payments import normalize_payment_method, payment_method_label
 from app.extensions import db
 from app.models.role import ROLE_OWNER
 from app.repositories.report_repository import ReportRepository
@@ -41,13 +42,57 @@ class ReportService:
             raise ValidationError(str(exc)) from exc
 
     @staticmethod
-    def _build_report(tenant_id: str, start, end, label: str, period: str):
+    def _normalize_filter(payment_method: str | None):
+        if not payment_method:
+            return None
+        try:
+            return normalize_payment_method(payment_method)
+        except ValueError as exc:
+            raise ValidationError("payment_method must be cash or online") from exc
+
+    @staticmethod
+    def _serialize_bills(bills):
+        return [
+            {
+                "id": bill.id,
+                "bill_number": bill.bill_number,
+                "created_at": bill.created_at.isoformat() if bill.created_at else None,
+                "grand_total": float(bill.grand_total),
+                "status": bill.status,
+                "payment_method": bill.payment_method,
+                "payment_method_label": payment_method_label(bill.payment_method),
+            }
+            for bill in bills
+        ]
+
+    @staticmethod
+    def _build_report(
+        tenant_id: str,
+        start,
+        end,
+        label: str,
+        period: str,
+        payment_method: str | None = None,
+    ):
+        method = ReportService._normalize_filter(payment_method)
         return {
             "period": period,
             "label": label,
-            "metrics": ReportRepository.period_metrics(tenant_id, start, end),
-            "item_wise": ReportRepository.item_wise(tenant_id, start, end),
-            "day_wise": ReportRepository.day_wise(tenant_id, start, end),
+            "payment_method": method,
+            "metrics": ReportRepository.period_metrics(
+                tenant_id, start, end, payment_method=method
+            ),
+            "item_wise": ReportRepository.item_wise(
+                tenant_id, start, end, payment_method=method
+            ),
+            "day_wise": ReportRepository.day_wise(
+                tenant_id, start, end, payment_method=method
+            ),
+            "bills": ReportService._serialize_bills(
+                ReportRepository.bill_rows(
+                    tenant_id, start, end, payment_method=method
+                )
+            ),
         }
 
     @staticmethod
@@ -69,16 +114,22 @@ class ReportService:
         }
 
     @staticmethod
-    def daily_sales(date: str | None = None):
+    def daily_sales(date: str | None = None, payment_method: str | None = None):
         ctx = ReportService._ensure_owner()
         if date:
             start, end, label, *_ = ReportService._bounds("custom", date, date)
         else:
             start, end, label, *_ = ReportService._bounds("today")
-        return ReportService._build_report(ctx.tenant_id, start, end, label, "daily")
+        return ReportService._build_report(
+            ctx.tenant_id, start, end, label, "daily", payment_method=payment_method
+        )
 
     @staticmethod
-    def monthly_sales(year: int | None = None, month: int | None = None):
+    def monthly_sales(
+        year: int | None = None,
+        month: int | None = None,
+        payment_method: str | None = None,
+    ):
         ctx = ReportService._ensure_owner()
         if year and month:
             last = calendar.monthrange(int(year), int(month))[1]
@@ -87,13 +138,17 @@ class ReportService:
             start, end, label, *_ = ReportService._bounds("custom", from_date, to_date)
         else:
             start, end, label, *_ = ReportService._bounds("this_month")
-        return ReportService._build_report(ctx.tenant_id, start, end, label, "monthly")
+        return ReportService._build_report(
+            ctx.tenant_id, start, end, label, "monthly", payment_method=payment_method
+        )
 
     @staticmethod
-    def custom_sales(from_date: str, to_date: str):
+    def custom_sales(from_date: str, to_date: str, payment_method: str | None = None):
         ctx = ReportService._ensure_owner()
         start, end, label, *_ = ReportService._bounds("custom", from_date, to_date)
-        return ReportService._build_report(ctx.tenant_id, start, end, label, "custom")
+        return ReportService._build_report(
+            ctx.tenant_id, start, end, label, "custom", payment_method=payment_method
+        )
 
     @staticmethod
     def export(
@@ -105,6 +160,7 @@ class ReportService:
         to_date=None,
         year=None,
         month=None,
+        payment_method=None,
     ):
         ctx = ReportService._ensure_owner()
         fmt = (fmt or "xlsx").lower()
@@ -113,14 +169,17 @@ class ReportService:
 
         report_type = (report_type or "daily").lower()
         if report_type == "daily":
-            report = ReportService.daily_sales(date)
+            report = ReportService.daily_sales(date, payment_method=payment_method)
         elif report_type == "monthly":
             report = ReportService.monthly_sales(
                 int(year) if year else None,
                 int(month) if month else None,
+                payment_method=payment_method,
             )
         elif report_type == "custom":
-            report = ReportService.custom_sales(from_date, to_date)
+            report = ReportService.custom_sales(
+                from_date, to_date, payment_method=payment_method
+            )
         else:
             raise ValidationError("type must be daily, monthly, or custom")
 
@@ -165,6 +224,18 @@ class ReportService:
         writer.writerow(["Date", "Sales", "Bills"])
         for row in report["day_wise"]:
             writer.writerow([row["date"], row["total_sales"], row["bill_count"]])
+        writer.writerow([])
+        writer.writerow(["Bill No", "Date", "Amount", "Payment Method", "Status"])
+        for row in report.get("bills") or []:
+            writer.writerow(
+                [
+                    row["bill_number"],
+                    row["created_at"],
+                    row["grand_total"],
+                    row["payment_method_label"],
+                    row["status"],
+                ]
+            )
 
         mem = io.BytesIO(buffer.getvalue().encode("utf-8"))
         mem.seek(0)
@@ -193,6 +264,19 @@ class ReportService:
         ws3.append(["Date", "Sales", "Bills"])
         for row in report["day_wise"]:
             ws3.append([row["date"], row["total_sales"], row["bill_count"]])
+
+        ws4 = wb.create_sheet("Bills")
+        ws4.append(["Bill No", "Date", "Amount", "Payment Method", "Status"])
+        for row in report.get("bills") or []:
+            ws4.append(
+                [
+                    row["bill_number"],
+                    row["created_at"],
+                    row["grand_total"],
+                    row["payment_method_label"],
+                    row["status"],
+                ]
+            )
 
         mem = io.BytesIO()
         wb.save(mem)

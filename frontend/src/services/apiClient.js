@@ -15,13 +15,24 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+const PUBLIC_AUTH_PATHS = [
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+];
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const path = window.location.pathname;
+      const hadSession = Boolean(localStorage.getItem('access_token'));
       localStorage.removeItem('access_token');
       localStorage.removeItem('auth_user');
-      if (window.location.pathname !== '/login') {
+      // Only force navigation away from protected pages when a session existed.
+      if (hadSession && !PUBLIC_AUTH_PATHS.includes(path)) {
         window.location.assign('/login');
       }
     }

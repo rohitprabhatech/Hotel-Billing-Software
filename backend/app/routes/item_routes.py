@@ -1,4 +1,4 @@
-"""Item routes."""
+"""Item routes — OWNER and BILLING_USER may manage items (soft-delete only)."""
 
 from flask import Blueprint
 
@@ -16,7 +16,7 @@ def list_items():
 
 
 @items_bp.post("")
-@roles_required(ROLE_OWNER)
+@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
 def create_item():
     return item_controller.create_item()
 
@@ -28,12 +28,19 @@ def get_item(item_id):
 
 
 @items_bp.put("/<item_id>")
-@roles_required(ROLE_OWNER)
+@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
 def update_item(item_id):
     return item_controller.update_item(item_id)
 
 
 @items_bp.patch("/<item_id>/status")
-@roles_required(ROLE_OWNER)
+@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
 def set_item_status(item_id):
     return item_controller.set_item_status(item_id)
+
+
+@items_bp.delete("/<item_id>")
+@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
+def delete_item(item_id):
+    """Hard delete is intentionally unsupported — returns 405 via controller."""
+    return item_controller.delete_item(item_id)

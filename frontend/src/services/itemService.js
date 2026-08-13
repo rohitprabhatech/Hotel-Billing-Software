@@ -15,9 +15,9 @@ export async function updateItem(id, payload) {
   return data;
 }
 
-export async function setItemStatus(id, isActive) {
-  const { data } = await apiClient.patch(`/items/${id}/status`, {
-    is_active: isActive,
-  });
+export async function setItemStatus(id, isActive, reason = null) {
+  const body = { is_active: isActive };
+  if (reason) body.reason = reason;
+  const { data } = await apiClient.patch(`/items/${id}/status`, body);
   return data;
 }

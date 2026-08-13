@@ -1,4 +1,4 @@
-"""Reports HTTP controller."""
+"""Report HTTP controller."""
 
 from flask import request
 
@@ -8,33 +8,37 @@ from app.utils.responses import success_response
 
 def summary():
     period = request.args.get("period", "today")
-    data = ReportService.summary(
-        period=period,
-        from_date=request.args.get("from"),
-        to_date=request.args.get("to"),
-    )
+    from_date = request.args.get("from")
+    to_date = request.args.get("to")
+    data = ReportService.summary(period=period, from_date=from_date, to_date=to_date)
     return success_response(data=data)
 
 
 def daily_sales():
-    data = ReportService.daily_sales(request.args.get("date"))
+    date = request.args.get("date")
+    payment_method = request.args.get("payment_method")
+    data = ReportService.daily_sales(date, payment_method=payment_method)
     return success_response(data=data)
 
 
 def monthly_sales():
     year = request.args.get("year")
     month = request.args.get("month")
+    payment_method = request.args.get("payment_method")
     data = ReportService.monthly_sales(
         int(year) if year else None,
         int(month) if month else None,
+        payment_method=payment_method,
     )
     return success_response(data=data)
 
 
 def custom_sales():
+    from_date = request.args.get("from")
+    to_date = request.args.get("to")
+    payment_method = request.args.get("payment_method")
     data = ReportService.custom_sales(
-        request.args.get("from"),
-        request.args.get("to"),
+        from_date, to_date, payment_method=payment_method
     )
     return success_response(data=data)
 
@@ -48,4 +52,5 @@ def export_report():
         to_date=request.args.get("to"),
         year=request.args.get("year"),
         month=request.args.get("month"),
+        payment_method=request.args.get("payment_method"),
     )

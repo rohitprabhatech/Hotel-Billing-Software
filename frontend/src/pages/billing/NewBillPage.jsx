@@ -1,47 +1,100 @@
+import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import {
   Alert,
   Box,
   Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
   IconButton,
+  Radio,
+  RadioGroup,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
+import EmptyState from '../../components/EmptyState';
+import PageShell from '../../components/PageShell';
+import TruncateText from '../../components/TruncateText';
 import { createBill, openBillPrint } from '../../services/billService';
+import { listCategories } from '../../services/categoryService';
 import { listItems } from '../../services/itemService';
+
+function sortCategoriesHierarchically(categories) {
+  const byParent = new Map();
+  categories.forEach((category) => {
+    const key = category.parent_id || 'root';
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key).push(category);
+  });
+  byParent.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
+
+  const ordered = [];
+  const walk = (parentKey, depth) => {
+    (byParent.get(parentKey) || []).forEach((category) => {
+      ordered.push({ ...category, depth });
+      walk(category.id, depth + 1);
+    });
+  };
+  walk('root', 0);
+
+  const listed = new Set(ordered.map((c) => c.id));
+  categories
+    .filter((category) => !listed.has(category.id))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((category) => ordered.push({ ...category, depth: 0 }));
+
+  return ordered;
+}
 
 export default function NewBillPage() {
   const [q, setQ] = useState('');
   const [catalog, setCatalog] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [categoryId, setCategoryId] = useState('');
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState('0');
   const [tableNumber, setTableNumber] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(true);
   const [createdBill, setCreatedBill] = useState(null);
 
-  const search = async (term = q) => {
+  const search = async (term = q, cat = categoryId) => {
     setError('');
+    setLoadingItems(true);
     try {
-      const res = await listItems({ q: term || undefined, per_page: 40 });
+      const res = await listItems({
+        q: term || undefined,
+        category_id: cat || undefined,
+        is_active: true,
+        per_page: 60,
+      });
       setCatalog(res.data || []);
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to search items');
+      setError(err.response?.data?.error?.message || 'Unable to load items.');
+    } finally {
+      setLoadingItems(false);
     }
   };
 
   useEffect(() => {
+    listCategories()
+      .then((res) => setCategories((res.data || []).filter((c) => c.is_active)))
+      .catch(() => {});
     search('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -49,6 +102,11 @@ export default function NewBillPage() {
   const subtotalPreview = useMemo(
     () => cart.reduce((sum, line) => sum + line.price * line.quantity, 0),
     [cart],
+  );
+
+  const orderedCategories = useMemo(
+    () => sortCategoriesHierarchically(categories),
+    [categories],
   );
 
   const addItem = (item) => {
@@ -95,15 +153,21 @@ export default function NewBillPage() {
     setCart([]);
     setDiscount('0');
     setTableNumber('');
+    setPaymentMethod('cash');
   };
 
   const finalize = async () => {
+    if (paymentMethod !== 'cash' && paymentMethod !== 'online') {
+      setError('Please select a payment method.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       const res = await createBill({
         table_number: tableNumber || null,
         discount: Number(discount || 0),
+        payment_method: paymentMethod,
         items: cart.map((line) => ({
           item_id: line.item_id,
           quantity: line.quantity,
@@ -120,175 +184,300 @@ export default function NewBillPage() {
 
   return (
     <>
-      <Typography variant="h5" gutterBottom>
-        New Bill
-      </Typography>
+      <PageShell>
+        {error ? <Alert severity="error">{error}</Alert> : null}
 
-      {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
-
-      <Box
-        sx={{
-          display: 'grid',
-          gap: 2,
-          gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' },
-        }}
-      >
-        <Box sx={{ bgcolor: 'background.paper', borderRadius: 2, p: 2 }}>
-          <TextField
-            label="Search food item"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') search();
-            }}
-            fullWidth
-            autoFocus
-            sx={{ mb: 2 }}
-          />
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Item</TableCell>
-                <TableCell align="right">Price</TableCell>
-                <TableCell align="right" />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {catalog.map((item) => (
-                <TableRow key={item.id} hover>
-                  <TableCell>
-                    <Typography fontWeight={600}>{item.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {item.category_name} · GST {Number(item.gst_percentage).toFixed(2)}%
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">₹{Number(item.price).toFixed(2)}</TableCell>
-                  <TableCell align="right">
-                    <Button size="small" variant="contained" onClick={() => addItem(item)}>
-                      Add
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!catalog.length ? (
-                <TableRow>
-                  <TableCell colSpan={3}>
-                    <Typography color="text.secondary">No active items found.</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </Box>
-
-        <Box sx={{ bgcolor: 'background.paper', borderRadius: 2, p: 2 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6">Current Bill</Typography>
-            <Button color="inherit" onClick={clearCart} disabled={!cart.length}>
-              Clear
-            </Button>
-          </Stack>
-
-          <Stack direction="row" spacing={2} mb={2}>
-            <TextField
-              label="Table No."
-              value={tableNumber}
-              onChange={(e) => setTableNumber(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Discount ₹"
-              type="number"
-              value={discount}
-              onChange={(e) => setDiscount(e.target.value)}
-              fullWidth
-              inputProps={{ min: 0, step: '0.01' }}
-            />
-          </Stack>
-
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Item</TableCell>
-                <TableCell align="right">Qty</TableCell>
-                <TableCell align="right">Amount</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {cart.map((line) => (
-                <TableRow key={line.item_id}>
-                  <TableCell>
-                    {line.name}
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      ₹{line.price.toFixed(2)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right" sx={{ width: 100 }}>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={line.quantity}
-                      onChange={(e) => setQty(line.item_id, e.target.value)}
-                      inputProps={{ min: 1, step: 1 }}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    ₹{(line.price * line.quantity).toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => removeLine(line.item_id)}>
-                      <DeleteOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!cart.length ? (
-                <TableRow>
-                  <TableCell colSpan={4}>
-                    <Typography color="text.secondary">Cart is empty.</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-
-          <Stack spacing={1} mt={2}>
-            <Typography>Subtotal (preview): ₹{subtotalPreview.toFixed(2)}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Final GST/total is calculated by the server on Generate Bill.
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              disabled={!cart.length || saving}
-              onClick={finalize}
-            >
-              Generate Bill
-            </Button>
-          </Stack>
-        </Box>
-      </Box>
-
-      <Dialog open={Boolean(createdBill)} onClose={() => setCreatedBill(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Bill Generated</DialogTitle>
-        <DialogContent>
-          {createdBill ? (
-            <Stack spacing={1} sx={{ mt: 1 }}>
-              <Typography>Bill No: {createdBill.bill_number}</Typography>
-              <Typography>Status: {createdBill.status}</Typography>
-              <Typography>Subtotal: ₹{Number(createdBill.subtotal).toFixed(2)}</Typography>
-              <Typography>Discount: ₹{Number(createdBill.discount).toFixed(2)}</Typography>
-              <Typography>CGST: ₹{Number(createdBill.cgst_amount).toFixed(2)}</Typography>
-              <Typography>SGST: ₹{Number(createdBill.sgst_amount).toFixed(2)}</Typography>
-              <Typography fontWeight={700}>
-                Grand Total: ₹{Number(createdBill.grand_total).toFixed(2)}
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 3,
+            gridTemplateColumns: { xs: '1fr', lg: '1.15fr 0.85fr' },
+            alignItems: 'start',
+          }}
+        >
+          <Card>
+            <CardContent sx={{ p: { xs: 2.5, sm: 3 }, '&:last-child': { pb: { xs: 2.5, sm: 3 } } }}>
+              <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+                Available Items
               </Typography>
-            </Stack>
-          ) : null}
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
+                <TextField
+                  label="Search items"
+                  placeholder="Search item..."
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') search(q, categoryId);
+                  }}
+                  fullWidth
+                />
+                <Button variant="outlined" onClick={() => search(q, categoryId)} sx={{ flexShrink: 0 }}>
+                  Search
+                </Button>
+              </Stack>
+
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2.5 }}>
+                <Chip
+                  size="small"
+                  label="All"
+                  color={!categoryId ? 'primary' : 'default'}
+                  onClick={() => {
+                    setCategoryId('');
+                    search(q, '');
+                  }}
+                  clickable
+                />
+                {orderedCategories.map((cat) => (
+                  <Chip
+                    key={cat.id}
+                    size="small"
+                    label={
+                      cat.depth > 0 && cat.parent_category_name
+                        ? `${cat.parent_category_name} › ${cat.name}`
+                        : cat.name
+                    }
+                    variant={cat.depth > 0 ? 'outlined' : 'filled'}
+                    color={categoryId === cat.id ? 'primary' : 'default'}
+                    onClick={() => {
+                      setCategoryId(cat.id);
+                      search(q, cat.id);
+                    }}
+                    clickable
+                    sx={{ maxWidth: 220 }}
+                  />
+                ))}
+              </Stack>
+
+              {loadingItems ? (
+                <Box sx={{ py: 6, display: 'grid', placeItems: 'center' }}>
+                  <CircularProgress size={28} />
+                </Box>
+              ) : (
+                <Stack
+                  spacing={1.5}
+                  sx={{ maxHeight: { lg: 'calc(100vh - 320px)' }, overflowY: 'auto', pr: 0.5 }}
+                >
+                  {catalog.map((item) => (
+                    <Box
+                      key={item.id}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        px: 2,
+                        py: 1.5,
+                        borderRadius: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        bgcolor: 'background.paper',
+                        minWidth: 0,
+                      }}
+                    >
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <TruncateText value={item.name} maxWidth="100%" fontWeight={600} />
+                        <Typography variant="caption" color="text.secondary" noWrap display="block" sx={{ mt: 0.5 }}>
+                          {item.category_name || 'Item'} · GST {Number(item.gst_percentage).toFixed(1)}%
+                        </Typography>
+                      </Box>
+                      <Typography
+                        fontWeight={650}
+                        sx={{
+                          minWidth: 72,
+                          textAlign: 'right',
+                          flexShrink: 0,
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        ₹{Number(item.price).toFixed(2)}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        startIcon={<AddOutlinedIcon />}
+                        onClick={() => addItem(item)}
+                        sx={{ flexShrink: 0 }}
+                      >
+                        Add
+                      </Button>
+                    </Box>
+                  ))}
+                  {!catalog.length ? (
+                    <EmptyState
+                      title="No items found"
+                      description="No active items match your search."
+                    />
+                  ) : null}
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card sx={{ position: { lg: 'sticky' }, top: { lg: 96 } }}>
+            <CardContent sx={{ p: { xs: 2.5, sm: 3 }, '&:last-child': { pb: { xs: 2.5, sm: 3 } } }}>
+              <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+                Current Bill
+              </Typography>
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
+                <TextField
+                  label="Table / Token"
+                  value={tableNumber}
+                  onChange={(e) => setTableNumber(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="Discount (₹)"
+                  type="number"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  fullWidth
+                  inputProps={{ min: 0, step: '0.01' }}
+                />
+              </Stack>
+
+              <Stack spacing={1.5} sx={{ mb: 2.5, minHeight: 120 }}>
+                {cart.map((line) => (
+                  <Box
+                    key={line.item_id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      py: 1.25,
+                      borderBottom: '1px solid',
+                      borderColor: 'divider',
+                      minWidth: 0,
+                    }}
+                  >
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <TruncateText value={line.name} maxWidth="100%" fontWeight={600} />
+                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1 }}>
+                        <TextField
+                          type="number"
+                          size="small"
+                          label="Qty"
+                          value={line.quantity}
+                          onChange={(e) => setQty(line.item_id, e.target.value)}
+                          inputProps={{ min: 0.001, step: '1' }}
+                          sx={{ width: 88 }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          × ₹{line.price.toFixed(2)}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                    <Typography
+                      fontWeight={650}
+                      sx={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      ₹{(line.price * line.quantity).toFixed(2)}
+                    </Typography>
+                    <Tooltip title="Remove item">
+                      <IconButton
+                        size="small"
+                        aria-label={`Remove ${line.name}`}
+                        onClick={() => removeLine(line.item_id)}
+                      >
+                        <DeleteOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                ))}
+                {!cart.length ? (
+                  <EmptyState
+                    title="Cart is empty"
+                    description="Add items from the left to build the bill."
+                  />
+                ) : null}
+              </Stack>
+
+              <Divider sx={{ mb: 2 }} />
+
+              <Stack spacing={1.25} sx={{ mb: 2.5 }}>
+                <Stack direction="row" justifyContent="space-between" spacing={2}>
+                  <Typography color="text.secondary">Subtotal</Typography>
+                  <Typography fontWeight={650} sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    ₹{subtotalPreview.toFixed(2)}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between" spacing={2}>
+                  <Typography color="text.secondary">Discount</Typography>
+                  <Typography sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    ₹{Number(discount || 0).toFixed(2)}
+                  </Typography>
+                </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5 }}>
+                  Final GST (CGST/SGST), round-off and grand total are calculated by the server when
+                  you generate the bill.
+                </Typography>
+              </Stack>
+
+              <FormControl component="fieldset" sx={{ mb: 3 }}>
+                <FormLabel component="legend" sx={{ mb: 0.75, typography: 'subtitle2', color: 'text.primary' }}>
+                  Payment Method
+                </FormLabel>
+                <RadioGroup
+                  row
+                  name="payment-method"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  <FormControlLabel
+                    value="cash"
+                    control={<Radio size="small" />}
+                    label="Cash"
+                    sx={{ mr: 3 }}
+                  />
+                  <FormControlLabel
+                    value="online"
+                    control={<Radio size="small" />}
+                    label="Online"
+                  />
+                </RadioGroup>
+              </FormControl>
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  onClick={clearCart}
+                  disabled={!cart.length}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={finalize}
+                  disabled={!cart.length || saving}
+                  startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+                  sx={{ flexGrow: 1 }}
+                >
+                  {saving ? 'Generating...' : 'Generate Bill'}
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Box>
+      </PageShell>
+
+      <Dialog open={Boolean(createdBill)} onClose={() => setCreatedBill(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Bill generated</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            <Typography>
+              Bill <strong>#{createdBill?.bill_number}</strong> saved successfully.
+            </Typography>
+            <Typography>
+              Grand total: ₹{Number(createdBill?.grand_total || 0).toFixed(2)}
+            </Typography>
+            <Typography>
+              Payment Method: {createdBill?.payment_method_label || (createdBill?.payment_method === 'online' ? 'Online' : 'Cash')}
+            </Typography>
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreatedBill(null)}>Done</Button>
+          <Button onClick={() => setCreatedBill(null)}>Close</Button>
           <Button
             variant="contained"
             onClick={() => {

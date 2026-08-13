@@ -35,6 +35,33 @@ class BaseConfig:
         "http://localhost:5173,http://127.0.0.1:5173",
     )
     REPORT_TIMEZONE = os.getenv("REPORT_TIMEZONE", "Asia/Kolkata")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
+    # Email / SMTP (provider-agnostic)
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() in {"1", "true", "yes"}
+    MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "false").lower() in {"1", "true", "yes"}
+    MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "noreply@hotelbilling.local")
+    MAIL_SUPPRESS_SEND = os.getenv("MAIL_SUPPRESS_SEND", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    EMAIL_VERIFICATION_REQUIRED = os.getenv(
+        "EMAIL_VERIFICATION_REQUIRED", "true"
+    ).lower() in {"1", "true", "yes"}
+    SEND_LOGIN_NOTIFICATIONS = os.getenv(
+        "SEND_LOGIN_NOTIFICATIONS", "false"
+    ).lower() in {"1", "true", "yes"}
+    # Expose raw tokens in API responses for local/testing only
+    ALLOW_DEV_AUTH_TOKENS = os.getenv("ALLOW_DEV_AUTH_TOKENS", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
     JSON_SORT_KEYS = False
     PROPAGATE_EXCEPTIONS = False
@@ -42,6 +69,16 @@ class BaseConfig:
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
+    MAIL_SUPPRESS_SEND = os.getenv("MAIL_SUPPRESS_SEND", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    ALLOW_DEV_AUTH_TOKENS = os.getenv("ALLOW_DEV_AUTH_TOKENS", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 
 class TestingConfig(BaseConfig):
@@ -52,10 +89,16 @@ class TestingConfig(BaseConfig):
         "sqlite:///:memory:",
     )
     SQLALCHEMY_ENGINE_OPTIONS = {}
+    MAIL_SUPPRESS_SEND = True
+    EMAIL_VERIFICATION_REQUIRED = True
+    ALLOW_DEV_AUTH_TOKENS = True
+    SEND_LOGIN_NOTIFICATIONS = False
+    FRONTEND_URL = "http://localhost:5173"
 
 
 class ProductionConfig(BaseConfig):
     DEBUG = False
+    ALLOW_DEV_AUTH_TOKENS = False
 
     @classmethod
     def validate(cls):

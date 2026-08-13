@@ -19,6 +19,8 @@ DROP TABLE IF EXISTS bills;
 DROP TABLE IF EXISTS bill_number_counters;
 DROP TABLE IF EXISTS items;
 DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS email_verification_tokens;
+DROP TABLE IF EXISTS password_reset_tokens;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS tenants;
@@ -69,16 +71,21 @@ CREATE TABLE roles (
 -- users (tenant-scoped)
 -- -----------------------------------------------------------------------------
 CREATE TABLE users (
-    id              CHAR(36)      NOT NULL,
-    tenant_id       CHAR(36)      NOT NULL,
-    role_id         CHAR(36)      NOT NULL,
-    name            VARCHAR(120)  NOT NULL,
-    email           VARCHAR(255)  NOT NULL,
-    password_hash   VARCHAR(255)  NOT NULL,
-    is_active       TINYINT(1)    NOT NULL DEFAULT 1,
-    last_login_at   DATETIME(6)   NULL,
-    created_at      DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    updated_at      DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    id                   CHAR(36)      NOT NULL,
+    tenant_id            CHAR(36)      NOT NULL,
+    role_id              CHAR(36)      NOT NULL,
+    name                 VARCHAR(120)  NOT NULL,
+    email                VARCHAR(255)  NOT NULL,
+    password_hash        VARCHAR(255)  NOT NULL,
+    is_active            TINYINT(1)    NOT NULL DEFAULT 1,
+    email_verified       TINYINT(1)    NOT NULL DEFAULT 0,
+    email_verified_at    DATETIME(6)   NULL,
+    password_changed_at  DATETIME(6)   NULL,
+    pending_email        VARCHAR(255)  NULL,
+    token_version        INT           NOT NULL DEFAULT 0,
+    last_login_at        DATETIME(6)   NULL,
+    created_at           DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at           DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_tenant_email (tenant_id, email),
     INDEX ix_users_tenant_id (tenant_id),
@@ -90,6 +97,46 @@ CREATE TABLE users (
     CONSTRAINT fk_users_role
         FOREIGN KEY (role_id) REFERENCES roles (id)
         ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- password_reset_tokens
+-- -----------------------------------------------------------------------------
+CREATE TABLE password_reset_tokens (
+    id           CHAR(36)     NOT NULL,
+    user_id      CHAR(36)     NOT NULL,
+    token_hash   CHAR(64)     NOT NULL,
+    expires_at   DATETIME(6)  NOT NULL,
+    used_at      DATETIME(6)  NULL,
+    created_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_password_reset_token_hash (token_hash),
+    INDEX ix_password_reset_user_id (user_id),
+    CONSTRAINT fk_password_reset_user
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- email_verification_tokens
+-- -----------------------------------------------------------------------------
+CREATE TABLE email_verification_tokens (
+    id           CHAR(36)     NOT NULL,
+    user_id      CHAR(36)     NOT NULL,
+    token_hash   CHAR(64)     NOT NULL,
+    purpose      VARCHAR(40)  NOT NULL DEFAULT 'signup',
+    new_email    VARCHAR(255) NULL,
+    expires_at   DATETIME(6)  NOT NULL,
+    verified_at  DATETIME(6)  NULL,
+    created_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_email_verification_token_hash (token_hash),
+    INDEX ix_email_verification_user_id (user_id),
+    CONSTRAINT fk_email_verification_user
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -124,6 +171,7 @@ CREATE TABLE items (
     id               CHAR(36)       NOT NULL,
     tenant_id        CHAR(36)       NOT NULL,
     category_id      CHAR(36)       NOT NULL,
+    created_by       CHAR(36)       NULL,
     name             VARCHAR(200)   NOT NULL,
     description      TEXT           NULL,
     price            DECIMAL(12,2)  NOT NULL,
@@ -137,12 +185,16 @@ CREATE TABLE items (
     INDEX ix_items_tenant_category (tenant_id, category_id),
     INDEX ix_items_tenant_active (tenant_id, is_active),
     INDEX ix_items_tenant_name (tenant_id, name),
+    INDEX ix_items_created_by (created_by),
     CONSTRAINT fk_items_tenant
         FOREIGN KEY (tenant_id) REFERENCES tenants (id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_items_category
         FOREIGN KEY (category_id) REFERENCES categories (id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_items_created_by
+        FOREIGN KEY (created_by) REFERENCES users (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT chk_items_price CHECK (price >= 0),
     CONSTRAINT chk_items_gst CHECK (gst_percentage >= 0 AND gst_percentage <= 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -179,6 +231,7 @@ CREATE TABLE bills (
     grand_total           DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     round_off             DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     status                VARCHAR(20)    NOT NULL DEFAULT 'DRAFT',
+    payment_method        VARCHAR(20)    NOT NULL DEFAULT 'cash',
     created_by            CHAR(36)       NOT NULL,
     cancelled_by          CHAR(36)       NULL,
     cancelled_at          DATETIME(6)    NULL,
@@ -192,6 +245,7 @@ CREATE TABLE bills (
     INDEX ix_bills_tenant_created_at (tenant_id, created_at),
     INDEX ix_bills_tenant_status (tenant_id, status),
     INDEX ix_bills_tenant_created_by (tenant_id, created_by),
+    INDEX ix_bills_tenant_payment_method (tenant_id, payment_method),
     CONSTRAINT fk_bills_tenant
         FOREIGN KEY (tenant_id) REFERENCES tenants (id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -202,6 +256,7 @@ CREATE TABLE bills (
         FOREIGN KEY (cancelled_by) REFERENCES users (id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT chk_bills_status CHECK (status IN ('DRAFT', 'FINALIZED', 'CANCELLED', 'VOID')),
+    CONSTRAINT chk_bills_payment_method CHECK (payment_method IN ('cash', 'online')),
     CONSTRAINT chk_bills_money CHECK (
         subtotal >= 0 AND discount >= 0 AND taxable_amount >= 0
         AND cgst_amount >= 0 AND sgst_amount >= 0 AND gst_amount >= 0

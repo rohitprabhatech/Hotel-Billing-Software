@@ -1,10 +1,9 @@
-"""Item business logic with price/GST audit trails."""
+"""Item business logic with immutable audit trails."""
 
 from decimal import Decimal, InvalidOperation
 
 from app.extensions import db
 from app.models.item import Item
-from app.models.role import ROLE_BILLING_USER
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.item_repository import ItemRepository
 from app.services.audit_service import AuditService
@@ -17,9 +16,6 @@ class ItemService:
     @staticmethod
     def list_items(*, q=None, category_id=None, is_active=None, page=1, per_page=50):
         ctx = require_request_context()
-        if ctx.role == ROLE_BILLING_USER:
-            is_active = True
-
         items, total = ItemRepository.list_by_tenant(
             ctx.tenant_id,
             q=q,
@@ -42,8 +38,6 @@ class ItemService:
         ctx = require_request_context()
         item = ItemRepository.get_by_id_and_tenant(item_id, ctx.tenant_id)
         if item is None:
-            raise NotFoundError("Item not found")
-        if ctx.role == ROLE_BILLING_USER and not item.is_active:
             raise NotFoundError("Item not found")
         return ItemService.serialize(item)
 
@@ -70,6 +64,7 @@ class ItemService:
             id=new_uuid(),
             tenant_id=ctx.tenant_id,
             category_id=category.id,
+            created_by=ctx.user_id,
             name=name,
             description=(description or "").strip() or None,
             price=price_dec,
@@ -79,7 +74,7 @@ class ItemService:
         ItemRepository.add(item)
         AuditService.log(
             tenant_id=ctx.tenant_id,
-            action="CREATE_ITEM",
+            action="ITEM_CREATED",
             entity_type="ITEM",
             entity_id=item.id,
             new_data=ItemService.serialize(item),
@@ -139,7 +134,7 @@ class ItemService:
         new_data = ItemService.serialize(item)
         AuditService.log(
             tenant_id=ctx.tenant_id,
-            action="UPDATE_ITEM",
+            action="ITEM_UPDATED",
             entity_type="ITEM",
             entity_id=item.id,
             old_data=old,
@@ -151,8 +146,8 @@ class ItemService:
                 action="UPDATE_PRICE",
                 entity_type="ITEM",
                 entity_id=item.id,
-                old_data={"price": old["price"]},
-                new_data={"price": new_data["price"]},
+                old_data={"price": old["price"], "name": old["name"]},
+                new_data={"price": new_data["price"], "name": new_data["name"]},
             )
         if gst_changed:
             AuditService.log(
@@ -160,30 +155,38 @@ class ItemService:
                 action="CHANGE_GST",
                 entity_type="ITEM",
                 entity_id=item.id,
-                old_data={"gst_percentage": old["gst_percentage"]},
-                new_data={"gst_percentage": new_data["gst_percentage"]},
+                old_data={"gst_percentage": old["gst_percentage"], "name": old["name"]},
+                new_data={"gst_percentage": new_data["gst_percentage"], "name": new_data["name"]},
             )
 
         db.session.commit()
         return new_data
 
     @staticmethod
-    def set_status(item_id: str, is_active: bool):
+    def set_status(item_id: str, is_active: bool, reason: str | None = None):
         ctx = require_request_context()
         item = ItemRepository.get_by_id_and_tenant(item_id, ctx.tenant_id)
         if item is None:
             raise NotFoundError("Item not found")
 
         old = ItemService.serialize(item)
-        item.is_active = bool(is_active)
-        action = "DEACTIVATE_ITEM" if not item.is_active else "UPDATE_ITEM"
+        desired = bool(is_active)
+        if item.is_active == desired:
+            return ItemService.serialize(item)
+
+        item.is_active = desired
+        action = "ITEM_REACTIVATED" if desired else "ITEM_DEACTIVATED"
+        new_data = ItemService.serialize(item)
+        if reason and str(reason).strip():
+            new_data = {**new_data, "reason": str(reason).strip()}
+
         AuditService.log(
             tenant_id=ctx.tenant_id,
             action=action,
             entity_type="ITEM",
             entity_id=item.id,
             old_data=old,
-            new_data=ItemService.serialize(item),
+            new_data=new_data,
         )
         db.session.commit()
         return ItemService.serialize(item)
@@ -219,6 +222,8 @@ class ItemService:
             "price": float(item.price),
             "gst_percentage": float(item.gst_percentage),
             "is_active": item.is_active,
+            "created_by": item.created_by,
+            "created_by_name": item.creator.name if item.creator else None,
             "created_at": item.created_at.isoformat() if item.created_at else None,
             "updated_at": item.updated_at.isoformat() if item.updated_at else None,
         }

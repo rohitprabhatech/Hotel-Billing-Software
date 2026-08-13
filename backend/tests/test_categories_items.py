@@ -71,13 +71,17 @@ def test_billing_user_sees_only_active_items(client):
         json={"is_active": False},
     )
 
-    billing_items = client.get("/api/v1/items", headers=billing).get_json()["data"]
+    billing_items = client.get(
+        "/api/v1/items",
+        headers=billing,
+        query_string={"is_active": "true"},
+    ).get_json()["data"]
     ids = {i["id"] for i in billing_items}
     assert active_id in ids
     assert inactive_id not in ids
 
 
-def test_billing_user_cannot_create_item(client):
+def test_billing_user_can_create_item(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     billing = login(client, "billing@hotela.com", "Billing@12345")
     category_id = client.post(
@@ -96,7 +100,8 @@ def test_billing_user_cannot_create_item(client):
             "gst_percentage": 5,
         },
     )
-    assert response.status_code == 403
+    assert response.status_code == 201
+    assert response.get_json()["data"]["name"] == "Samosa"
 
 
 def test_price_and_gst_changes_are_audited(client):
@@ -130,6 +135,7 @@ def test_price_and_gst_changes_are_audited(client):
         .filter(AuditLog.entity_id == item_id, AuditLog.entity_type == "ITEM")
         .all()
     }
+    assert "ITEM_UPDATED" in actions
     assert "UPDATE_PRICE" in actions
     assert "CHANGE_GST" in actions
 
@@ -149,6 +155,79 @@ def test_cross_tenant_category_isolation(client):
 
     list_b = client.get("/api/v1/categories", headers=owner_b).get_json()["data"]
     assert all(c["name"] != "Tenant A Only" for c in list_b)
+
+    # Hotel B cannot use Hotel A category as parent
+    bad_parent = client.post(
+        "/api/v1/categories",
+        headers=owner_b,
+        json={"name": "Should Fail", "parent_id": category_a["id"]},
+    )
+    assert bad_parent.status_code == 400
+
+
+def test_parent_category_hierarchy_and_validation(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+
+    food = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Food Hierarchy", "description": "Root food", "parent_id": None},
+    ).get_json()["data"]
+    assert food["parent_id"] is None
+    assert food["parent_category_name"] is None
+
+    veg = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={
+            "name": "Veg Hierarchy",
+            "description": "Vegetarian",
+            "parent_category_id": food["id"],
+        },
+    ).get_json()["data"]
+    assert veg["parent_id"] == food["id"]
+    assert veg["parent_category_name"] == "Food Hierarchy"
+
+    non_veg = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={
+            "name": "Non-Veg Hierarchy",
+            "parent_id": food["id"],
+        },
+    ).get_json()["data"]
+    assert non_veg["parent_category_id"] == food["id"]
+
+    # Self-parent not allowed
+    self_parent = client.put(
+        f"/api/v1/categories/{food['id']}",
+        headers=owner,
+        json={"parent_id": food["id"]},
+    )
+    assert self_parent.status_code == 400
+    assert "own parent" in self_parent.get_json()["error"]["message"].lower()
+
+    # Circular hierarchy not allowed (Food -> parent = Veg)
+    circular = client.put(
+        f"/api/v1/categories/{food['id']}",
+        headers=owner,
+        json={"parent_id": veg["id"]},
+    )
+    assert circular.status_code == 400
+    assert "circular" in circular.get_json()["error"]["message"].lower()
+
+    # Cannot deactivate parent with children
+    deactivate = client.patch(
+        f"/api/v1/categories/{food['id']}/status",
+        headers=owner,
+        json={"is_active": False},
+    )
+    assert deactivate.status_code == 400
+    assert "child" in deactivate.get_json()["error"]["message"].lower()
+
+    listed = client.get("/api/v1/categories", headers=owner).get_json()["data"]
+    by_id = {row["id"]: row for row in listed}
+    assert by_id[veg["id"]]["parent_category_name"] == "Food Hierarchy"
 
 
 def test_item_search(client):

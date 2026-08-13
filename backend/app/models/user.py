@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -26,10 +26,21 @@ class User(db.Model, TimestampMixin):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    pending_email: Mapped[str | None] = mapped_column(String(255))
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
 
     tenant = relationship("Tenant", back_populates="users")
     role = relationship("Role", back_populates="users")
+    password_reset_tokens = relationship(
+        "PasswordResetToken", back_populates="user", lazy="dynamic"
+    )
+    email_verification_tokens = relationship(
+        "EmailVerificationToken", back_populates="user", lazy="dynamic"
+    )
 
     @property
     def role_name(self) -> str:

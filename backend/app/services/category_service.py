@@ -31,19 +31,50 @@ class CategoryService:
         return CategoryService.serialize(category)
 
     @staticmethod
+    def _resolve_parent(tenant_id: str, parent_id: str | None) -> Category | None:
+        if not parent_id:
+            return None
+        parent = CategoryRepository.get_by_id_and_tenant(parent_id, tenant_id)
+        if parent is None:
+            raise ValidationError("Parent category not found for this hotel")
+        return parent
+
+    @staticmethod
+    def _assert_valid_parent(
+        *,
+        tenant_id: str,
+        category_id: str | None,
+        parent_id: str | None,
+    ) -> Category | None:
+        parent = CategoryService._resolve_parent(tenant_id, parent_id)
+        if parent is None:
+            return None
+        if category_id and parent.id == category_id:
+            raise ValidationError("Category cannot be its own parent")
+        if category_id:
+            descendants = CategoryRepository.list_descendant_ids(category_id, tenant_id)
+            if parent.id in descendants:
+                raise ValidationError(
+                    "Cannot set a child category as parent (circular hierarchy)"
+                )
+        return parent
+
+    @staticmethod
     def create_category(*, name: str, description: str | None, parent_id: str | None):
         ctx = require_request_context()
         name = (name or "").strip()
         if not name:
             raise ValidationError("Category name is required")
 
-        parent = None
-        if parent_id:
-            parent = CategoryRepository.get_by_id_and_tenant(parent_id, ctx.tenant_id)
-            if parent is None:
-                raise ValidationError("Parent category not found")
+        parent = CategoryService._assert_valid_parent(
+            tenant_id=ctx.tenant_id,
+            category_id=None,
+            parent_id=parent_id,
+        )
 
-        if CategoryRepository.find_by_tenant_parent_name(ctx.tenant_id, parent_id, name):
+        if CategoryRepository.find_by_tenant_parent_name(
+            ctx.tenant_id, parent.id if parent else None, name
+        ):
             raise ConflictError("Category with this name already exists")
 
         category = Category(
@@ -63,6 +94,7 @@ class CategoryService:
             new_data=CategoryService.serialize(category),
         )
         db.session.commit()
+        db.session.refresh(category)
         return CategoryService.serialize(category)
 
     @staticmethod
@@ -91,15 +123,12 @@ class CategoryService:
             category.description = description.strip() or None
 
         if parent_id_provided:
-            if parent_id:
-                if parent_id == category.id:
-                    raise ValidationError("Category cannot be its own parent")
-                parent = CategoryRepository.get_by_id_and_tenant(parent_id, ctx.tenant_id)
-                if parent is None:
-                    raise ValidationError("Parent category not found")
-                category.parent_id = parent.id
-            else:
-                category.parent_id = None
+            parent = CategoryService._assert_valid_parent(
+                tenant_id=ctx.tenant_id,
+                category_id=category.id,
+                parent_id=parent_id,
+            )
+            category.parent_id = parent.id if parent else None
 
         existing = CategoryRepository.find_by_tenant_parent_name(
             ctx.tenant_id, category.parent_id, category.name
@@ -116,6 +145,7 @@ class CategoryService:
             new_data=CategoryService.serialize(category),
         )
         db.session.commit()
+        db.session.refresh(category)
         return CategoryService.serialize(category)
 
     @staticmethod
@@ -124,6 +154,14 @@ class CategoryService:
         category = CategoryRepository.get_by_id_and_tenant(category_id, ctx.tenant_id)
         if category is None:
             raise NotFoundError("Category not found")
+
+        if not is_active:
+            child_count = CategoryRepository.count_children(category.id, ctx.tenant_id)
+            if child_count > 0:
+                raise ValidationError(
+                    "Cannot deactivate a category that has child categories. "
+                    "Reassign or deactivate the child categories first."
+                )
 
         old = CategoryService.serialize(category)
         category.is_active = bool(is_active)
@@ -141,11 +179,23 @@ class CategoryService:
 
     @staticmethod
     def serialize(category: Category):
+        parent_name = None
+        if category.parent_id:
+            if getattr(category, "parent", None) is not None:
+                parent_name = category.parent.name
+            else:
+                parent = CategoryRepository.get_by_id_and_tenant(
+                    category.parent_id, category.tenant_id
+                )
+                parent_name = parent.name if parent else None
+
         return {
             "id": category.id,
             "name": category.name,
             "description": category.description,
             "parent_id": category.parent_id,
+            "parent_category_id": category.parent_id,
+            "parent_category_name": parent_name,
             "is_active": category.is_active,
             "created_at": category.created_at.isoformat() if category.created_at else None,
             "updated_at": category.updated_at.isoformat() if category.updated_at else None,

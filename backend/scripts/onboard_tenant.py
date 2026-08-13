@@ -101,6 +101,8 @@ def main():
             email=args.owner_email.strip().lower(),
             password_hash=hash_password(args.owner_password),
             is_active=True,
+            email_verified=True,
+            token_version=0,
         )
         db.session.add(owner)
 
@@ -118,6 +120,8 @@ def main():
                     email=args.billing_email.strip().lower(),
                     password_hash=hash_password(args.billing_password),
                     is_active=True,
+                    email_verified=True,
+                    token_version=0,
                 )
             )
 

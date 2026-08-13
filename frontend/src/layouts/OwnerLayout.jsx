@@ -2,109 +2,305 @@ import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
+import MenuIcon from '@mui/icons-material/Menu';
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
+import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
+import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import {
   AppBar,
   Box,
-  Button,
+  Chip,
+  Divider,
   Drawer,
+  IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Toolbar,
+  Tooltip,
   Typography,
+  useMediaQuery,
 } from '@mui/material';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
+import { useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
 import { logoutRequest } from '../services/authService';
+import { PATHS } from '../routes/paths';
 
-const drawerWidth = 240;
+const drawerWidth = 248;
 
 const navItems = [
-  { to: '/owner/dashboard', label: 'Dashboard', icon: <DashboardOutlinedIcon /> },
-  { to: '/owner/categories', label: 'Categories', icon: <CategoryOutlinedIcon /> },
-  { to: '/owner/items', label: 'Items', icon: <RestaurantMenuOutlinedIcon /> },
-  { to: '/owner/bills', label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
-  { to: '/owner/reports', label: 'Reports', icon: <AssessmentOutlinedIcon /> },
-  { to: '/owner/audit', label: 'Audit', icon: <HistoryOutlinedIcon /> },
-  { to: '/owner/users', label: 'Users', icon: <PeopleOutlinedIcon /> },
-  { to: '/owner/settings', label: 'Settings', icon: <SettingsOutlinedIcon /> },
+  { to: PATHS.ownerDashboard, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { to: PATHS.billingHome, label: 'Billing', icon: <PointOfSaleOutlinedIcon /> },
+  { to: PATHS.ownerBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { to: PATHS.ownerItems, label: 'Items', icon: <RestaurantMenuOutlinedIcon /> },
+  { to: PATHS.ownerItemActivity, label: 'Item Activity', icon: <HistoryOutlinedIcon /> },
+  { to: PATHS.ownerCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
+  { to: PATHS.ownerReports, label: 'Sales Reports', icon: <AssessmentOutlinedIcon /> },
+  { to: PATHS.ownerAudit, label: 'Audit & Activity', icon: <HistoryOutlinedIcon /> },
+  { to: PATHS.ownerUsers, label: 'Users', icon: <PeopleOutlinedIcon /> },
+  { to: PATHS.ownerSettings, label: 'Settings', icon: <SettingsOutlinedIcon /> },
+  { to: PATHS.ownerProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
 ];
+
+const titles = {
+  [PATHS.ownerDashboard]: {
+    title: 'Owner Dashboard',
+    hidePageHeader: true,
+  },
+  [PATHS.ownerBills]: {
+    title: 'Bills',
+    subtitle: 'Review billing history for your hotel.',
+  },
+  [PATHS.ownerItems]: {
+    title: 'Items',
+    subtitle: "Manage your hotel's food and beverage items.",
+  },
+  [PATHS.ownerItemActivity]: {
+    title: 'Item Activity',
+    subtitle: 'Track item creation, updates, deactivation and reactivation.',
+  },
+  [PATHS.ownerCategories]: {
+    title: 'Categories',
+    subtitle: 'Manage food and beverage categories.',
+  },
+  [PATHS.ownerReports]: {
+    title: 'Sales Reports',
+    subtitle: "Review your hotel's sales performance.",
+  },
+  [PATHS.ownerAudit]: {
+    title: 'Audit Activity',
+    subtitle: 'Track important activities performed within your hotel account.',
+  },
+  [PATHS.ownerUsers]: {
+    title: 'Users',
+    subtitle: 'Manage users who can access this hotel billing system.',
+  },
+  [PATHS.ownerSettings]: {
+    title: 'Settings',
+    subtitle: 'Manage profile, hotel information, security and account email.',
+  },
+  [PATHS.ownerProfile]: {
+    title: 'Profile',
+    subtitle: 'Manage your personal account details.',
+  },
+  [PATHS.ownerChangePassword]: {
+    title: 'Change Password',
+    subtitle: 'Update your account password securely.',
+  },
+};
 
 export default function OwnerLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const meta = titles[location.pathname] || {
+    title: 'Owner Console',
+    subtitle: '',
+  };
 
   const onLogout = async () => {
     try {
       await logoutRequest();
     } catch {
-      // Client logout proceeds even if API logout fails (expired token, etc.)
+      // Client logout proceeds even if API logout fails
     }
     logout();
-    navigate('/login', { replace: true });
+    navigate(PATHS.login, { replace: true });
   };
 
+  const drawer = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Toolbar sx={{ px: 2 }}>
+        <Box sx={{ minWidth: 0, width: '100%' }}>
+          <Tooltip title={user?.tenant?.business_name || 'Owner Dashboard'}>
+            <Typography variant="subtitle1" fontWeight={700} noWrap>
+              {user?.tenant?.business_name || 'Owner Dashboard'}
+            </Typography>
+          </Tooltip>
+          <Typography variant="caption" color="text.secondary">
+            Owner console
+          </Typography>
+        </Box>
+      </Toolbar>
+      <Divider />
+      <List sx={{ px: 1, pt: 1, flexGrow: 1 }}>
+        {navItems.map((item) => (
+          <ListItemButton
+            key={item.to}
+            component={NavLink}
+            to={item.to}
+            end={item.end}
+            onClick={() => setMobileOpen(false)}
+            sx={{
+              '&.active': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                '& .MuiListItemIcon-root': { color: 'inherit' },
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.label} />
+          </ListItemButton>
+        ))}
+      </List>
+    </Box>
+  );
+
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar
         position="fixed"
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        sx={{
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          ml: { md: `${drawerWidth}px` },
+        }}
       >
         <Toolbar>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {user?.tenant?.business_name || 'Owner Dashboard'}
-          </Typography>
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            {user?.name}
-          </Typography>
-          <Button color="inherit" startIcon={<LogoutOutlinedIcon />} onClick={onLogout}>
-            Logout
-          </Button>
+          {isMobile ? (
+            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }} aria-label="Open menu">
+              <MenuIcon />
+            </IconButton>
+          ) : null}
+          <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
+            <Tooltip title={user?.tenant?.business_name || 'Hotel Billing'}>
+              <Typography variant="subtitle1" fontWeight={700} noWrap>
+                {user?.tenant?.business_name || 'Hotel Billing'}
+              </Typography>
+            </Tooltip>
+            <Typography variant="caption" color="text.secondary" noWrap>
+              Hotel Billing Dashboard · {meta.title}
+            </Typography>
+          </Box>
+          <Chip size="small" label="OWNER" color="primary" variant="outlined" sx={{ mr: 1 }} />
+          <Tooltip title="Account menu">
+            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu">
+              <PersonOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={() => setAnchorEl(null)}
+          >
+            <MenuItem disabled>
+              <Box>
+                <Typography variant="body2" fontWeight={600}>{user?.name}</Typography>
+                <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
+              </Box>
+            </MenuItem>
+            <Divider />
+            <MenuItem
+              onClick={() => {
+                setAnchorEl(null);
+                navigate(PATHS.ownerProfile);
+              }}
+            >
+              <ListItemIcon><PersonOutlinedIcon fontSize="small" /></ListItemIcon>
+              Profile
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setAnchorEl(null);
+                navigate(PATHS.ownerChangePassword);
+              }}
+            >
+              <ListItemIcon><LockOutlinedIcon fontSize="small" /></ListItemIcon>
+              Change Password
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setAnchorEl(null);
+                onLogout();
+              }}
+            >
+              <ListItemIcon><LogoutOutlinedIcon fontSize="small" /></ListItemIcon>
+              Logout
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
-      <Drawer
-        variant="permanent"
+
+      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
+          }}
+        >
+          {drawer}
+        </Drawer>
+        <Drawer
+          variant="permanent"
+          open
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
+          }}
+        >
+          {drawer}
+        </Drawer>
+      </Box>
+
+      <Box
+        component="main"
         sx={{
-          width: drawerWidth,
-          [`& .MuiDrawer-paper`]: {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-          },
+          flexGrow: 1,
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          minWidth: 0,
+          bgcolor: 'background.default',
         }}
       >
         <Toolbar />
-        <List sx={{ px: 1, pt: 1 }}>
-          {navItems.map((item) => (
-            <ListItemButton
-              key={item.to}
-              component={NavLink}
-              to={item.to}
-              sx={{
-                borderRadius: 2,
-                mb: 0.5,
-                '&.active': {
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                  '& .MuiListItemIcon-root': { color: 'inherit' },
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          ))}
-        </List>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-        <Toolbar />
-        <Outlet />
+        <PageActionsProvider>
+          <OwnerMain meta={meta} />
+        </PageActionsProvider>
       </Box>
+    </Box>
+  );
+}
+
+function OwnerMain({ meta }) {
+  return (
+    <Box
+      sx={{
+        px: { xs: 2, sm: 3, lg: 4 },
+        py: { xs: 2.5, md: 3 },
+        width: '100%',
+        maxWidth: 1400,
+        mx: 'auto',
+        boxSizing: 'border-box',
+      }}
+    >
+      {!meta.hidePageHeader ? (
+        <PageHeader
+          title={meta.title}
+          subtitle={meta.subtitle}
+          actions={<PageActionsSlot />}
+        />
+      ) : null}
+      <Outlet />
     </Box>
   );
 }

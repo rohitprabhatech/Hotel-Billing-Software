@@ -1,0 +1,8 @@
+Flask-Migrate / Alembic migrations for the Hotel Billing API.
+
+Use from the backend directory with the virtualenv active:
+
+  flask --app run:app db migrate -m "message"
+  flask --app run:app db upgrade
+
+Domain models are introduced in Sprint 3+.

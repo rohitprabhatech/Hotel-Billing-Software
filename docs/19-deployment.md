@@ -40,7 +40,7 @@
 FLASK_ENV=production
 SECRET_KEY=
 JWT_SECRET_KEY=
-DATABASE_URL=mysql+pymysql://user:pass@host:3306/hotel_billing
+DATABASE_URL=mysql+pymysql://user:pass@localhost/hotel_billing
 CORS_ORIGINS=https://app.example.com
 JWT_ACCESS_TOKEN_EXPIRES=86400
 REPORT_TIMEZONE=Asia/Kolkata

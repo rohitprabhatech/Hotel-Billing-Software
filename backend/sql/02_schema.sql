@@ -1,0 +1,288 @@
+-- =============================================================================
+-- Hotel Billing Software — MySQL Schema (Multi-Tenant)
+-- Database : hotel_billing
+-- Charset  : utf8mb4
+-- Tool tip : Open/run this file in DBeaver against the hotel_billing connection
+-- =============================================================================
+
+USE hotel_billing;
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- -----------------------------------------------------------------------------
+-- Drop in dependency order (safe re-run for local/dev)
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS bill_items;
+DROP TABLE IF EXISTS bills;
+DROP TABLE IF EXISTS bill_number_counters;
+DROP TABLE IF EXISTS items;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS tenants;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- -----------------------------------------------------------------------------
+-- tenants
+-- -----------------------------------------------------------------------------
+CREATE TABLE tenants (
+    id                    CHAR(36)       NOT NULL,
+    name                  VARCHAR(120)   NOT NULL,
+    business_name         VARCHAR(200)   NOT NULL,
+    address               VARCHAR(255)   NULL,
+    city                  VARCHAR(100)   NULL,
+    state                 VARCHAR(100)   NULL,
+    pincode               VARCHAR(20)    NULL,
+    phone                 VARCHAR(30)    NULL,
+    email                 VARCHAR(255)   NULL,
+    gst_number            VARCHAR(30)    NULL,
+    fssai_number          VARCHAR(50)    NULL,
+    bill_number_prefix    VARCHAR(20)    NULL,
+    default_gst_percent   DECIMAL(5,2)   NULL,
+    status                VARCHAR(20)    NOT NULL DEFAULT 'ACTIVE',
+    created_at            DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at            DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    CONSTRAINT chk_tenants_status CHECK (status IN ('ACTIVE', 'SUSPENDED')),
+    INDEX ix_tenants_status (status),
+    INDEX ix_tenants_business_name (business_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- roles (global — OWNER, BILLING_USER only)
+-- -----------------------------------------------------------------------------
+CREATE TABLE roles (
+    id           CHAR(36)     NOT NULL,
+    name         VARCHAR(50)  NOT NULL,
+    description  VARCHAR(255) NULL,
+    created_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_roles_name (name),
+    CONSTRAINT chk_roles_name CHECK (name IN ('OWNER', 'BILLING_USER'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- users (tenant-scoped)
+-- -----------------------------------------------------------------------------
+CREATE TABLE users (
+    id              CHAR(36)      NOT NULL,
+    tenant_id       CHAR(36)      NOT NULL,
+    role_id         CHAR(36)      NOT NULL,
+    name            VARCHAR(120)  NOT NULL,
+    email           VARCHAR(255)  NOT NULL,
+    password_hash   VARCHAR(255)  NOT NULL,
+    is_active       TINYINT(1)    NOT NULL DEFAULT 1,
+    last_login_at   DATETIME(6)   NULL,
+    created_at      DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at      DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_users_tenant_email (tenant_id, email),
+    INDEX ix_users_tenant_id (tenant_id),
+    INDEX ix_users_tenant_role (tenant_id, role_id),
+    INDEX ix_users_tenant_active (tenant_id, is_active),
+    CONSTRAINT fk_users_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_users_role
+        FOREIGN KEY (role_id) REFERENCES roles (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- categories (tenant-scoped, optional parent for subcategory)
+-- -----------------------------------------------------------------------------
+CREATE TABLE categories (
+    id           CHAR(36)     NOT NULL,
+    tenant_id    CHAR(36)     NOT NULL,
+    parent_id    CHAR(36)     NULL,
+    name         VARCHAR(120) NOT NULL,
+    description  TEXT         NULL,
+    is_active    TINYINT(1)   NOT NULL DEFAULT 1,
+    created_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_categories_tenant_parent_name (tenant_id, parent_id, name),
+    INDEX ix_categories_tenant_id (tenant_id),
+    INDEX ix_categories_tenant_active (tenant_id, is_active),
+    INDEX ix_categories_parent_id (parent_id),
+    CONSTRAINT fk_categories_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_categories_parent
+        FOREIGN KEY (parent_id) REFERENCES categories (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- items (tenant-scoped; deactivate instead of delete)
+-- -----------------------------------------------------------------------------
+CREATE TABLE items (
+    id               CHAR(36)       NOT NULL,
+    tenant_id        CHAR(36)       NOT NULL,
+    category_id      CHAR(36)       NOT NULL,
+    name             VARCHAR(200)   NOT NULL,
+    description      TEXT           NULL,
+    price            DECIMAL(12,2)  NOT NULL,
+    gst_percentage   DECIMAL(5,2)   NOT NULL DEFAULT 0.00,
+    is_active        TINYINT(1)     NOT NULL DEFAULT 1,
+    created_at       DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at       DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_items_tenant_name (tenant_id, name),
+    INDEX ix_items_tenant_id (tenant_id),
+    INDEX ix_items_tenant_category (tenant_id, category_id),
+    INDEX ix_items_tenant_active (tenant_id, is_active),
+    INDEX ix_items_tenant_name (tenant_id, name),
+    CONSTRAINT fk_items_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_items_category
+        FOREIGN KEY (category_id) REFERENCES categories (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_items_price CHECK (price >= 0),
+    CONSTRAINT chk_items_gst CHECK (gst_percentage >= 0 AND gst_percentage <= 100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- bill_number_counters (per-tenant sequence for concurrent safe bill numbers)
+-- -----------------------------------------------------------------------------
+CREATE TABLE bill_number_counters (
+    tenant_id    CHAR(36)    NOT NULL,
+    next_value   BIGINT      NOT NULL DEFAULT 1,
+    updated_at   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (tenant_id),
+    CONSTRAINT fk_bill_number_counters_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_bill_number_counters_next CHECK (next_value >= 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- bills (historical financial records — cancel/void, never hard-delete via app)
+-- -----------------------------------------------------------------------------
+CREATE TABLE bills (
+    id                    CHAR(36)       NOT NULL,
+    tenant_id             CHAR(36)       NOT NULL,
+    bill_number           VARCHAR(50)    NOT NULL,
+    bill_sequence         BIGINT         NOT NULL,
+    table_number          VARCHAR(30)    NULL,
+    subtotal              DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    discount              DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    taxable_amount        DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    cgst_amount           DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    sgst_amount           DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    gst_amount            DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    grand_total           DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    round_off             DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    status                VARCHAR(20)    NOT NULL DEFAULT 'DRAFT',
+    created_by            CHAR(36)       NOT NULL,
+    cancelled_by          CHAR(36)       NULL,
+    cancelled_at          DATETIME(6)    NULL,
+    cancellation_reason   TEXT           NULL,
+    printed_count         INT            NOT NULL DEFAULT 0,
+    created_at            DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at            DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_bills_tenant_bill_number (tenant_id, bill_number),
+    UNIQUE KEY uq_bills_tenant_bill_sequence (tenant_id, bill_sequence),
+    INDEX ix_bills_tenant_created_at (tenant_id, created_at),
+    INDEX ix_bills_tenant_status (tenant_id, status),
+    INDEX ix_bills_tenant_created_by (tenant_id, created_by),
+    CONSTRAINT fk_bills_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_bills_created_by
+        FOREIGN KEY (created_by) REFERENCES users (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_bills_cancelled_by
+        FOREIGN KEY (cancelled_by) REFERENCES users (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_bills_status CHECK (status IN ('DRAFT', 'FINALIZED', 'CANCELLED', 'VOID')),
+    CONSTRAINT chk_bills_money CHECK (
+        subtotal >= 0 AND discount >= 0 AND taxable_amount >= 0
+        AND cgst_amount >= 0 AND sgst_amount >= 0 AND gst_amount >= 0
+        AND grand_total >= 0 AND printed_count >= 0
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- bill_items (price/GST/name snapshots for historical accuracy)
+-- -----------------------------------------------------------------------------
+CREATE TABLE bill_items (
+    id               CHAR(36)       NOT NULL,
+    tenant_id        CHAR(36)       NOT NULL,
+    bill_id          CHAR(36)       NOT NULL,
+    item_id          CHAR(36)       NULL,
+    item_name        VARCHAR(200)   NOT NULL,
+    quantity         DECIMAL(10,3)  NOT NULL,
+    unit_price       DECIMAL(12,2)  NOT NULL,
+    gst_percentage   DECIMAL(5,2)   NOT NULL DEFAULT 0.00,
+    discount         DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    taxable_amount   DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    cgst_amount      DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    sgst_amount      DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    total            DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
+    created_at       DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_bill_items_tenant_bill (tenant_id, bill_id),
+    INDEX ix_bill_items_tenant_item (tenant_id, item_id),
+    CONSTRAINT fk_bill_items_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_bill_items_bill
+        FOREIGN KEY (bill_id) REFERENCES bills (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_bill_items_item
+        FOREIGN KEY (item_id) REFERENCES items (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_bill_items_qty CHECK (quantity > 0),
+    CONSTRAINT chk_bill_items_money CHECK (
+        unit_price >= 0 AND discount >= 0 AND taxable_amount >= 0
+        AND cgst_amount >= 0 AND sgst_amount >= 0 AND total >= 0
+        AND gst_percentage >= 0 AND gst_percentage <= 100
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- audit_logs (append-only from application perspective)
+-- -----------------------------------------------------------------------------
+CREATE TABLE audit_logs (
+    id            CHAR(36)     NOT NULL,
+    tenant_id     CHAR(36)     NOT NULL,
+    user_id       CHAR(36)     NULL,
+    user_name     VARCHAR(120) NULL,
+    action        VARCHAR(50)  NOT NULL,
+    entity_type   VARCHAR(50)  NOT NULL,
+    entity_id     CHAR(36)     NULL,
+    old_data      JSON         NULL,
+    new_data      JSON         NULL,
+    ip_address    VARCHAR(45)  NULL,
+    user_agent    VARCHAR(255) NULL,
+    created_at    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_audit_logs_tenant_created_at (tenant_id, created_at),
+    INDEX ix_audit_logs_tenant_user (tenant_id, user_id),
+    INDEX ix_audit_logs_tenant_action (tenant_id, action),
+    INDEX ix_audit_logs_tenant_entity (tenant_id, entity_type, entity_id),
+    CONSTRAINT fk_audit_logs_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_audit_logs_user
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- Seed: roles (exactly two)
+-- -----------------------------------------------------------------------------
+INSERT INTO roles (id, name, description) VALUES
+    ('11111111-1111-1111-1111-111111111111', 'OWNER', 'Hotel owner with full tenant management access'),
+    ('22222222-2222-2222-2222-222222222222', 'BILLING_USER', 'Counter billing user with limited access');
+
+-- Done
+SELECT 'hotel_billing schema created successfully' AS message;
+SHOW TABLES;

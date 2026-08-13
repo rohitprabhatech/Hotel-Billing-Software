@@ -40,12 +40,12 @@ All files under `docs/`:
 
 ---
 
-## Sprint 2 — Project Foundation
+## Sprint 2 — Project Foundation ✅
 
 ### Tasks
 
 - Scaffold Flask backend (app factory, config, extensions, folders)
-- Scaffold React frontend (Vite or CRA, MUI, router, axios)
+- Scaffold React frontend (Vite, MUI, router, axios)
 - MySQL connection + SQLAlchemy + Flask-Migrate
 - `.env.example` files
 - Standard API response envelope + error handlers
@@ -54,10 +54,10 @@ All files under `docs/`:
 
 ### Acceptance Criteria
 
-- [ ] Backend starts and `/api/v1/health` works
-- [ ] Frontend starts and shows placeholder shell
-- [ ] Migrations infrastructure ready
-- [ ] CORS and env-based config wired
+- [x] Backend starts and `/api/v1/health` works
+- [x] Frontend starts and shows placeholder shell
+- [x] Migrations infrastructure ready
+- [x] CORS and env-based config wired
 
 ---
 

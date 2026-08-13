@@ -24,3 +24,33 @@ def init_extensions(app):
         supports_credentials=True,
     )
     limiter.init_app(app)
+
+    @jwt.invalid_token_loader
+    def invalid_token_callback(_reason):
+        from app.utils.responses import error_response
+
+        return error_response(
+            message="Invalid authentication token",
+            code="UNAUTHORIZED",
+            status_code=401,
+        )
+
+    @jwt.unauthorized_loader
+    def missing_token_callback(_reason):
+        from app.utils.responses import error_response
+
+        return error_response(
+            message="Authentication required",
+            code="UNAUTHORIZED",
+            status_code=401,
+        )
+
+    @jwt.expired_token_loader
+    def expired_token_callback(_jwt_header, _jwt_payload):
+        from app.utils.responses import error_response
+
+        return error_response(
+            message="Authentication token has expired",
+            code="UNAUTHORIZED",
+            status_code=401,
+        )

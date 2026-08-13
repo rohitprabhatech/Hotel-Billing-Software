@@ -9,10 +9,12 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { fetchHealth } from '../services/healthService';
 
 export default function HomePage() {
+  const { isAuthenticated, role } = useAuth();
   const [health, setHealth] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,15 @@ export default function HomePage() {
     };
   }, []);
 
+  if (isAuthenticated) {
+    return (
+      <Navigate
+        to={role === 'OWNER' ? '/owner/dashboard' : '/billing'}
+        replace
+      />
+    );
+  }
+
   return (
     <Box
       sx={{
@@ -54,8 +65,7 @@ export default function HomePage() {
             Hotel Billing Software
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Multi-tenant billing foundation (Sprint 2). Choose a shell to preview
-            layouts, or open login.
+            Multi-tenant hotel billing. Sign in as Hotel Owner or Billing User.
           </Typography>
 
           {loading ? <CircularProgress size={28} /> : null}
@@ -73,12 +83,6 @@ export default function HomePage() {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button component={RouterLink} to="/login" variant="contained">
               Login
-            </Button>
-            <Button component={RouterLink} to="/owner/dashboard" variant="outlined">
-              Owner Shell
-            </Button>
-            <Button component={RouterLink} to="/billing" variant="outlined">
-              Billing Shell
             </Button>
           </Stack>
         </CardContent>

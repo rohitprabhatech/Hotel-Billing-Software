@@ -57,6 +57,25 @@ class TestingConfig(BaseConfig):
 class ProductionConfig(BaseConfig):
     DEBUG = False
 
+    @classmethod
+    def validate(cls):
+        weak_secrets = {
+            "dev-only-secret-change-me",
+            "change-me-to-a-long-random-secret",
+            "change-me-to-another-long-random-secret",
+            "dev-only-jwt-secret-change-me",
+        }
+        if not cls.SECRET_KEY or cls.SECRET_KEY in weak_secrets or len(cls.SECRET_KEY) < 32:
+            raise RuntimeError("Production SECRET_KEY must be a strong value (32+ chars)")
+        if (
+            not cls.JWT_SECRET_KEY
+            or cls.JWT_SECRET_KEY in weak_secrets
+            or len(cls.JWT_SECRET_KEY) < 32
+        ):
+            raise RuntimeError("Production JWT_SECRET_KEY must be a strong value (32+ chars)")
+        if "password@" in (cls.SQLALCHEMY_DATABASE_URI or ""):
+            raise RuntimeError("Production DATABASE_URL still looks like a placeholder")
+
 
 config_by_name = {
     "development": DevelopmentConfig,
@@ -67,4 +86,7 @@ config_by_name = {
 
 def get_config(name: str | None = None):
     env = name or os.getenv("FLASK_ENV", "development")
-    return config_by_name.get(env, DevelopmentConfig)
+    config = config_by_name.get(env, DevelopmentConfig)
+    if env == "production" and hasattr(config, "validate"):
+        config.validate()
+    return config

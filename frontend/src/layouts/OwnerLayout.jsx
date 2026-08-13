@@ -6,9 +6,11 @@ import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import {
   AppBar,
   Box,
+  Button,
   Drawer,
   List,
   ListItemButton,
@@ -17,7 +19,9 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { logoutRequest } from '../services/authService';
 
 const drawerWidth = 240;
 
@@ -33,6 +37,19 @@ const navItems = [
 ];
 
 export default function OwnerLayout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const onLogout = async () => {
+    try {
+      await logoutRequest();
+    } catch {
+      // Client logout proceeds even if API logout fails (expired token, etc.)
+    }
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar
@@ -40,9 +57,15 @@ export default function OwnerLayout() {
         sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
         <Toolbar>
-          <Typography variant="h6" noWrap component="div">
-            Owner Dashboard
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            {user?.tenant?.business_name || 'Owner Dashboard'}
           </Typography>
+          <Typography variant="body2" sx={{ mr: 2 }}>
+            {user?.name}
+          </Typography>
+          <Button color="inherit" startIcon={<LogoutOutlinedIcon />} onClick={onLogout}>
+            Logout
+          </Button>
         </Toolbar>
       </AppBar>
       <Drawer

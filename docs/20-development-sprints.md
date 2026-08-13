@@ -61,7 +61,7 @@ All files under `docs/`:
 
 ---
 
-## Sprint 3 — Authentication & Multi-Tenancy
+## Sprint 3 — Authentication & Multi-Tenancy ✅
 
 ### Tasks
 
@@ -76,14 +76,14 @@ All files under `docs/`:
 
 ### Acceptance Criteria
 
-- [ ] Both roles can login
-- [ ] Protected routes reject missing/invalid JWT
-- [ ] BILLING_USER blocked from owner-only APIs
-- [ ] Cross-tenant access tests fail closed
+- [x] Both roles can login
+- [x] Protected routes reject missing/invalid JWT
+- [x] BILLING_USER blocked from owner-only APIs
+- [x] Cross-tenant access tests fail closed
 
 ---
 
-## Sprint 4 — Categories & Items
+## Sprint 4 — Categories & Items ✅
 
 ### Tasks
 
@@ -95,13 +95,13 @@ All files under `docs/`:
 
 ### Acceptance Criteria
 
-- [ ] Owner manages categories/items without hard-coded lists
-- [ ] Deactivated items excluded from billing search
-- [ ] Price/GST changes audited
+- [x] Owner manages categories/items without hard-coded lists
+- [x] Deactivated items excluded from billing search
+- [x] Price/GST changes audited
 
 ---
 
-## Sprint 5 — Billing
+## Sprint 5 — Billing ✅
 
 ### Tasks
 
@@ -113,14 +113,14 @@ All files under `docs/`:
 
 ### Acceptance Criteria
 
-- [ ] Totals match server rules
-- [ ] Concurrent bills get unique numbers
-- [ ] Historical snapshot retained after price change
-- [ ] No trust of client totals
+- [x] Totals match server rules
+- [x] Concurrent bills get unique numbers
+- [x] Historical snapshot retained after price change
+- [x] No trust of client totals
 
 ---
 
-## Sprint 6 — Printing & Bill History
+## Sprint 6 — Printing & Bill History ✅
 
 ### Tasks
 
@@ -132,14 +132,14 @@ All files under `docs/`:
 
 ### Acceptance Criteria
 
-- [ ] Receipt uses tenant header fields dynamically
-- [ ] Print view excludes app chrome
-- [ ] Cancel retains record and reason for owner
-- [ ] No hard delete of bills
+- [x] Receipt uses tenant header fields dynamically
+- [x] Print view excludes app chrome
+- [x] Cancel retains record and reason for owner
+- [x] No hard delete of bills
 
 ---
 
-## Sprint 7 — Owner Dashboard & Reports
+## Sprint 7 — Owner Dashboard & Reports ✅
 
 ### Tasks
 
@@ -151,13 +151,13 @@ All files under `docs/`:
 
 ### Acceptance Criteria
 
-- [ ] Metrics match DB for sample data
-- [ ] Exports tenant-scoped with sensible filenames
-- [ ] Billing User cannot access report APIs
+- [x] Metrics match DB for sample data
+- [x] Exports tenant-scoped with sensible filenames
+- [x] Billing User cannot access report APIs
 
 ---
 
-## Sprint 8 — Audit & Fraud Monitoring
+## Sprint 8 — Audit & Fraud Monitoring ✅
 
 ### Tasks
 
@@ -167,14 +167,14 @@ All files under `docs/`:
 
 ### Acceptance Criteria
 
-- [ ] Owner can filter by user/action/date/bill
-- [ ] Cancel detail shows who/when/why/amount
-- [ ] Alerts visible without accusatory wording
-- [ ] No audit delete API
+- [x] Owner can filter by user/action/date/bill
+- [x] Cancel detail shows who/when/why/amount
+- [x] Alerts visible without accusatory wording
+- [x] No audit delete API
 
 ---
 
-## Sprint 9 — Testing & Production Readiness
+## Sprint 9 — Testing & Production Readiness ✅
 
 ### Tasks
 
@@ -186,9 +186,11 @@ All files under `docs/`:
 
 ### Acceptance Criteria
 
-- [ ] Isolation, billing, GST, cancel, audit, export tests pass
-- [ ] No known critical security gaps from checklist
-- [ ] App ready for staging pilot with one hotel tenant
+- [x] Isolation, billing, GST, cancel, audit, export tests pass
+- [x] No known critical security gaps from checklist
+- [x] App ready for staging pilot with one hotel tenant
+
+See [21-production-readiness.md](./21-production-readiness.md).
 
 ---
 
@@ -200,6 +202,6 @@ Sprint 1 (docs) → Sprint 2 (foundation) → Sprint 3 (auth/tenant)
 → Sprint 7 (reports) → Sprint 8 (audit) → Sprint 9 (hardening)
 ```
 
-## Next Action After Sprint 1 Acceptance
+## Post-Sprint 9
 
-Begin **Sprint 2 — Project Foundation** only after stakeholder confirmation that documentation is accepted (or proceed when user requests Sprint 2).
+Application is staging-pilot ready. Next work is operational rollout (real hotel onboarding, printer tuning, monitoring) rather than core feature sprints.

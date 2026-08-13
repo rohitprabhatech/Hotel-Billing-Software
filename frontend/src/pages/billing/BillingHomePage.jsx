@@ -1,56 +1,93 @@
 import { Alert, Box, Button, Card, CardContent, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-
-const cards = [
-  { title: 'New Bill', value: 'Start', to: '/billing/new' },
-  { title: "Today's Bills", value: '—', to: '/billing/bills' },
-  { title: "Today's Total Sales", value: '—' },
-  { title: 'Recent Bills', value: '—' },
-];
+import { fetchTodaySummary, listBills } from '../../services/billService';
 
 export default function BillingHomePage() {
+  const [summary, setSummary] = useState({ total_sales: 0, bill_count: 0 });
+  const [recent, setRecent] = useState([]);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      fetchTodaySummary(),
+      listBills({ today: true, per_page: 5 }),
+    ])
+      .then(([summaryRes, billsRes]) => {
+        setSummary(summaryRes.data || { total_sales: 0, bill_count: 0 });
+        setRecent(billsRes.data || []);
+      })
+      .catch((err) => {
+        setError(err.response?.data?.error?.message || 'Failed to load billing dashboard');
+      });
+  }, []);
+
   return (
     <>
       <Typography variant="h5" gutterBottom>
         Billing Dashboard
       </Typography>
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Fast billing UI will be built in Sprint 5. API foundation is ready.
-      </Alert>
+      {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+
       <Box
         sx={{
           display: 'grid',
           gap: 2,
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm: '1fr 1fr',
-            md: 'repeat(4, 1fr)',
-          },
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' },
+          mb: 3,
         }}
       >
-        {cards.map((card) => (
-          <Card key={card.title}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                {card.title}
-              </Typography>
-              <Typography variant="h5" sx={{ mt: 1, mb: 1.5 }}>
-                {card.value}
-              </Typography>
-              {card.to ? (
-                <Button
-                  component={RouterLink}
-                  to={card.to}
-                  variant="outlined"
-                  size="small"
-                >
-                  Open
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
-        ))}
+        <Card>
+          <CardContent>
+            <Typography variant="body2" color="text.secondary">New Bill</Typography>
+            <Button component={RouterLink} to="/billing/new" variant="contained" sx={{ mt: 1.5 }}>
+              Start
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="body2" color="text.secondary">Today&apos;s Bills</Typography>
+            <Typography variant="h5" sx={{ mt: 1 }}>{summary.bill_count}</Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="body2" color="text.secondary">Today&apos;s Total Sales</Typography>
+            <Typography variant="h5" sx={{ mt: 1 }}>
+              ₹{Number(summary.total_sales || 0).toFixed(2)}
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="body2" color="text.secondary">Recent Bills</Typography>
+            <Typography variant="h5" sx={{ mt: 1 }}>{recent.length}</Typography>
+          </CardContent>
+        </Card>
       </Box>
+
+      <Typography variant="h6" gutterBottom>Recent Bills</Typography>
+      {recent.map((bill) => (
+        <Box
+          key={bill.id}
+          sx={{
+            bgcolor: 'background.paper',
+            borderRadius: 2,
+            p: 2,
+            mb: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Typography>#{bill.bill_number}</Typography>
+          <Typography>₹{Number(bill.grand_total).toFixed(2)}</Typography>
+          <Typography color="text.secondary">{bill.status}</Typography>
+        </Box>
+      ))}
+      {!recent.length ? (
+        <Typography color="text.secondary">No bills yet today.</Typography>
+      ) : null}
     </>
   );
 }

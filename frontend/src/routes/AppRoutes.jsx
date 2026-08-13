@@ -6,9 +6,17 @@ import LoginPage from '../pages/auth/LoginPage';
 import BillingBillsPage from '../pages/billing/BillingBillsPage';
 import BillingHomePage from '../pages/billing/BillingHomePage';
 import NewBillPage from '../pages/billing/NewBillPage';
-import PlaceholderPage from '../pages/common/PlaceholderPage';
 import HomePage from '../pages/HomePage';
+import PrintBillPage from '../pages/print/PrintBillPage';
+import AuditPage from '../pages/owner/AuditPage';
+import CategoriesPage from '../pages/owner/CategoriesPage';
+import ItemsPage from '../pages/owner/ItemsPage';
+import OwnerBillsPage from '../pages/owner/OwnerBillsPage';
 import OwnerDashboardPage from '../pages/owner/OwnerDashboardPage';
+import SettingsPage from '../pages/owner/SettingsPage';
+import UsersPage from '../pages/owner/UsersPage';
+import ReportsPage from '../pages/reports/ReportsPage';
+import ProtectedRoute from './ProtectedRoute';
 
 export default function AppRoutes() {
   return (
@@ -19,78 +27,27 @@ export default function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
       </Route>
 
-      <Route path="/owner" element={<OwnerLayout />}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<OwnerDashboardPage />} />
-        <Route
-          path="categories"
-          element={
-            <PlaceholderPage
-              title="Categories"
-              message="Category management arrives in Sprint 4."
-            />
-          }
-        />
-        <Route
-          path="items"
-          element={
-            <PlaceholderPage
-              title="Items"
-              message="Item and price management arrives in Sprint 4."
-            />
-          }
-        />
-        <Route
-          path="bills"
-          element={
-            <PlaceholderPage
-              title="Bills"
-              message="Owner bill history arrives in Sprint 6."
-            />
-          }
-        />
-        <Route
-          path="reports"
-          element={
-            <PlaceholderPage
-              title="Reports"
-              message="Sales reports and exports arrive in Sprint 7."
-            />
-          }
-        />
-        <Route
-          path="audit"
-          element={
-            <PlaceholderPage
-              title="Activity & Audit"
-              message="Audit and fraud monitoring arrives in Sprint 8."
-            />
-          }
-        />
-        <Route
-          path="users"
-          element={
-            <PlaceholderPage
-              title="Users"
-              message="Billing user management arrives in Sprint 3."
-            />
-          }
-        />
-        <Route
-          path="settings"
-          element={
-            <PlaceholderPage
-              title="Hotel Settings"
-              message="Tenant profile settings arrive with auth/tenant work in Sprint 3."
-            />
-          }
-        />
+      <Route element={<ProtectedRoute roles={['OWNER']} />}>
+        <Route path="/owner" element={<OwnerLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<OwnerDashboardPage />} />
+          <Route path="categories" element={<CategoriesPage />} />
+          <Route path="items" element={<ItemsPage />} />
+          <Route path="bills" element={<OwnerBillsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="audit" element={<AuditPage />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
       </Route>
 
-      <Route path="/billing" element={<BillingLayout />}>
-        <Route index element={<BillingHomePage />} />
-        <Route path="new" element={<NewBillPage />} />
-        <Route path="bills" element={<BillingBillsPage />} />
+      <Route element={<ProtectedRoute roles={['BILLING_USER', 'OWNER']} />}>
+        <Route path="/billing" element={<BillingLayout />}>
+          <Route index element={<BillingHomePage />} />
+          <Route path="new" element={<NewBillPage />} />
+          <Route path="bills" element={<BillingBillsPage />} />
+        </Route>
+        <Route path="/print/bills/:billId" element={<PrintBillPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

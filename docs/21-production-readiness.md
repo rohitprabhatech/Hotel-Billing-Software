@@ -1,94 +1,82 @@
-# 21 — Production Readiness (Sprint 9)
+# Production Readiness
 
-## Regression Status
+**Canonical release gate:** [final-qa-report.md](./final-qa-report.md) (Sprint 22).  
+**Deploy steps:** [deployment-guide.md](./deployment-guide.md).  
+**Security:** [security-tenant-audit.md](./security-tenant-audit.md).
 
-Run from `backend/`:
+## Regression
 
-```bash
-.\.venv\Scripts\python -m pytest
+```powershell
+cd backend
+.\.venv\Scripts\python -m pytest -q
 ```
 
-Expected: all tests green (auth, isolation, billing, GST, cancel, print, reports/export, audit).
+```powershell
+cd frontend
+npm run build
+```
 
-## Security Checklist
+Expect: all tests green; Vite build succeeds.
+
+## Security checklist
 
 - [ ] `FLASK_ENV=production`
-- [ ] Strong `SECRET_KEY` and `JWT_SECRET_KEY` (32+ random chars; not repo defaults)
-- [ ] `DEBUG` off (enforced by ProductionConfig)
-- [ ] HTTPS terminated at reverse proxy
-- [ ] `CORS_ORIGINS` limited to real frontend origin(s)
-- [ ] MySQL user is least-privilege (no SUPER)
-- [ ] `.env` not committed; backups encrypted where practical
-- [ ] No hard-delete APIs for bills/audit logs
-- [ ] Tenant isolation tests passing
-- [ ] Billing users cannot access `/reports` or `/audit-logs`
+- [ ] Strong `SECRET_KEY` and `JWT_SECRET_KEY` (32+ chars; not defaults)
+- [ ] `DEBUG` off (ProductionConfig)
+- [ ] HTTPS at reverse proxy
+- [ ] `CORS_ORIGINS` = real frontend only
+- [ ] `TRUST_PROXY_HEADERS=true` only behind a trusted proxy
+- [ ] Least-privilege MySQL user
+- [ ] `.env` not committed; backups in place
+- [ ] No hard-delete APIs for bills/audit
+- [ ] Tenant isolation + security tests passing
+- [ ] Billing users cannot access reports / audit / AI / users admin
+- [ ] `ALLOW_DEV_AUTH_TOKENS` false (forced in production)
+- [ ] Prefer JWT access TTL 8–12h; logout revokes via `token_version`
 
-Production config refuses weak/default secrets at startup.
+## Staging pilot (one business)
 
-## Staging Pilot Checklist (one hotel)
+1. Apply schema / migrations  
+2. Onboard via **Register Business** or `scripts/onboard_tenant.py`  
+3. Owner: categories, items, billing user  
+4. Billing: create, print, cancel test bills (Cash + Online)  
+5. Owner: dashboard, reports export, AI, audit  
+6. Second business isolation smoke  
+7. Confirm thermal/browser print on counter device  
 
-1. Create/verify MySQL database `hotel_billing`
-2. Apply schema (`backend/sql/02_schema.sql` or migrations)
-3. Onboard tenant via `scripts/onboard_tenant.py`
-4. Owner adds categories/items
-5. Billing user creates, prints, and cancels a test bill
-6. Owner verifies dashboard, reports export, and audit log
-7. Confirm thermal print 58mm/80mm on counter printer
-
-## Onboarding a New Hotel
+## Onboarding a new business
 
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
 python scripts\onboard_tenant.py `
-  --business-name "Hotel Sunrise" `
-  --name "Hotel Sunrise" `
+  --business-name "Sunrise Retail" `
+  --name "Sunrise Retail" `
   --owner-name "Owner Name" `
-  --owner-email "owner@hotelsunrise.com" `
+  --owner-email "owner@sunrise.example" `
   --owner-password "StrongPass@123" `
   --city "Pune" `
   --phone "9000000000" `
-  --gst-number "27XXXXX..." `
   --billing-name "Counter 1" `
-  --billing-email "billing@hotelsunrise.com" `
+  --billing-email "billing@sunrise.example" `
   --billing-password "StrongPass@123"
 ```
 
-Demo seed (local only): `python scripts\seed_demo_data.py`
+Demo seed (**local only**): `python scripts\seed_demo_data.py`
 
-## Runtime Commands
-
-### Backend (Windows-friendly)
+## Runtime
 
 ```powershell
-cd backend
-.\.venv\Scripts\Activate.ps1
-# development
-python run.py
-# production-style
-pip install waitress
+# Backend (Windows)
 waitress-serve --listen=0.0.0.0:5000 wsgi:app
+
+# Frontend
+npm ci && npm run build
+# Serve dist/ over HTTPS
 ```
 
-### Frontend
+Health: `GET /api/v1/health` · `GET /api/v1/health/ready`
 
-```powershell
-cd frontend
-# set VITE_API_BASE_URL in .env
-npm ci
-npm run build
-# serve dist/ behind Nginx/IIS/Caddy with HTTPS
-```
+## Subscription note
 
-## Health
-
-- `GET /api/v1/health` → process alive
-- `GET /api/v1/health/ready` → database reachable
-
-## Manual Smoke (billing path)
-
-1. Login owner → create category/item
-2. Login billing → new bill → generate → print
-3. Cancel with reason → confirm bill still visible
-4. Owner reports export xlsx
-5. Owner audit shows CREATE_BILL / PRINT_BILL / CANCEL_BILL
+In-app plan is **₹550 / month informational** — no payment gateway. Activate commercially offline via Prabha Technology support.

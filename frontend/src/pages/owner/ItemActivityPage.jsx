@@ -42,9 +42,6 @@ const ITEM_ACTIONS = [
   'ITEM_REACTIVATED',
   'UPDATE_PRICE',
   'CHANGE_GST',
-  'CREATE_ITEM',
-  'UPDATE_ITEM',
-  'DEACTIVATE_ITEM',
 ];
 
 function actionChipColor(action) {
@@ -120,6 +117,10 @@ export default function ItemActivityPage() {
   return (
     <>
       <PageShell>
+        <Alert severity="info">
+          Item create, edit, and deactivate events stay here even after an item is deactivated.
+          Catalog soft-deactivation does not remove activity history.
+        </Alert>
         <FilterBar
           actions={
             <Button variant="contained" onClick={() => load()} disabled={loading}>

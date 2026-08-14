@@ -42,7 +42,17 @@ class ItemService:
         return ItemService.serialize(item)
 
     @staticmethod
-    def create_item(*, name, category_id, description, price, gst_percentage):
+    def create_item(
+        *,
+        name,
+        category_id,
+        description,
+        price,
+        gst_percentage,
+        sku=None,
+        cost_price=None,
+        stock_quantity=None,
+    ):
         ctx = require_request_context()
         name = (name or "").strip()
         if not name:
@@ -57,7 +67,13 @@ class ItemService:
         if ItemRepository.find_by_tenant_and_name(ctx.tenant_id, name):
             raise ConflictError("Item with this name already exists")
 
+        sku_value = ItemService._normalize_sku(sku)
+        if sku_value and ItemRepository.find_by_tenant_and_sku(ctx.tenant_id, sku_value):
+            raise ConflictError("Item with this SKU already exists")
+
         price_dec = ItemService._parse_money(price, "price")
+        cost_dec = ItemService._parse_optional_money(cost_price, "cost_price")
+        stock_dec = ItemService._parse_optional_stock(stock_quantity)
         gst_dec = ItemService._parse_gst(gst_percentage)
 
         item = Item(
@@ -66,9 +82,12 @@ class ItemService:
             category_id=category.id,
             created_by=ctx.user_id,
             name=name,
+            sku=sku_value,
             description=(description or "").strip() or None,
             price=price_dec,
+            cost_price=cost_dec,
             gst_percentage=gst_dec,
+            stock_quantity=stock_dec,
             is_active=True,
         )
         ItemRepository.add(item)
@@ -91,6 +110,12 @@ class ItemService:
         description=None,
         price=None,
         gst_percentage=None,
+        sku=None,
+        sku_provided=False,
+        cost_price=None,
+        cost_price_provided=False,
+        stock_quantity=None,
+        stock_quantity_provided=False,
     ):
         ctx = require_request_context()
         item = ItemRepository.get_by_id_and_tenant(item_id, ctx.tenant_id)
@@ -119,17 +144,31 @@ class ItemService:
         if description is not None:
             item.description = description.strip() or None
 
+        if sku_provided:
+            sku_value = ItemService._normalize_sku(sku)
+            if sku_value:
+                existing_sku = ItemRepository.find_by_tenant_and_sku(ctx.tenant_id, sku_value)
+                if existing_sku and existing_sku.id != item.id:
+                    raise ConflictError("Item with this SKU already exists")
+            item.sku = sku_value
+
         if price is not None:
             new_price = ItemService._parse_money(price, "price")
             if Decimal(item.price) != new_price:
                 price_changed = True
             item.price = new_price
 
+        if cost_price_provided:
+            item.cost_price = ItemService._parse_optional_money(cost_price, "cost_price")
+
         if gst_percentage is not None:
             new_gst = ItemService._parse_gst(gst_percentage)
             if Decimal(item.gst_percentage) != new_gst:
                 gst_changed = True
             item.gst_percentage = new_gst
+
+        if stock_quantity_provided:
+            item.stock_quantity = ItemService._parse_optional_stock(stock_quantity)
 
         new_data = ItemService.serialize(item)
         AuditService.log(
@@ -192,6 +231,13 @@ class ItemService:
         return ItemService.serialize(item)
 
     @staticmethod
+    def _normalize_sku(value) -> str | None:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+    @staticmethod
     def _parse_money(value, field_name: str) -> Decimal:
         try:
             amount = Decimal(str(value))
@@ -200,6 +246,24 @@ class ItemService:
         if amount < 0:
             raise ValidationError(f"{field_name} cannot be negative")
         return amount.quantize(Decimal("0.01"))
+
+    @staticmethod
+    def _parse_optional_money(value, field_name: str) -> Decimal | None:
+        if value is None or value == "":
+            return None
+        return ItemService._parse_money(value, field_name)
+
+    @staticmethod
+    def _parse_optional_stock(value) -> Decimal | None:
+        if value is None or value == "":
+            return None
+        try:
+            qty = Decimal(str(value))
+        except (InvalidOperation, ValueError, TypeError) as exc:
+            raise ValidationError("Invalid stock quantity") from exc
+        if qty < 0:
+            raise ValidationError("stock_quantity cannot be negative")
+        return qty.quantize(Decimal("0.001"))
 
     @staticmethod
     def _parse_gst(value) -> Decimal:
@@ -218,9 +282,14 @@ class ItemService:
             "category_id": item.category_id,
             "category_name": item.category.name if item.category else None,
             "name": item.name,
+            "sku": item.sku,
             "description": item.description,
             "price": float(item.price),
+            "cost_price": float(item.cost_price) if item.cost_price is not None else None,
             "gst_percentage": float(item.gst_percentage),
+            "stock_quantity": (
+                float(item.stock_quantity) if item.stock_quantity is not None else None
+            ),
             "is_active": item.is_active,
             "created_by": item.created_by,
             "created_by_name": item.creator.name if item.creator else None,

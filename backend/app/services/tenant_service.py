@@ -2,6 +2,13 @@
 
 from decimal import Decimal, InvalidOperation
 
+from app.constants.business_types import (
+    DEFAULT_BUSINESS_TYPE,
+    business_type_label,
+    is_fssai_relevant,
+    list_business_types,
+    normalize_business_type,
+)
 from app.extensions import db
 from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
@@ -10,6 +17,10 @@ from app.utils.request_context import require_request_context
 
 
 class TenantService:
+    @staticmethod
+    def list_business_types():
+        return {"business_types": list_business_types()}
+
     @staticmethod
     def get_my_tenant(*, full: bool = True):
         ctx = require_request_context()
@@ -46,6 +57,12 @@ class TenantService:
                     value = value.strip()
                 setattr(tenant, field, value or None)
 
+        if "business_type" in payload and payload["business_type"] is not None:
+            try:
+                tenant.business_type = normalize_business_type(payload["business_type"])
+            except ValueError as exc:
+                raise ValidationError(str(exc)) from exc
+
         if "default_gst_percent" in payload:
             raw = payload["default_gst_percent"]
             if raw is None or raw == "":
@@ -62,7 +79,9 @@ class TenantService:
         if not tenant.business_name:
             raise ValidationError("Business name is required")
         if not tenant.name:
-            raise ValidationError("Hotel name is required")
+            raise ValidationError("Business display name is required")
+        if not tenant.business_type:
+            tenant.business_type = DEFAULT_BUSINESS_TYPE
 
         AuditService.log(
             tenant_id=ctx.tenant_id,
@@ -77,10 +96,13 @@ class TenantService:
 
     @staticmethod
     def serialize(tenant, *, full: bool = True):
+        business_type = tenant.business_type or DEFAULT_BUSINESS_TYPE
         data = {
             "id": tenant.id,
             "name": tenant.name,
             "business_name": tenant.business_name,
+            "business_type": business_type,
+            "business_type_label": business_type_label(business_type),
             "status": tenant.status,
         }
         if full:
@@ -94,6 +116,7 @@ class TenantService:
                     "email": tenant.email,
                     "gst_number": tenant.gst_number,
                     "fssai_number": tenant.fssai_number,
+                    "fssai_relevant": is_fssai_relevant(business_type),
                     "bill_number_prefix": tenant.bill_number_prefix,
                     "default_gst_percent": (
                         float(tenant.default_gst_percent)

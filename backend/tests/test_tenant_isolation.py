@@ -53,7 +53,43 @@ def test_tenant_profile_is_scoped(client):
 
     assert tenant_a["business_name"] == "Hotel A"
     assert tenant_b["business_name"] == "Hotel B"
+    assert tenant_a["business_type"] == "hotel"
+    assert tenant_b["business_type"] == "restaurant"
     assert tenant_a["id"] != tenant_b["id"]
+
+
+def test_business_types_endpoint_is_public(client):
+    response = client.get("/api/v1/tenants/business-types")
+    assert response.status_code == 200
+    types = response.get_json()["data"]["business_types"]
+    codes = {row["code"] for row in types}
+    assert "restaurant" in codes
+    assert "clothing_store" in codes
+    assert "other" in codes
+
+
+def test_owner_can_update_business_type(client):
+    headers = login(client, "owner@hotela.com", "Owner@12345")
+    response = client.put(
+        "/api/v1/tenants/me",
+        headers=headers,
+        json={"business_type": "clothing_store"},
+    )
+    assert response.status_code == 200, response.get_json()
+    data = response.get_json()["data"]
+    assert data["business_type"] == "clothing_store"
+    assert data["business_type_label"] == "Clothing Store"
+    assert data["fssai_relevant"] is False
+
+
+def test_invalid_business_type_rejected(client):
+    headers = login(client, "owner@hotela.com", "Owner@12345")
+    response = client.put(
+        "/api/v1/tenants/me",
+        headers=headers,
+        json={"business_type": "spaceship"},
+    )
+    assert response.status_code == 400
 
 
 def test_billing_user_cannot_update_tenant(client):

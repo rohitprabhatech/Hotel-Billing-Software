@@ -156,7 +156,7 @@ def test_cross_tenant_category_isolation(client):
     list_b = client.get("/api/v1/categories", headers=owner_b).get_json()["data"]
     assert all(c["name"] != "Tenant A Only" for c in list_b)
 
-    # Hotel B cannot use Hotel A category as parent
+    # Business B cannot use Business A category as parent
     bad_parent = client.post(
         "/api/v1/categories",
         headers=owner_b,
@@ -175,6 +175,7 @@ def test_parent_category_hierarchy_and_validation(client):
     ).get_json()["data"]
     assert food["parent_id"] is None
     assert food["parent_category_name"] is None
+    assert food["hierarchy_path"] == "Food Hierarchy"
 
     veg = client.post(
         "/api/v1/categories",
@@ -187,6 +188,7 @@ def test_parent_category_hierarchy_and_validation(client):
     ).get_json()["data"]
     assert veg["parent_id"] == food["id"]
     assert veg["parent_category_name"] == "Food Hierarchy"
+    assert veg["hierarchy_path"] == "Food Hierarchy › Veg Hierarchy"
 
     non_veg = client.post(
         "/api/v1/categories",
@@ -228,6 +230,73 @@ def test_parent_category_hierarchy_and_validation(client):
     listed = client.get("/api/v1/categories", headers=owner).get_json()["data"]
     by_id = {row["id"]: row for row in listed}
     assert by_id[veg["id"]]["parent_category_name"] == "Food Hierarchy"
+    assert by_id[veg["id"]]["hierarchy_path"] == "Food Hierarchy › Veg Hierarchy"
+
+
+def test_clothing_category_hierarchy_sample(client):
+    """Retail-style nested categories (Clothing › Men › Shirts)."""
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+
+    clothing = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Clothing Sample", "parent_id": None},
+    ).get_json()["data"]
+    men = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Men Sample", "parent_id": clothing["id"]},
+    ).get_json()["data"]
+    shirts = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Shirts Sample", "parent_id": men["id"]},
+    ).get_json()["data"]
+    women = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Women Sample", "parent_id": clothing["id"]},
+    ).get_json()["data"]
+    dresses = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Dresses Sample", "parent_id": women["id"]},
+    ).get_json()["data"]
+
+    assert shirts["hierarchy_path"] == "Clothing Sample › Men Sample › Shirts Sample"
+    assert dresses["hierarchy_path"] == "Clothing Sample › Women Sample › Dresses Sample"
+
+    # Deeper circular check: Clothing cannot parent under Shirts
+    circular = client.put(
+        f"/api/v1/categories/{clothing['id']}",
+        headers=owner,
+        json={"parent_id": shirts["id"]},
+    )
+    assert circular.status_code == 400
+
+
+def test_inactive_parent_rejected(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    root = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Inactive Parent Root"},
+    ).get_json()["data"]
+    assert (
+        client.patch(
+            f"/api/v1/categories/{root['id']}/status",
+            headers=owner,
+            json={"is_active": False},
+        ).status_code
+        == 200
+    )
+    child = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Child Of Inactive", "parent_id": root["id"]},
+    )
+    assert child.status_code == 400
+    assert "active" in child.get_json()["error"]["message"].lower()
 
 
 def test_item_search(client):

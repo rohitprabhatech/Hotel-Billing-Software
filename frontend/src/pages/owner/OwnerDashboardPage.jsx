@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   FormControl,
   InputLabel,
   MenuItem,
@@ -19,6 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
@@ -41,6 +43,7 @@ import { PATHS } from '../../routes/paths';
 import { fetchAuditAlerts, listAuditLogs } from '../../services/auditService';
 import { listBills } from '../../services/billService';
 import { fetchReportSummary } from '../../services/reportService';
+import { paymentMethodLabel } from '../../utils/paymentMethod';
 
 function money(v) {
   return `₹${Number(v || 0).toLocaleString('en-IN', {
@@ -49,18 +52,31 @@ function money(v) {
   })}`;
 }
 
+const PERIOD_HINTS = {
+  today: "Today's business overview",
+  yesterday: "Yesterday's business overview",
+  this_week: "This week's business overview",
+  this_month: "This month's business overview",
+  last_month: "Last month's business overview",
+};
+
 export default function OwnerDashboardPage() {
+  const theme = useTheme();
   const { user } = useAuth();
-  const hotelName = user?.tenant?.business_name || user?.tenant?.name || 'Your Hotel';
+  const businessName = user?.tenant?.business_name || user?.tenant?.name || 'Your Business';
+  const businessTypeLabel = user?.tenant?.business_type_label || null;
   const [period, setPeriod] = useState('today');
   const [data, setData] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [itemActivity, setItemActivity] = useState([]);
   const [recentBills, setRecentBills] = useState([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     setError('');
+    setLoading(true);
     Promise.all([
       fetchReportSummary({ period }),
       fetchAuditAlerts(),
@@ -68,21 +84,29 @@ export default function OwnerDashboardPage() {
       listBills({ per_page: 8 }),
     ])
       .then(([summaryRes, alertsRes, itemRes, billsRes]) => {
+        if (!active) return;
         setData(summaryRes.data);
         setAlerts((alertsRes.data?.alerts || []).filter((a) => a.severity !== 'info'));
         setItemActivity(itemRes.data || []);
         setRecentBills(billsRes.data || []);
       })
       .catch((err) => {
+        if (!active) return;
         setError(err.response?.data?.error?.message || 'Unable to load dashboard.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
+    return () => {
+      active = false;
+    };
   }, [period]);
 
   const current = data?.current || {};
   const previous = data?.previous || {};
 
   return (
-    <PageShell spacing={4}>
+    <PageShell>
       <Card>
         <CardContent
           sx={{
@@ -111,21 +135,26 @@ export default function OwnerDashboardPage() {
               <StorefrontOutlinedIcon />
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Tooltip title={hotelName}>
+              <Tooltip title={businessName}>
                 <Typography
                   variant="h5"
                   component="h1"
                   noWrap
                   sx={{ fontSize: { xs: '1.35rem', md: '1.5rem' } }}
                 >
-                  {hotelName}
+                  {businessName}
                 </Typography>
               </Tooltip>
-              <Typography variant="subtitle1" sx={{ mt: 0.25 }}>
-                Owner Dashboard
-              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.75 }} useFlexGap flexWrap="wrap">
+                {businessTypeLabel ? (
+                  <Chip label={businessTypeLabel} size="small" color="primary" variant="outlined" />
+                ) : null}
+                <Typography variant="subtitle2" color="text.secondary">
+                  Business Dashboard
+                </Typography>
+              </Stack>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Today&apos;s business overview
+                {PERIOD_HINTS[period] || data?.label || 'Business overview'}
               </Typography>
             </Box>
           </Stack>
@@ -148,7 +177,7 @@ export default function OwnerDashboardPage() {
 
       {error ? <Alert severity="error">{error}</Alert> : null}
       <Alert severity="info">
-        Sales totals include FINALIZED bills only. Cancelled bills are shown separately.
+        Sales totals include finalized bills only. Cancelled bills are shown separately.
       </Alert>
       {alerts.slice(0, 3).map((alert) => (
         <Alert
@@ -161,12 +190,13 @@ export default function OwnerDashboardPage() {
 
       <Section
         title={period === 'today' ? "Today's Overview" : `${data?.label || 'Period'} Overview`}
+        actions={loading ? <CircularProgress size={18} /> : null}
       >
         <Box
           sx={{
             display: 'grid',
             gap: 2.5,
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' },
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' },
           }}
         >
           <KpiCard
@@ -175,22 +205,30 @@ export default function OwnerDashboardPage() {
             hint={data?.previous_label ? `${data.previous_label}: ${money(previous.total_sales)}` : undefined}
           />
           <KpiCard
-            title="Cash"
-            value={money(current.cash_sales)}
-            hint={`${current.bill_count ?? 0} bills · Cash share of sales`}
-          />
-          <KpiCard
-            title="Online"
-            value={money(current.online_sales)}
-            hint="Online payments for this period"
-          />
-          <KpiCard
             title="Bills"
             value={current.bill_count ?? '—'}
             hint={data?.previous_label ? `${data.previous_label}: ${previous.bill_count ?? '—'}` : undefined}
           />
-          <KpiCard title="Average Bill" value={money(current.average_bill)} />
-          <KpiCard title="Cancelled" value={current.cancelled_bills ?? '—'} />
+          <KpiCard
+            title="Average Bill"
+            value={money(current.average_bill)}
+            hint={data?.previous_label ? `${data.previous_label}: ${money(previous.average_bill)}` : undefined}
+          />
+          <KpiCard
+            title="Cash"
+            value={money(current.cash_sales)}
+            hint={`${current.cash_bill_count ?? 0} cash bills`}
+          />
+          <KpiCard
+            title="Online"
+            value={money(current.online_sales)}
+            hint={`${current.online_bill_count ?? 0} online bills`}
+          />
+          <KpiCard
+            title="Cancelled"
+            value={current.cancelled_bills ?? '—'}
+            hint="Excluded from sales totals"
+          />
         </Box>
       </Section>
 
@@ -201,11 +239,11 @@ export default function OwnerDashboardPage() {
               {(data?.day_wise || []).length ? (
                 <ResponsiveContainer>
                   <BarChart data={data.day_wise}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
+                    <XAxis dataKey="date" tick={{ fill: theme.palette.text.secondary, fontSize: 12 }} />
+                    <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 12 }} />
                     <ChartTooltip />
-                    <Bar dataKey="total_sales" fill="#1F4E5F" name="Sales" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total_sales" fill={theme.palette.primary.main} name="Sales" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -247,11 +285,15 @@ export default function OwnerDashboardPage() {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Chip size="small" label={bill.status || '—'} variant="outlined" />
+                    <Chip
+                      size="small"
+                      label={bill.status === 'CANCELLED' ? 'Cancelled' : 'Finalized'}
+                      color={bill.status === 'CANCELLED' ? 'warning' : 'success'}
+                      variant={bill.status === 'CANCELLED' ? 'filled' : 'outlined'}
+                    />
                   </TableCell>
                   <TableCell>
-                    {bill.payment_method_label
-                      || (bill.payment_method === 'online' ? 'Online' : 'Cash')}
+                    {paymentMethodLabel(bill.payment_method)}
                   </TableCell>
                   <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                     {money(bill.grand_total)}
@@ -311,7 +353,7 @@ export default function OwnerDashboardPage() {
           {!itemActivity.length ? (
             <EmptyState
               title="No item activity yet"
-              description="Create or update menu items to see activity here."
+              description="Create or update catalog items to see activity here."
             />
           ) : null}
         </TableCard>

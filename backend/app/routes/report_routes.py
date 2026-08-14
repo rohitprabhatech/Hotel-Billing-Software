@@ -21,6 +21,12 @@ def daily_sales():
     return report_controller.daily_sales()
 
 
+@reports_bp.get("/weekly-sales")
+@roles_required(ROLE_OWNER)
+def weekly_sales():
+    return report_controller.weekly_sales()
+
+
 @reports_bp.get("/monthly-sales")
 @roles_required(ROLE_OWNER)
 def monthly_sales():

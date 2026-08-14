@@ -21,6 +21,12 @@ def daily_sales():
     return success_response(data=data)
 
 
+def weekly_sales():
+    payment_method = request.args.get("payment_method")
+    data = ReportService.weekly_sales(payment_method=payment_method)
+    return success_response(data=data)
+
+
 def monthly_sales():
     year = request.args.get("year")
     month = request.args.get("month")

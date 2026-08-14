@@ -1,6 +1,6 @@
 -- =============================================================================
--- Hotel Billing Software — MySQL Schema (Multi-Tenant)
--- Database : hotel_billing
+-- Business Billing Software — MySQL Schema (Multi-Tenant)
+-- Database : hotel_billing  (legacy DB name; product is multi-business)
 -- Charset  : utf8mb4
 -- Tool tip : Open/run this file in DBeaver against the hotel_billing connection
 -- =============================================================================
@@ -34,6 +34,7 @@ CREATE TABLE tenants (
     id                    CHAR(36)       NOT NULL,
     name                  VARCHAR(120)   NOT NULL,
     business_name         VARCHAR(200)   NOT NULL,
+    business_type         VARCHAR(40)    NOT NULL DEFAULT 'other',
     address               VARCHAR(255)   NULL,
     city                  VARCHAR(100)   NULL,
     state                 VARCHAR(100)   NULL,
@@ -50,7 +51,8 @@ CREATE TABLE tenants (
     PRIMARY KEY (id),
     CONSTRAINT chk_tenants_status CHECK (status IN ('ACTIVE', 'SUSPENDED')),
     INDEX ix_tenants_status (status),
-    INDEX ix_tenants_business_name (business_name)
+    INDEX ix_tenants_business_name (business_name),
+    INDEX ix_tenants_business_type (business_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -173,18 +175,23 @@ CREATE TABLE items (
     category_id      CHAR(36)       NOT NULL,
     created_by       CHAR(36)       NULL,
     name             VARCHAR(200)   NOT NULL,
+    sku              VARCHAR(64)    NULL,
     description      TEXT           NULL,
     price            DECIMAL(12,2)  NOT NULL,
+    cost_price       DECIMAL(12,2)  NULL,
     gst_percentage   DECIMAL(5,2)   NOT NULL DEFAULT 0.00,
+    stock_quantity   DECIMAL(12,3)  NULL,
     is_active        TINYINT(1)     NOT NULL DEFAULT 1,
     created_at       DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at       DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_items_tenant_name (tenant_id, name),
+    UNIQUE KEY uq_items_tenant_sku (tenant_id, sku),
     INDEX ix_items_tenant_id (tenant_id),
     INDEX ix_items_tenant_category (tenant_id, category_id),
     INDEX ix_items_tenant_active (tenant_id, is_active),
     INDEX ix_items_tenant_name (tenant_id, name),
+    INDEX ix_items_tenant_sku (tenant_id, sku),
     INDEX ix_items_created_by (created_by),
     CONSTRAINT fk_items_tenant
         FOREIGN KEY (tenant_id) REFERENCES tenants (id)
@@ -196,6 +203,8 @@ CREATE TABLE items (
         FOREIGN KEY (created_by) REFERENCES users (id)
         ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT chk_items_price CHECK (price >= 0),
+    CONSTRAINT chk_items_cost_price CHECK (cost_price IS NULL OR cost_price >= 0),
+    CONSTRAINT chk_items_stock CHECK (stock_quantity IS NULL OR stock_quantity >= 0),
     CONSTRAINT chk_items_gst CHECK (gst_percentage >= 0 AND gst_percentage <= 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -221,7 +230,7 @@ CREATE TABLE bills (
     tenant_id             CHAR(36)       NOT NULL,
     bill_number           VARCHAR(50)    NOT NULL,
     bill_sequence         BIGINT         NOT NULL,
-    table_number          VARCHAR(30)    NULL,
+    table_number          VARCHAR(30)    NULL,  -- bill reference (table/counter/token/note)
     subtotal              DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     discount              DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     taxable_amount        DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
@@ -230,7 +239,7 @@ CREATE TABLE bills (
     gst_amount            DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     grand_total           DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     round_off             DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
-    status                VARCHAR(20)    NOT NULL DEFAULT 'DRAFT',
+    status                VARCHAR(20)    NOT NULL DEFAULT 'FINALIZED',
     payment_method        VARCHAR(20)    NOT NULL DEFAULT 'cash',
     created_by            CHAR(36)       NOT NULL,
     cancelled_by          CHAR(36)       NULL,
@@ -293,7 +302,7 @@ CREATE TABLE bill_items (
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_bill_items_item
         FOREIGN KEY (item_id) REFERENCES items (id)
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT chk_bill_items_qty CHECK (quantity > 0),
     CONSTRAINT chk_bill_items_money CHECK (
         unit_price >= 0 AND discount >= 0 AND taxable_amount >= 0
@@ -335,9 +344,9 @@ CREATE TABLE audit_logs (
 -- Seed: roles (exactly two)
 -- -----------------------------------------------------------------------------
 INSERT INTO roles (id, name, description) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'OWNER', 'Hotel owner with full tenant management access'),
+    ('11111111-1111-1111-1111-111111111111', 'OWNER', 'Business owner with full tenant management access'),
     ('22222222-2222-2222-2222-222222222222', 'BILLING_USER', 'Counter billing user with limited access');
 
 -- Done
-SELECT 'hotel_billing schema created successfully' AS message;
+SELECT 'business billing schema created successfully' AS message;
 SHOW TABLES;

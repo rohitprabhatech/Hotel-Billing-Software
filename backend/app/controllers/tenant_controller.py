@@ -9,6 +9,10 @@ from app.utils.request_context import require_request_context
 from app.utils.responses import success_response
 
 
+def list_business_types():
+    return success_response(data=TenantService.list_business_types())
+
+
 def get_my_tenant():
     ctx = require_request_context()
     full = ctx.role == ROLE_OWNER

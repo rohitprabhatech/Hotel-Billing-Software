@@ -1,22 +1,25 @@
-# Hotel Billing Software
+# Business Billing
 
-Multi-tenant hotel/restaurant billing SaaS (Owner + Billing User).
+Multi-tenant billing SaaS for restaurants, hotels, retail, grocery, and more.  
+**Owner** + **Billing User** roles · Provider: **Prabha Technology Pvt. Ltd.**
+
+> Repository folder may still say `Hotel-Billing-Software`; the product name is **Business Billing**.
 
 ## Stack
 
-- Backend: Flask, SQLAlchemy, JWT, MySQL
-- Frontend: React, MUI, Vite, Axios
+- **Backend:** Flask, SQLAlchemy, JWT, MySQL  
+- **Frontend:** React, MUI, Vite, Axios  
 
-## Quick Start (Local)
+## Quick start (local)
 
 ### 1) Database
 
-Create MySQL DB `hotel_billing`, then apply:
+Create MySQL database (default name `hotel_billing`), then apply:
 
-- `backend/sql/01_create_database.sql`
-- `backend/sql/02_schema.sql`
+- `backend/sql/01_create_database.sql`  
+- `backend/sql/02_schema.sql`  
 
-Or run: `python backend/sql/apply_schema.py`
+Or: `python backend/sql/apply_schema.py`
 
 ### 2) Backend
 
@@ -43,12 +46,12 @@ npm run dev
 
 UI: `http://localhost:5173`
 
-### Demo logins
+### Demo logins (seed)
 
 | Role | Email | Password |
 |------|-------|----------|
-| Owner A | owner@hotela.com | Owner@12345 |
-| Billing A | billing@hotela.com | Billing@12345 |
+| Owner (Business A) | owner@hotela.com | Owner@12345 |
+| Billing (Business A) | billing@hotela.com | Billing@12345 |
 
 ## Tests
 
@@ -59,9 +62,17 @@ cd backend
 
 ## Docs
 
-See `docs/` (architecture, API, billing, security, deployment, production readiness).
+Start at [`docs/README.md`](docs/README.md):
 
-## Production / Staging
+- User / Owner / Billing manuals  
+- API & database summaries  
+- [Deployment guide](docs/deployment-guide.md)  
+- [Manual test guide](docs/test-business-billing-guide.md)  
+- [Development roadmap](docs/development-roadmap.md)  
 
-Follow `docs/19-deployment.md` and `docs/21-production-readiness.md`.  
-Onboard real hotels with `backend/scripts/onboard_tenant.py` (not the demo seeder).
+## Production
+
+Follow [`docs/deployment-guide.md`](docs/deployment-guide.md) and [`docs/21-production-readiness.md`](docs/21-production-readiness.md).  
+Onboard real businesses with **Register Business** or `backend/scripts/onboard_tenant.py` (not the demo seeder).
+
+**Plan:** ₹550 / month (informational in-app — contact Prabha Technology to activate).

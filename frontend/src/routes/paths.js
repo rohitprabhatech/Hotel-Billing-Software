@@ -14,6 +14,7 @@ export const PATHS = {
   ownerItemActivity: '/owner/item-activity',
   ownerCategories: '/owner/categories',
   ownerReports: '/owner/reports',
+  ownerAi: '/owner/ai',
   ownerAudit: '/owner/audit',
   ownerUsers: '/owner/users',
   ownerSettings: '/owner/settings',

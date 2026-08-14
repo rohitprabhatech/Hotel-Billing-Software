@@ -4,6 +4,8 @@ from sqlalchemy import and_, case, func
 
 from app.extensions import db
 from app.models.bill import Bill, BillItem
+from app.models.category import Category
+from app.models.item import Item
 
 
 class ReportRepository:
@@ -74,6 +76,36 @@ class ReportRepository:
                 ),
                 0,
             ),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Bill.status == "FINALIZED",
+                                Bill.payment_method == "cash",
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Bill.status == "FINALIZED",
+                                Bill.payment_method == "online",
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
         ).filter(
             Bill.tenant_id == tenant_id,
             Bill.created_at >= start,
@@ -89,6 +121,8 @@ class ReportRepository:
         cancelled = int(row[4] or 0)
         cash_sales = row[5] or 0
         online_sales = row[6] or 0
+        cash_bill_count = int(row[7] or 0)
+        online_bill_count = int(row[8] or 0)
         average = float(sales) / bill_count if bill_count else 0.0
 
         items_query = (
@@ -114,6 +148,8 @@ class ReportRepository:
             "cancelled_bills": cancelled,
             "cash_sales": float(cash_sales),
             "online_sales": float(online_sales),
+            "cash_bill_count": cash_bill_count,
+            "online_bill_count": online_bill_count,
         }
 
     @staticmethod
@@ -141,6 +177,42 @@ class ReportRepository:
         return [
             {
                 "item_name": r[0],
+                "quantity": float(r[1] or 0),
+                "revenue": float(r[2] or 0),
+            }
+            for r in rows
+        ]
+
+    @staticmethod
+    def category_wise(
+        tenant_id: str, start, end, payment_method: str | None = None
+    ) -> list[dict]:
+        category_name = func.coalesce(Category.name, "Uncategorized")
+        query = (
+            db.session.query(
+                category_name,
+                func.sum(BillItem.quantity),
+                func.sum(BillItem.total),
+            )
+            .join(Bill, Bill.id == BillItem.bill_id)
+            .outerjoin(Item, Item.id == BillItem.item_id)
+            .outerjoin(Category, Category.id == Item.category_id)
+            .filter(
+                Bill.tenant_id == tenant_id,
+                Bill.status == "FINALIZED",
+                Bill.created_at >= start,
+                Bill.created_at < end,
+            )
+        )
+        query = ReportRepository._payment_filter(query, payment_method)
+        rows = (
+            query.group_by(category_name)
+            .order_by(func.sum(BillItem.total).desc())
+            .all()
+        )
+        return [
+            {
+                "category_name": r[0],
                 "quantity": float(r[1] or 0),
                 "revenue": float(r[2] or 0),
             }

@@ -9,6 +9,11 @@ from app.models.role import ROLE_BILLING_USER, ROLE_OWNER
 tenants_bp = Blueprint("tenants", __name__, url_prefix="/tenants")
 
 
+@tenants_bp.get("/business-types")
+def list_business_types():
+    return tenant_controller.list_business_types()
+
+
 @tenants_bp.get("/me")
 @roles_required(ROLE_OWNER, ROLE_BILLING_USER)
 def get_my_tenant():

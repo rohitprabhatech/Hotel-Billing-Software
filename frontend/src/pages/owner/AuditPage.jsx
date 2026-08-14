@@ -43,6 +43,8 @@ const ACTIONS = [
   '',
   'LOGIN',
   'LOGOUT',
+  'PASSWORD_CHANGED',
+  'PASSWORD_RESET_REQUESTED',
   'CREATE_BILL',
   'CANCEL_BILL',
   'PRINT_BILL',
@@ -51,18 +53,20 @@ const ACTIONS = [
   'ITEM_UPDATED',
   'ITEM_DEACTIVATED',
   'ITEM_REACTIVATED',
-  'CREATE_ITEM',
-  'UPDATE_ITEM',
   'UPDATE_PRICE',
   'CHANGE_GST',
-  'DEACTIVATE_ITEM',
   'CREATE_CATEGORY',
   'UPDATE_CATEGORY',
   'DEACTIVATE_CATEGORY',
   'CREATE_USER',
   'UPDATE_USER',
   'DEACTIVATE_USER',
+  'UPDATE_PROFILE',
   'UPDATE_TENANT',
+  'REGISTER_BUSINESS',
+  'EMAIL_CHANGED',
+  'EMAIL_VERIFIED',
+  'EMAIL_CHANGE_REQUESTED',
   'EXPORT_REPORT',
 ];
 
@@ -76,6 +80,9 @@ function describeLog(row) {
   if (row.action === 'CANCEL_BILL') {
     return row.new_data?.cancellation_reason || 'Bill cancelled';
   }
+  if (row.action === 'PASSWORD_CHANGED') return 'Password changed';
+  if (row.action === 'LOGIN') return 'Signed in';
+  if (row.action === 'LOGOUT') return 'Signed out';
   if (row.bill_number) return `Bill ${row.bill_number}`;
   if (row.new_data?.name) return row.new_data.name;
   if (row.old_data?.name) return row.old_data.name;
@@ -142,7 +149,8 @@ export default function AuditPage() {
     <>
       <PageShell>
         <Alert severity="info">
-          These are activity indicators for investigation — not automatic fraud accusations.
+          Immutable activity trail for your business — indicators for investigation, not automatic
+          fraud accusations. Audit entries cannot be deleted.
         </Alert>
 
         {error ? <Alert severity="error">{error}</Alert> : null}

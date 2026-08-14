@@ -9,10 +9,13 @@ from app.utils.responses import success_response
 
 def create_bill():
     payload = create_bill_schema.load(request.get_json() or {})
+    reference = payload.get("reference")
+    if reference is None or reference == "":
+        reference = payload.get("table_number")
     data = BillService.create_bill(
         items=payload["items"],
         discount=payload.get("discount", 0),
-        table_number=payload.get("table_number"),
+        reference=reference,
         payment_method=payload.get("payment_method"),
     )
     return success_response(data=data, status_code=201)

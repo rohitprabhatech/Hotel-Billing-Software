@@ -15,9 +15,14 @@ export async function fetchMe() {
   return data;
 }
 
-export async function registerHotelRequest(payload) {
-  const { data } = await apiClient.post('/auth/register-hotel', payload);
+export async function registerBusinessRequest(payload) {
+  const { data } = await apiClient.post('/auth/register-business', payload);
   return data;
+}
+
+/** @deprecated Prefer registerBusinessRequest */
+export async function registerHotelRequest(payload) {
+  return registerBusinessRequest(payload);
 }
 
 export async function verifyEmailRequest(token) {

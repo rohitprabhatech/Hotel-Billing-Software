@@ -48,13 +48,7 @@ export default function LoginPage() {
   };
 
   return (
-    <Stack spacing={2} component="form" onSubmit={onSubmit}>
-      <Typography variant="h5" fontWeight={700}>
-        Sign in
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Access your hotel billing workspace
-      </Typography>
+    <Stack spacing={2.5} component="form" onSubmit={onSubmit}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       <TextField
         label="Email"
@@ -77,7 +71,6 @@ export default function LoginPage() {
       <Button
         type="submit"
         variant="contained"
-        size="large"
         disabled={loading}
         startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
       >
@@ -91,7 +84,7 @@ export default function LoginPage() {
       <Typography variant="body2" color="text.secondary">
         Don&apos;t have an account?{' '}
         <Link component={RouterLink} to="/register">
-          Register Your Hotel
+          Register Business
         </Link>
       </Typography>
     </Stack>

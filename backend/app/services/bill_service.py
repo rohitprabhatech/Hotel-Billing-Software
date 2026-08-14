@@ -30,6 +30,7 @@ class BillService:
         *,
         items: list[dict],
         discount=0,
+        reference: str | None = None,
         table_number: str | None = None,
         payment_method: str | None = None,
     ):
@@ -43,6 +44,9 @@ class BillService:
             )
         except ValueError as exc:
             raise ValidationError("Please select a payment method.") from exc
+
+        bill_reference = (reference if reference is not None else table_number) or ""
+        bill_reference = bill_reference.strip() or None
 
         # Merge duplicate item_ids from cart
         merged: dict[str, Decimal] = {}
@@ -88,7 +92,7 @@ class BillService:
             tenant_id=ctx.tenant_id,
             bill_number=bill_number,
             bill_sequence=sequence,
-            table_number=(table_number or "").strip() or None,
+            table_number=bill_reference,
             subtotal=calculated["subtotal"],
             discount=calculated["discount"],
             taxable_amount=calculated["taxable_amount"],
@@ -291,7 +295,8 @@ class BillService:
             "id": bill.id,
             "bill_number": bill.bill_number,
             "bill_sequence": bill.bill_sequence,
-            "table_number": bill.table_number,
+            "reference": bill.table_number,
+            "table_number": bill.table_number,  # legacy alias
             "subtotal": float(bill.subtotal),
             "discount": float(bill.discount),
             "taxable_amount": float(bill.taxable_amount),
@@ -333,6 +338,7 @@ class BillService:
             if tenant:
                 data["tenant"] = {
                     "business_name": tenant.business_name,
+                    "business_type": tenant.business_type,
                     "address": tenant.address,
                     "city": tenant.city,
                     "state": tenant.state,

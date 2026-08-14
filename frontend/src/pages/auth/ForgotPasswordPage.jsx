@@ -36,13 +36,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <Stack spacing={2} component="form" onSubmit={onSubmit}>
-      <Typography variant="h5" fontWeight={700}>
-        Forgot Password
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Enter your account email and we will send a secure reset link.
-      </Typography>
+    <Stack spacing={2.5} component="form" onSubmit={onSubmit}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
       <TextField

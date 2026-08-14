@@ -10,6 +10,11 @@ export async function fetchDailySales(params = {}) {
   return data;
 }
 
+export async function fetchWeeklySales(params = {}) {
+  const { data } = await apiClient.get('/reports/weekly-sales', { params });
+  return data;
+}
+
 export async function fetchMonthlySales(params = {}) {
   const { data } = await apiClient.get('/reports/monthly-sales', { params });
   return data;

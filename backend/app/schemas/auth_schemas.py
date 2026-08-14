@@ -2,6 +2,8 @@
 
 from marshmallow import EXCLUDE, Schema, fields, validate, validates_schema, ValidationError
 
+from app.constants.business_types import ALLOWED_BUSINESS_TYPES
+
 
 class LoginSchema(Schema):
     class Meta:
@@ -11,12 +13,19 @@ class LoginSchema(Schema):
     password = fields.String(required=True, validate=validate.Length(min=1))
 
 
-class RegisterHotelSchema(Schema):
+class RegisterBusinessSchema(Schema):
+    """Public business registration payload.
+
+    Accepts legacy ``hotel_name`` as an alias for display name.
+    """
+
     class Meta:
         unknown = EXCLUDE
 
-    hotel_name = fields.String(required=True, validate=validate.Length(min=1, max=120))
     business_name = fields.String(load_default=None, validate=validate.Length(max=200))
+    business_type = fields.String(load_default="other", validate=validate.Length(min=1, max=40))
+    name = fields.String(load_default=None, validate=validate.Length(max=120))
+    hotel_name = fields.String(load_default=None, validate=validate.Length(max=120))  # legacy
     address = fields.String(load_default=None, validate=validate.Length(max=255))
     city = fields.String(load_default=None, validate=validate.Length(max=100))
     state = fields.String(load_default=None, validate=validate.Length(max=100))
@@ -32,9 +41,27 @@ class RegisterHotelSchema(Schema):
     confirm_password = fields.String(required=True, validate=validate.Length(min=8, max=128))
 
     @validates_schema
-    def passwords_match(self, data, **kwargs):
+    def validate_register(self, data, **kwargs):
         if data.get("password") != data.get("confirm_password"):
-            raise ValidationError("Password and confirm password do not match", "confirm_password")
+            raise ValidationError(
+                "Password and confirm password do not match", "confirm_password"
+            )
+        business_name = (data.get("business_name") or "").strip()
+        display_name = (data.get("name") or data.get("hotel_name") or "").strip()
+        if not business_name and not display_name:
+            raise ValidationError("Business name is required", "business_name")
+        if not business_name:
+            data["business_name"] = display_name
+        if not display_name:
+            data["name"] = data["business_name"]
+        business_type = (data.get("business_type") or "other").strip().lower()
+        if business_type not in ALLOWED_BUSINESS_TYPES:
+            raise ValidationError("Invalid business type", "business_type")
+        data["business_type"] = business_type
+
+
+# Backward-compatible alias
+RegisterHotelSchema = RegisterBusinessSchema
 
 
 class TokenSchema(Schema):
@@ -80,7 +107,8 @@ class ChangePasswordSchema(Schema):
 
 
 login_schema = LoginSchema()
-register_hotel_schema = RegisterHotelSchema()
+register_business_schema = RegisterBusinessSchema()
+register_hotel_schema = register_business_schema  # legacy alias
 token_schema = TokenSchema()
 email_only_schema = EmailOnlySchema()
 reset_password_schema = ResetPasswordSchema()

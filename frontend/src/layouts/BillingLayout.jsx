@@ -4,13 +4,12 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
-import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
 import {
   AppBar,
   Box,
-  Button,
   Chip,
   Divider,
   Drawer,
@@ -29,28 +28,30 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import MainContent from '../components/MainContent';
 import PageHeader from '../components/PageHeader';
+import ThemeModeToggle from '../components/ThemeModeToggle';
 import { useAuth } from '../context/AuthContext';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
+import { DRAWER_WIDTH } from './shell';
 import { logoutRequest } from '../services/authService';
 import { PATHS } from '../routes/paths';
 
-const drawerWidth = 248;
+const drawerWidth = DRAWER_WIDTH;
 
 const billingNav = [
-  { to: PATHS.billingHome, label: 'Billing Home', icon: <PointOfSaleOutlinedIcon />, end: true },
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <PointOfSaleOutlinedIcon />, end: true },
   { to: PATHS.billingNew, label: 'New Bill', icon: <ReceiptLongOutlinedIcon /> },
   { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
-  { to: PATHS.billingItems, label: 'Items', icon: <RestaurantMenuOutlinedIcon /> },
+  { to: PATHS.billingItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
   { to: PATHS.billingCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
   { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
-  { to: PATHS.billingChangePassword, label: 'Change Password', icon: <LockOutlinedIcon /> },
 ];
 
 function pageMeta(pathname) {
   if (pathname === PATHS.billingHome || pathname === `${PATHS.billingHome}/`) {
     return {
-      title: 'Billing Home',
+      title: 'Billing Dashboard',
       subtitle: "Today's billing overview and quick actions.",
     };
   }
@@ -69,13 +70,13 @@ function pageMeta(pathname) {
   if (pathname.startsWith(PATHS.billingItems)) {
     return {
       title: 'Items',
-      subtitle: "Manage your hotel's food and beverage items.",
+      subtitle: 'Add and manage catalog items for billing.',
     };
   }
   if (pathname.startsWith(PATHS.billingCategories)) {
     return {
       title: 'Categories',
-      subtitle: 'Browse food and beverage categories.',
+      subtitle: 'Browse categories available for billing items.',
     };
   }
   if (pathname.startsWith(PATHS.billingProfile)) {
@@ -110,7 +111,6 @@ export default function BillingLayout() {
         ...billingNav.slice(1),
       ];
     }
-    // Owners: explicit return path to Owner Main Dashboard (root cause fix)
     return [
       {
         to: PATHS.ownerDashboard,
@@ -134,25 +134,17 @@ export default function BillingLayout() {
     navigate(PATHS.login, { replace: true });
   };
 
-  const navButtonSx = {
-    borderRadius: 2,
-    mb: 0.5,
-    '&.active': {
-      bgcolor: 'primary.main',
-      color: 'primary.contrastText',
-      '& .MuiListItemIcon-root': { color: 'inherit' },
-    },
-  };
-
   const drawer = (
-    <Box sx={{ width: drawerWidth, display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ px: 2 }}>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight={700} noWrap>
-            {user?.tenant?.business_name || 'Billing'}
-          </Typography>
+        <Box sx={{ minWidth: 0, width: '100%' }}>
+          <Tooltip title={user?.tenant?.business_name || 'Billing'}>
+            <Typography variant="subtitle1" fontWeight={700} noWrap>
+              {user?.tenant?.business_name || 'Billing'}
+            </Typography>
+          </Tooltip>
           <Typography variant="caption" color="text.secondary">
-            {isOwner ? 'Owner · Billing workspace' : 'Billing counter'}
+            {isOwner ? 'Owner · Billing' : 'Billing'}
           </Typography>
         </Box>
       </Toolbar>
@@ -165,7 +157,13 @@ export default function BillingLayout() {
             to={item.to}
             end={item.end}
             onClick={() => setMobileOpen(false)}
-            sx={navButtonSx}
+            sx={{
+              '&.active': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                '& .MuiListItemIcon-root': { color: 'inherit' },
+              },
+            }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
             <ListItemText primary={item.label} />
@@ -174,20 +172,6 @@ export default function BillingLayout() {
       </List>
     </Box>
   );
-
-  const topLinks = isOwner
-    ? [
-        { to: PATHS.ownerDashboard, label: 'Owner Dashboard', end: true },
-        { to: PATHS.billingHome, label: 'Billing Home', end: true },
-        { to: PATHS.billingNew, label: 'New Bill' },
-        { to: PATHS.billingBills, label: 'Bills' },
-      ]
-    : [
-        { to: PATHS.billingHome, label: 'Dashboard', end: true },
-        { to: PATHS.billingNew, label: 'New Bill' },
-        { to: PATHS.billingBills, label: 'Bills' },
-        { to: PATHS.billingItems, label: 'Items' },
-      ];
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -198,46 +182,32 @@ export default function BillingLayout() {
           ml: { md: `${drawerWidth}px` },
         }}
       >
-        <Toolbar sx={{ gap: 1 }}>
+        <Toolbar>
           {isMobile ? (
-            <IconButton edge="start" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }} aria-label="Open menu">
               <MenuIcon />
             </IconButton>
           ) : null}
           <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
-            <Tooltip title={user?.tenant?.business_name || 'Hotel Billing'}>
+            <Tooltip title={user?.tenant?.business_name || 'Business Billing'}>
               <Typography variant="subtitle1" fontWeight={700} noWrap>
-                {user?.tenant?.business_name || 'Hotel Billing'}
+                {user?.tenant?.business_name || 'Business Billing'}
               </Typography>
             </Tooltip>
             <Typography variant="caption" color="text.secondary" noWrap>
-              {meta.title}
+              {user?.tenant?.business_type_label
+                ? `${user.tenant.business_type_label} · ${meta.title}`
+                : meta.title}
             </Typography>
           </Box>
-          {!isMobile
-            ? topLinks.map((item) => (
-                <Button
-                  key={item.to}
-                  color="inherit"
-                  component={NavLink}
-                  to={item.to}
-                  end={item.end}
-                  sx={{
-                    '&.active': {
-                      bgcolor: 'action.selected',
-                    },
-                  }}
-                >
-                  {item.label}
-                </Button>
-              ))
-            : null}
           <Chip
             size="small"
             label={isOwner ? 'OWNER' : 'BILLING'}
             color={isOwner ? 'primary' : 'default'}
             variant="outlined"
+            sx={{ mr: 1 }}
           />
+          <ThemeModeToggle sx={{ mr: 0.5 }} />
           <Tooltip title="Account menu">
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu">
               <PersonOutlinedIcon />
@@ -268,6 +238,7 @@ export default function BillingLayout() {
                 navigate(PATHS.billingProfile);
               }}
             >
+              <ListItemIcon><PersonOutlinedIcon fontSize="small" /></ListItemIcon>
               Profile
             </MenuItem>
             <MenuItem
@@ -276,6 +247,7 @@ export default function BillingLayout() {
                 navigate(PATHS.billingChangePassword);
               }}
             >
+              <ListItemIcon><LockOutlinedIcon fontSize="small" /></ListItemIcon>
               Change Password
             </MenuItem>
             <MenuItem
@@ -336,22 +308,13 @@ export default function BillingLayout() {
 
 function BillingMain({ meta }) {
   return (
-    <Box
-      sx={{
-        px: { xs: 2, sm: 3, lg: 4 },
-        py: { xs: 2.5, md: 3 },
-        width: '100%',
-        maxWidth: 1400,
-        mx: 'auto',
-        boxSizing: 'border-box',
-      }}
-    >
+    <MainContent>
       <PageHeader
         title={meta.title}
         subtitle={meta.subtitle}
         actions={<PageActionsSlot />}
       />
       <Outlet />
-    </Box>
+    </MainContent>
   );
 }

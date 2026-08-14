@@ -44,12 +44,14 @@ def _seed(session):
         id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         name="Hotel A",
         business_name="Hotel A",
+        business_type="hotel",
         status="ACTIVE",
     )
     tenant_b = Tenant(
         id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         name="Hotel B",
         business_name="Hotel B",
+        business_type="restaurant",
         status="ACTIVE",
     )
     users = [

@@ -27,10 +27,17 @@ def me():
     return auth_controller.me()
 
 
+@auth_bp.post("/register-business")
+@limiter.limit("10 per minute")
+def register_business():
+    return auth_controller.register_business()
+
+
 @auth_bp.post("/register-hotel")
 @limiter.limit("10 per minute")
 def register_hotel():
-    return auth_controller.register_hotel()
+    """Legacy alias — prefer /auth/register-business."""
+    return auth_controller.register_business()
 
 
 @auth_bp.post("/verify-email")

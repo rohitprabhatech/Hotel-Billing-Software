@@ -43,6 +43,8 @@ class Bill(db.Model, TimestampMixin):
     )
     bill_number: Mapped[str] = mapped_column(String(50), nullable=False)
     bill_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Optional bill reference (table / counter / token / customer note).
+    # Column name retained as table_number for backward compatibility.
     table_number: Mapped[str | None] = mapped_column(String(30))
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     discount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
@@ -93,7 +95,7 @@ class BillItem(db.Model):
         String(36), ForeignKey("bills.id", ondelete="RESTRICT"), nullable=False
     )
     item_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("items.id", ondelete="RESTRICT")
+        String(36), ForeignKey("items.id", ondelete="SET NULL")
     )
     item_name: Mapped[str] = mapped_column(String(200), nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)

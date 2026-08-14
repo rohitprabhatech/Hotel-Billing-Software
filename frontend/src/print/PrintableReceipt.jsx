@@ -1,4 +1,8 @@
 import './receipt.css';
+import { paymentMethodLabel } from '../utils/paymentMethod';
+
+/** Food-service types where FSSAI is typically relevant (mirrors backend). */
+const FSSAI_RELEVANT_TYPES = new Set(['restaurant', 'hotel']);
 
 function formatMoney(value) {
   return Number(value || 0).toFixed(2);
@@ -22,6 +26,13 @@ function commonGstRate(items = []) {
   return null;
 }
 
+function showFssai(tenant = {}) {
+  if (!tenant.fssai_number) return false;
+  const type = String(tenant.business_type || '').toLowerCase();
+  if (!type) return true; // legacy tenants without type still print if number set
+  return FSSAI_RELEVANT_TYPES.has(type);
+}
+
 export default function PrintableReceipt({ bill, width = '80' }) {
   if (!bill) return null;
 
@@ -30,10 +41,11 @@ export default function PrintableReceipt({ bill, width = '80' }) {
   const gstRate = commonGstRate(items);
   const halfRate = gstRate != null ? (gstRate / 2).toFixed(2) : null;
   const cityLine = [tenant.city, tenant.pincode].filter(Boolean).join(' / ');
+  const businessName = tenant.business_name || 'BUSINESS';
 
   return (
     <div className={`receipt receipt--${width}`}>
-      <div className="receipt__center receipt__hotel">{tenant.business_name || 'HOTEL'}</div>
+      <div className="receipt__center receipt__business">{businessName}</div>
       {tenant.address ? <div className="receipt__center">{tenant.address}</div> : null}
       {cityLine ? <div className="receipt__center">{cityLine}</div> : null}
       {tenant.phone ? <div className="receipt__center">Mobile: {tenant.phone}</div> : null}
@@ -50,7 +62,7 @@ export default function PrintableReceipt({ bill, width = '80' }) {
         <span>Bill No. : {bill.bill_number}</span>
       </div>
       <div className="receipt__row">
-        <span>T. No.: {bill.table_number || '-'}</span>
+        <span>Ref.: {bill.reference || bill.table_number || '-'}</span>
         <span>Emp. : {bill.created_by_name || '-'}</span>
       </div>
 
@@ -110,15 +122,12 @@ export default function PrintableReceipt({ bill, width = '80' }) {
       </div>
       <div className="receipt__row">
         <span>Payment Method :</span>
-        <span>
-          {bill.payment_method_label
-            || (bill.payment_method === 'online' ? 'Online' : 'Cash')}
-        </span>
+        <span>{paymentMethodLabel(bill.payment_method)}</span>
       </div>
       <div className="receipt__divider" />
 
       {tenant.gst_number ? <div>GSTIN: {tenant.gst_number}</div> : null}
-      {tenant.fssai_number ? <div>FSSAI NO: {tenant.fssai_number}</div> : null}
+      {showFssai(tenant) ? <div>FSSAI NO: {tenant.fssai_number}</div> : null}
 
       <div className="receipt__center receipt__thanks">Thank You</div>
       <div className="receipt__center">Visit Again</div>

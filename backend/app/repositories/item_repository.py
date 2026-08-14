@@ -1,6 +1,6 @@
 """Item data access — tenant scoped."""
 
-from sqlalchemy import func
+from sqlalchemy import or_, func
 
 from app.extensions import db
 from app.models.item import Item
@@ -27,6 +27,20 @@ class ItemRepository:
         )
 
     @staticmethod
+    def find_by_tenant_and_sku(tenant_id: str, sku: str) -> Item | None:
+        cleaned = (sku or "").strip()
+        if not cleaned:
+            return None
+        return (
+            db.session.query(Item)
+            .filter(
+                Item.tenant_id == tenant_id,
+                func.lower(Item.sku) == cleaned.lower(),
+            )
+            .first()
+        )
+
+    @staticmethod
     def list_by_tenant(
         tenant_id: str,
         *,
@@ -39,7 +53,7 @@ class ItemRepository:
         query = db.session.query(Item).filter(Item.tenant_id == tenant_id)
         if q:
             like = f"%{q.strip()}%"
-            query = query.filter(Item.name.ilike(like))
+            query = query.filter(or_(Item.name.ilike(like), Item.sku.ilike(like)))
         if category_id:
             query = query.filter(Item.category_id == category_id)
         if is_active is not None:

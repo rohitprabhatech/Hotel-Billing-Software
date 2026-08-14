@@ -18,7 +18,10 @@ class CategoryService:
         categories = CategoryRepository.list_by_tenant(
             ctx.tenant_id, active_only=active_only
         )
-        return [CategoryService.serialize(c) for c in categories]
+        by_id = {category.id: category for category in categories}
+        return [
+            CategoryService.serialize(category, by_id=by_id) for category in categories
+        ]
 
     @staticmethod
     def get_category(category_id: str):
@@ -36,7 +39,7 @@ class CategoryService:
             return None
         parent = CategoryRepository.get_by_id_and_tenant(parent_id, tenant_id)
         if parent is None:
-            raise ValidationError("Parent category not found for this hotel")
+            raise ValidationError("Parent category not found for this business")
         return parent
 
     @staticmethod
@@ -49,6 +52,8 @@ class CategoryService:
         parent = CategoryService._resolve_parent(tenant_id, parent_id)
         if parent is None:
             return None
+        if not parent.is_active:
+            raise ValidationError("Parent category must be active")
         if category_id and parent.id == category_id:
             raise ValidationError("Category cannot be its own parent")
         if category_id:
@@ -178,10 +183,12 @@ class CategoryService:
         return CategoryService.serialize(category)
 
     @staticmethod
-    def serialize(category: Category):
+    def serialize(category: Category, *, by_id: dict | None = None):
         parent_name = None
         if category.parent_id:
-            if getattr(category, "parent", None) is not None:
+            if by_id and category.parent_id in by_id:
+                parent_name = by_id[category.parent_id].name
+            elif getattr(category, "parent", None) is not None:
                 parent_name = category.parent.name
             else:
                 parent = CategoryRepository.get_by_id_and_tenant(
@@ -196,7 +203,32 @@ class CategoryService:
             "parent_id": category.parent_id,
             "parent_category_id": category.parent_id,
             "parent_category_name": parent_name,
+            "hierarchy_path": CategoryService._hierarchy_path(category, by_id=by_id),
             "is_active": category.is_active,
             "created_at": category.created_at.isoformat() if category.created_at else None,
             "updated_at": category.updated_at.isoformat() if category.updated_at else None,
         }
+
+    @staticmethod
+    def _hierarchy_path(category: Category, *, by_id: dict | None = None) -> str:
+        parts = [category.name]
+        seen = {category.id}
+        current = category
+        while current.parent_id:
+            if current.parent_id in seen:
+                break
+            seen.add(current.parent_id)
+            parent = None
+            if by_id and current.parent_id in by_id:
+                parent = by_id[current.parent_id]
+            elif getattr(current, "parent", None) is not None:
+                parent = current.parent
+            else:
+                parent = CategoryRepository.get_by_id_and_tenant(
+                    current.parent_id, current.tenant_id
+                )
+            if parent is None:
+                break
+            parts.append(parent.name)
+            current = parent
+        return " › ".join(reversed(parts))

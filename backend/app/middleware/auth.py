@@ -12,9 +12,15 @@ from app.utils.request_context import RequestContext, set_request_context
 
 
 def _client_meta():
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-    if ip and "," in ip:
-        ip = ip.split(",")[0].strip()
+    from flask import current_app
+
+    if current_app.config.get("TRUST_PROXY_HEADERS"):
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        if ip and "," in ip:
+            ip = ip.split(",")[0].strip()
+    else:
+        # Prefer direct peer address unless reverse-proxy trust is enabled.
+        ip = request.remote_addr
     ua = request.headers.get("User-Agent")
     return ip, ua
 

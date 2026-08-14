@@ -1,5 +1,7 @@
 # 07 — Database Design
 
+> **Sprint 19 summary:** Prefer [database-design.md](./database-design.md) for the short current overview. This file remains the detailed table catalog.
+
 ## Design Principles
 
 1. Tenant isolation via `tenant_id` on all tenant-scoped tables
@@ -16,8 +18,9 @@
 | Column | Type | Notes |
 |--------|------|-------|
 | id | CHAR(36) PK | UUID |
-| name | VARCHAR(120) | Internal name |
+| name | VARCHAR(120) | Display name |
 | business_name | VARCHAR(200) | Printed on receipt |
+| business_type | VARCHAR(40) | Option code (`restaurant`, `hotel`, `clothing_store`, …); default `other` |
 | address | VARCHAR(255) | |
 | city | VARCHAR(100) | |
 | state | VARCHAR(100) | |
@@ -25,7 +28,7 @@
 | phone | VARCHAR(30) | |
 | email | VARCHAR(255) | |
 | gst_number | VARCHAR(30) NULL | GSTIN |
-| fssai_number | VARCHAR(50) NULL | |
+| fssai_number | VARCHAR(50) NULL | Optional (food-service) |
 | bill_number_prefix | VARCHAR(20) NULL | e.g. `INV-2026-` or empty for plain sequence |
 | default_gst_percent | DECIMAL(5,2) NULL | Optional default for new items |
 | status | ENUM/VARCHAR | ACTIVE, SUSPENDED |
@@ -83,17 +86,19 @@ Indexes: `(tenant_id)`, UNIQUE `(tenant_id, parent_id, name)` (or `(tenant_id, n
 | id | CHAR(36) PK | |
 | tenant_id | CHAR(36) FK | |
 | category_id | CHAR(36) FK → categories | |
-| name | VARCHAR(200) | |
+| created_by | CHAR(36) NULL FK → users | SET NULL |
+| name | VARCHAR(200) | UNIQUE per tenant |
+| sku | VARCHAR(64) NULL | UNIQUE per tenant when set |
 | description | TEXT NULL | |
-| price | DECIMAL(12,2) | Current selling price |
+| price | DECIMAL(12,2) | Selling price |
+| cost_price | DECIMAL(12,2) NULL | Optional cost |
 | gst_percentage | DECIMAL(5,2) | |
+| stock_quantity | DECIMAL(12,3) NULL | Optional stock (null = not tracked) |
 | is_active | BOOLEAN | Deactivate instead of delete |
 | created_at | DATETIME | |
 | updated_at | DATETIME | |
 
-Indexes: `(tenant_id)`, `(tenant_id, category_id)`, `(tenant_id, is_active)`, search on name (prefix/like)
-
-UNIQUE optional: `(tenant_id, name)` if business requires unique names.
+Indexes: `(tenant_id)`, `(tenant_id, category_id)`, `(tenant_id, is_active)`, `(tenant_id, sku)`, UNIQUE `(tenant_id, name)`, UNIQUE `(tenant_id, sku)`
 
 ### `bills`
 
@@ -112,7 +117,8 @@ UNIQUE optional: `(tenant_id, name)` if business requires unique names.
 | gst_amount | DECIMAL(12,2) | cgst + sgst |
 | grand_total | DECIMAL(12,2) | |
 | round_off | DECIMAL(12,2) | Optional Indian rounding |
-| status | VARCHAR(20) | DRAFT, FINALIZED, CANCELLED, VOID |
+| status | VARCHAR(20) | Default **FINALIZED** (app); CHECK also allows DRAFT/CANCELLED/VOID |
+| payment_method | VARCHAR(20) | `cash` \| `online` (default cash) |
 | created_by | CHAR(36) FK → users | |
 | cancelled_by | CHAR(36) NULL FK → users | |
 | cancelled_at | DATETIME NULL | |
@@ -128,6 +134,7 @@ Constraints/Indexes:
 - INDEX `(tenant_id, created_at)`
 - INDEX `(tenant_id, status)`
 - INDEX `(tenant_id, created_by)`
+- INDEX `(tenant_id, payment_method)`
 
 ### `bill_items`
 
@@ -135,8 +142,8 @@ Constraints/Indexes:
 |--------|------|-------|
 | id | CHAR(36) PK | |
 | tenant_id | CHAR(36) FK | Denormalized for isolation queries |
-| bill_id | CHAR(36) FK → bills | |
-| item_id | CHAR(36) NULL FK → items | Nullable if item later removed |
+| bill_id | CHAR(36) FK → bills | ON DELETE RESTRICT |
+| item_id | CHAR(36) NULL FK → items | ON DELETE **SET NULL** — snapshots keep history |
 | item_name | VARCHAR(200) | Snapshot |
 | quantity | DECIMAL(10,3) | Usually integer qty; decimal allowed |
 | unit_price | DECIMAL(12,2) | Snapshot |
@@ -150,7 +157,7 @@ Constraints/Indexes:
 
 Indexes: `(tenant_id, bill_id)`, `(tenant_id, item_id)`
 
-**No hard delete of rows after FINALIZED** via application. Draft line edits allowed only while `DRAFT`.
+**No hard delete of bills after FINALIZED** via application. Relationship details: [database-relationships.md](./database-relationships.md).
 
 ### `audit_logs`
 

@@ -50,10 +50,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <Stack spacing={2} component="form" onSubmit={onSubmit}>
-      <Typography variant="h5" fontWeight={700}>
-        Reset Password
-      </Typography>
+    <Stack spacing={2.5} component="form" onSubmit={onSubmit}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
       <TextField

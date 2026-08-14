@@ -1,18 +1,19 @@
 """
-Controlled onboarding for a new hotel tenant + owner user.
+Controlled onboarding for a new business tenant + owner user.
 
 Usage (from backend/ with venv active):
   python scripts/onboard_tenant.py ^
-    --business-name "Hotel Sunrise" ^
-    --name "Hotel Sunrise" ^
+    --business-name "Sunrise Cafe" ^
+    --name "Sunrise Cafe" ^
+    --business-type restaurant ^
     --owner-name "Ramesh" ^
-    --owner-email "owner@hotelsunrise.com" ^
+    --owner-email "owner@sunrisecafe.com" ^
     --owner-password "ChangeMe@12345" ^
     --phone "9000000000" ^
     --city "Pune"
 
 Optional billing user:
-  --billing-name "Counter 1" --billing-email "billing@hotelsunrise.com" --billing-password "ChangeMe@12345"
+  --billing-name "Counter 1" --billing-email "billing@sunrisecafe.com" --billing-password "ChangeMe@12345"
 """
 
 import argparse
@@ -24,6 +25,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app import create_app
+from app.constants.business_types import DEFAULT_BUSINESS_TYPE, normalize_business_type
 from app.extensions import db
 from app.models.role import ROLE_BILLING_USER, ROLE_OWNER, Role
 from app.models.tenant import Tenant
@@ -37,7 +39,7 @@ ROLE_BILLING_ID = "22222222-2222-2222-2222-222222222222"
 
 def ensure_roles():
     for role_id, name, description in [
-        (ROLE_OWNER_ID, ROLE_OWNER, "Hotel owner with full tenant management access"),
+        (ROLE_OWNER_ID, ROLE_OWNER, "Business owner with full tenant management access"),
         (ROLE_BILLING_ID, ROLE_BILLING_USER, "Counter billing user with limited access"),
     ]:
         role = db.session.get(Role, role_id) or Role.query.filter_by(name=name).first()
@@ -46,9 +48,14 @@ def ensure_roles():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Onboard a hotel tenant")
+    parser = argparse.ArgumentParser(description="Onboard a business tenant")
     parser.add_argument("--business-name", required=True)
-    parser.add_argument("--name", required=True, help="Internal hotel name")
+    parser.add_argument("--name", required=True, help="Business display name")
+    parser.add_argument(
+        "--business-type",
+        default=DEFAULT_BUSINESS_TYPE,
+        help="Business type code (restaurant, hotel, clothing_store, ...)",
+    )
     parser.add_argument("--owner-name", required=True)
     parser.add_argument("--owner-email", required=True)
     parser.add_argument("--owner-password", required=True)
@@ -69,6 +76,11 @@ def main():
     if len(args.owner_password) < 8:
         raise SystemExit("Owner password must be at least 8 characters")
 
+    try:
+        business_type = normalize_business_type(args.business_type)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
     app = create_app()
     with app.app_context():
         ensure_roles()
@@ -79,6 +91,7 @@ def main():
             id=new_uuid(),
             name=args.name.strip(),
             business_name=args.business_name.strip(),
+            business_type=business_type,
             address=args.address,
             city=args.city,
             state=args.state,
@@ -108,7 +121,7 @@ def main():
 
         if args.billing_email:
             if not args.billing_name or not args.billing_password:
-                raise SystemExit("billing-name and billing-password required with billing-email")
+                raise SystemExit("Billing user requires --billing-name and --billing-password")
             if len(args.billing_password) < 8:
                 raise SystemExit("Billing password must be at least 8 characters")
             db.session.add(
@@ -126,10 +139,8 @@ def main():
             )
 
         db.session.commit()
-        print("Tenant onboarded successfully")
-        print(f"tenant_id: {tenant.id}")
-        print(f"owner_email: {owner.email}")
-        print("Login at /login with the owner credentials.")
+        print(f"Onboarded tenant {tenant.id} ({tenant.business_name}) type={tenant.business_type}")
+        print(f"Owner: {owner.email}")
 
 
 if __name__ == "__main__":

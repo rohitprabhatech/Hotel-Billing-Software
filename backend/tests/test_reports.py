@@ -44,6 +44,57 @@ def test_owner_summary_includes_sales(client):
     data = response.get_json()["data"]
     assert data["current"]["bill_count"] >= 1
     assert data["current"]["total_sales"] >= bill["grand_total"]
+    current = data["current"]
+    for key in (
+        "cash_sales",
+        "online_sales",
+        "cash_bill_count",
+        "online_bill_count",
+        "average_bill",
+        "cancelled_bills",
+    ):
+        assert key in current
+
+
+def test_owner_summary_week_and_month_periods(client):
+    owner, _, bill = _seed_sale(client)
+    for period in ("this_week", "this_month"):
+        response = client.get(
+            "/api/v1/reports/summary",
+            headers=owner,
+            query_string={"period": period},
+        )
+        assert response.status_code == 200, response.get_json()
+        data = response.get_json()["data"]
+        assert data["period"] == period
+        assert data["label"]
+        assert data["current"]["total_sales"] >= bill["grand_total"]
+        assert data["current"]["bill_count"] >= 1
+        assert "day_wise" in data
+
+
+def test_weekly_sales_and_analytics_sections(client):
+    owner, _, bill = _seed_sale(client)
+    response = client.get("/api/v1/reports/weekly-sales", headers=owner)
+    assert response.status_code == 200, response.get_json()
+    data = response.get_json()["data"]
+    assert data["period"] == "weekly"
+    assert data["metrics"]["total_sales"] >= bill["grand_total"]
+    assert data["top_items"]
+    assert data["low_items"]
+    assert data["category_wise"]
+    assert data["category_wise"][0]["category_name"] == "Report Cat"
+    assert any(row["item_name"] == "Report Item" for row in data["item_wise"])
+    assert data["metrics"]["cash_sales"] >= 0
+    assert data["metrics"]["online_sales"] >= 0
+
+
+def test_billing_forbidden_message_is_generic(client):
+    _, billing, _ = _seed_sale(client)
+    response = client.get("/api/v1/reports/daily-sales", headers=billing)
+    assert response.status_code == 403
+    message = response.get_json()["error"]["message"].lower()
+    assert "hotel" not in message
 
 
 def test_cancelled_excluded_from_sales_but_counted(client):

@@ -235,3 +235,67 @@ def test_owner_filters_item_activity_by_user(client):
     ).get_json()["data"]
     assert logs
     assert all(row["user_id"] == billing_user["id"] for row in logs)
+
+
+def test_item_sku_cost_stock_and_search(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+    category_id = _category(client, owner, "Retail Cat")
+
+    created = client.post(
+        "/api/v1/items",
+        headers=billing,
+        json={
+            "name": "Cotton Shirt",
+            "sku": "SKU-SHIRT-01",
+            "category_id": category_id,
+            "price": 799,
+            "cost_price": 420,
+            "gst_percentage": 5,
+            "stock_quantity": 12,
+            "description": "Men formal shirt",
+        },
+    )
+    assert created.status_code == 201, created.get_json()
+    item = created.get_json()["data"]
+    assert item["sku"] == "SKU-SHIRT-01"
+    assert item["cost_price"] == 420.0
+    assert item["stock_quantity"] == 12.0
+
+    duplicate = client.post(
+        "/api/v1/items",
+        headers=billing,
+        json={
+            "name": "Another Shirt",
+            "sku": "sku-shirt-01",
+            "category_id": category_id,
+            "price": 500,
+            "gst_percentage": 5,
+        },
+    )
+    assert duplicate.status_code == 409
+
+    found = client.get(
+        "/api/v1/items",
+        headers=owner,
+        query_string={"q": "SKU-SHIRT"},
+    ).get_json()["data"]
+    assert any(row["id"] == item["id"] for row in found)
+
+    updated = client.put(
+        f"/api/v1/items/{item['id']}",
+        headers=billing,
+        json={"stock_quantity": 9, "cost_price": 410},
+    )
+    assert updated.status_code == 200
+    assert updated.get_json()["data"]["stock_quantity"] == 9.0
+    assert updated.get_json()["data"]["cost_price"] == 410.0
+
+    cleared = client.put(
+        f"/api/v1/items/{item['id']}",
+        headers=owner,
+        json={"stock_quantity": None, "sku": None},
+    )
+    assert cleared.status_code == 200
+    assert cleared.get_json()["data"]["stock_quantity"] is None
+    assert cleared.get_json()["data"]["sku"] is None

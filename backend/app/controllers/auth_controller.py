@@ -7,7 +7,7 @@ from app.schemas.auth_schemas import (
     change_password_schema,
     email_only_schema,
     login_schema,
-    register_hotel_schema,
+    register_business_schema,
     reset_password_schema,
     token_schema,
 )
@@ -44,10 +44,15 @@ def me():
     return success_response(data=AuthService.me(user))
 
 
-def register_hotel():
-    payload = register_hotel_schema.load(request.get_json() or {})
-    data = AuthService.register_hotel(payload)
+def register_business():
+    payload = register_business_schema.load(request.get_json() or {})
+    data = AuthService.register_business(payload)
     return success_response(data=data, status_code=201)
+
+
+def register_hotel():
+    """Legacy endpoint alias for register_business."""
+    return register_business()
 
 
 def verify_email():

@@ -2,6 +2,7 @@
 
 from flask import Blueprint
 
+from app.routes.ai_routes import ai_bp
 from app.routes.audit_log_routes import audit_logs_bp
 from app.routes.auth_routes import auth_bp
 from app.routes.bill_routes import bills_bp
@@ -26,4 +27,5 @@ def register_blueprints(app):
     api_v1.register_blueprint(bills_bp)
     api_v1.register_blueprint(reports_bp)
     api_v1.register_blueprint(audit_logs_bp)
+    api_v1.register_blueprint(ai_bp)
     app.register_blueprint(api_v1)

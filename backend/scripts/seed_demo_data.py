@@ -72,7 +72,7 @@ def upsert_user(*, user_id: str, tenant_id: str, role_id: str, name: str, email:
 def main():
     app = create_app()
     with app.app_context():
-        upsert_role(ROLE_OWNER_ID, ROLE_OWNER, "Hotel owner with full tenant management access")
+        upsert_role(ROLE_OWNER_ID, ROLE_OWNER, "Business owner with full tenant management access")
         upsert_role(
             ROLE_BILLING_ID,
             ROLE_BILLING_USER,
@@ -83,6 +83,7 @@ def main():
             TENANT_A_ID,
             name="Hotel A",
             business_name="Hotel A Family Restaurant",
+            business_type="hotel",
             address="MG Road",
             city="Pune",
             state="Maharashtra",
@@ -98,6 +99,7 @@ def main():
             TENANT_B_ID,
             name="Hotel B",
             business_name="Hotel B Pure Veg",
+            business_type="restaurant",
             address="FC Road",
             city="Pune",
             state="Maharashtra",

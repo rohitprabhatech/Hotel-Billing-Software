@@ -1,19 +1,41 @@
 import {
   Alert,
   Button,
+  Card,
+  CardContent,
   CircularProgress,
-  Divider,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import PageShell from '../../components/PageShell';
 import { useAuth } from '../../context/AuthContext';
 import {
   fetchProfile,
   requestEmailChange,
   updateProfileRequest,
 } from '../../services/authService';
+
+function ProfileSection({ title, description, children }) {
+  return (
+    <Card>
+      <CardContent sx={{ p: { xs: 2.5, sm: 3 }, '&:last-child': { pb: { xs: 2.5, sm: 3 } } }}>
+        <Stack spacing={0.75} sx={{ mb: 3 }}>
+          <Typography variant="h6" component="h2">
+            {title}
+          </Typography>
+          {description ? (
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 560 }}>
+              {description}
+            </Typography>
+          ) : null}
+        </Stack>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ProfilePage() {
   const { user, login } = useAuth();
@@ -32,6 +54,7 @@ export default function ProfilePage() {
         const profile = res.data || {};
         setName(profile.name || '');
         setEmail(profile.email || '');
+        setPhone(profile.phone || '');
         setNewEmail('');
       })
       .catch((err) => {
@@ -74,56 +97,60 @@ export default function ProfilePage() {
   };
 
   return (
-    <Stack spacing={3} maxWidth={560}>
+    <PageShell maxWidth={880}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
-      <Stack spacing={2.5} component="form" onSubmit={onSaveProfile}>
-        <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} required fullWidth />
-        <TextField label="Current Email" value={email} fullWidth disabled />
-        <TextField
-          label="Phone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          fullWidth
-          helperText="Updates hotel contact phone used on receipts"
-        />
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          Save Profile
-        </Button>
-      </Stack>
+      <ProfileSection
+        title="Profile"
+        description="Update your name and contact phone used across the business account."
+      >
+        <Stack spacing={2.5} component="form" onSubmit={onSaveProfile}>
+          <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} required fullWidth />
+          <TextField label="Current Email" value={email} fullWidth disabled />
+          <TextField
+            label="Phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            fullWidth
+            helperText="Updates business contact phone used on receipts"
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Save Profile
+          </Button>
+        </Stack>
+      </ProfileSection>
 
-      <Divider />
-
-      <Stack spacing={2.5} component="form" onSubmit={onRequestEmailChange}>
-        <Typography variant="h6">Change Email</Typography>
-        <Typography variant="body2" color="text.secondary">
-          A verification link will be sent to the new email before it is updated.
-        </Typography>
-        <TextField
-          label="New Email"
-          type="email"
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          required
-          fullWidth
-        />
-        <Button
-          type="submit"
-          variant="outlined"
-          disabled={emailLoading}
-          startIcon={emailLoading ? <CircularProgress size={16} color="inherit" /> : null}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          Send Verification
-        </Button>
-      </Stack>
-    </Stack>
+      <ProfileSection
+        title="Change Email"
+        description="A verification link will be sent to the new email before it is updated."
+      >
+        <Stack spacing={2.5} component="form" onSubmit={onRequestEmailChange}>
+          <TextField
+            label="New Email"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            required
+            fullWidth
+          />
+          <Button
+            type="submit"
+            variant="outlined"
+            disabled={emailLoading}
+            startIcon={emailLoading ? <CircularProgress size={16} color="inherit" /> : null}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Send Verification
+          </Button>
+        </Stack>
+      </ProfileSection>
+    </PageShell>
   );
 }

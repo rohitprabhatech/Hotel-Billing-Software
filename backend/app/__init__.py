@@ -25,7 +25,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
         return success_response(
             data={
-                "name": "Hotel Billing API",
+                "name": "Business Billing API",
                 "api_base": "/api/v1",
             }
         )

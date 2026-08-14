@@ -21,9 +21,13 @@ class CreateBillSchema(Schema):
         fields.Nested(BillLineSchema), required=True, validate=validate.Length(min=1)
     )
     discount = fields.Decimal(load_default=0, as_string=False)
-    table_number = fields.String(
+    # Generic bill reference (table / counter / token / order note).
+    reference = fields.String(
         load_default=None, allow_none=True, validate=validate.Length(max=30)
     )
+    table_number = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=30)
+    )  # legacy alias for reference
     payment_method = fields.String(
         load_default=DEFAULT_PAYMENT_METHOD,
         validate=validate.OneOf(sorted(ALLOWED_PAYMENT_METHODS)),

@@ -6,6 +6,10 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -13,18 +17,27 @@ import {
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import PageShell from '../../components/PageShell';
+import SubscriptionPlanInfo from '../../components/SubscriptionPlanInfo';
+import ThemeModeToggle from '../../components/ThemeModeToggle';
 import { useAuth } from '../../context/AuthContext';
+import { useColorMode } from '../../context/ColorModeContext';
 import { PATHS } from '../../routes/paths';
+import { SUBSCRIPTION_PLAN } from '../../constants/company';
 import {
   fetchProfile,
   requestEmailChange,
   updateProfileRequest,
 } from '../../services/authService';
-import { fetchMyTenant, updateMyTenant } from '../../services/tenantService';
+import {
+  fetchBusinessTypes,
+  fetchMyTenant,
+  updateMyTenant,
+} from '../../services/tenantService';
 
-const emptyHotel = {
+const emptyBusiness = {
   name: '',
   business_name: '',
+  business_type: 'other',
   address: '',
   city: '',
   state: '',
@@ -67,26 +80,29 @@ function SettingsSection({ title, description, children, actions }) {
 
 export default function SettingsPage() {
   const { user, login } = useAuth();
-  const [hotel, setHotel] = useState(emptyHotel);
+  const { mode } = useColorMode();
+  const [business, setBusiness] = useState(emptyBusiness);
+  const [businessTypes, setBusinessTypes] = useState([]);
   const [profileName, setProfileName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [savingHotel, setSavingHotel] = useState(false);
+  const [savingBusiness, setSavingBusiness] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchMyTenant(), fetchProfile()])
-      .then(([tenantRes, profileRes]) => {
+    Promise.all([fetchMyTenant(), fetchProfile(), fetchBusinessTypes()])
+      .then(([tenantRes, profileRes, typesRes]) => {
         const t = tenantRes.data || {};
-        setHotel({
+        setBusiness({
           name: t.name || '',
           business_name: t.business_name || '',
+          business_type: t.business_type || 'other',
           address: t.address || '',
           city: t.city || '',
           state: t.state || '',
@@ -97,6 +113,7 @@ export default function SettingsPage() {
           fssai_number: t.fssai_number || '',
           bill_number_prefix: t.bill_number_prefix || '',
         });
+        setBusinessTypes(typesRes.data?.business_types || []);
         const profile = profileRes.data || {};
         setProfileName(profile.name || '');
         setProfilePhone(profile.phone || '');
@@ -108,22 +125,41 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const onHotelChange = (field) => (event) => {
-    setHotel((prev) => ({ ...prev, [field]: event.target.value }));
+  useEffect(() => {
+    if (loading) return undefined;
+    if (window.location.hash !== '#subscription') return undefined;
+    const timer = window.setTimeout(() => {
+      document.getElementById('subscription')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
+
+  const onBusinessChange = (field) => (event) => {
+    setBusiness((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const onSaveHotel = async (event) => {
+  const selectedType = businessTypes.find((row) => row.code === business.business_type);
+  const showFssaiHint = selectedType?.fssai_relevant ?? false;
+
+  const onSaveBusiness = async (event) => {
     event.preventDefault();
-    setSavingHotel(true);
+    setSavingBusiness(true);
     setError('');
     setSuccess('');
     try {
-      await updateMyTenant(hotel);
-      setSuccess('Hotel information updated successfully.');
+      const response = await updateMyTenant(business);
+      if (response.data) {
+        setBusiness((prev) => ({
+          ...prev,
+          ...response.data,
+          business_type: response.data.business_type || prev.business_type,
+        }));
+      }
+      setSuccess('Business information updated successfully.');
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to save hotel settings');
+      setError(err.response?.data?.error?.message || 'Failed to save business settings');
     } finally {
-      setSavingHotel(false);
+      setSavingBusiness(false);
     }
   };
 
@@ -168,20 +204,22 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <Box sx={{ py: 10, display: 'grid', placeItems: 'center' }}>
-        <CircularProgress size={28} />
-      </Box>
+      <PageShell maxWidth={880}>
+        <Box sx={{ py: 6, display: 'grid', placeItems: 'center' }}>
+          <CircularProgress size={28} />
+        </Box>
+      </PageShell>
     );
   }
 
   return (
-    <PageShell spacing={3} maxWidth={880}>
+    <PageShell maxWidth={880}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       <SettingsSection
         title="Profile"
-        description="Your personal account details for this hotel."
+        description="Your personal account details for this business."
       >
         <Stack component="form" spacing={2.5} onSubmit={onSaveProfile}>
           <Box
@@ -225,10 +263,10 @@ export default function SettingsPage() {
       </SettingsSection>
 
       <SettingsSection
-        title="Hotel Information"
+        title="Business Information"
         description="Details shown on receipts and used across billing."
       >
-        <Stack component="form" spacing={2.5} onSubmit={onSaveHotel}>
+        <Stack component="form" spacing={2.5} onSubmit={onSaveBusiness}>
           <Box
             sx={{
               display: 'grid',
@@ -237,62 +275,82 @@ export default function SettingsPage() {
             }}
           >
             <TextField
-              label="Hotel Name"
-              value={hotel.name}
-              onChange={onHotelChange('name')}
+              label="Display Name"
+              value={business.name}
+              onChange={onBusinessChange('name')}
               required
               fullWidth
             />
             <TextField
               label="Business Name"
-              value={hotel.business_name}
-              onChange={onHotelChange('business_name')}
+              value={business.business_name}
+              onChange={onBusinessChange('business_name')}
               required
               fullWidth
             />
+            <FormControl fullWidth required>
+              <InputLabel id="settings-business-type-label">Business Type</InputLabel>
+              <Select
+                labelId="settings-business-type-label"
+                label="Business Type"
+                value={business.business_type || 'other'}
+                onChange={onBusinessChange('business_type')}
+              >
+                {businessTypes.map((row) => (
+                  <MenuItem key={row.code} value={row.code}>
+                    {row.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="Address"
-              value={hotel.address}
-              onChange={onHotelChange('address')}
+              value={business.address}
+              onChange={onBusinessChange('address')}
               fullWidth
               sx={{ gridColumn: { sm: '1 / -1' } }}
             />
-            <TextField label="City" value={hotel.city} onChange={onHotelChange('city')} fullWidth />
-            <TextField label="State" value={hotel.state} onChange={onHotelChange('state')} fullWidth />
+            <TextField label="City" value={business.city} onChange={onBusinessChange('city')} fullWidth />
+            <TextField label="State" value={business.state} onChange={onBusinessChange('state')} fullWidth />
             <TextField
               label="Pincode"
-              value={hotel.pincode}
-              onChange={onHotelChange('pincode')}
+              value={business.pincode}
+              onChange={onBusinessChange('pincode')}
               fullWidth
             />
             <TextField
               label="Phone"
-              value={hotel.phone}
-              onChange={onHotelChange('phone')}
+              value={business.phone}
+              onChange={onBusinessChange('phone')}
               fullWidth
             />
             <TextField
-              label="Hotel Email"
-              value={hotel.email}
-              onChange={onHotelChange('email')}
+              label="Business Email"
+              value={business.email}
+              onChange={onBusinessChange('email')}
               fullWidth
             />
             <TextField
               label="GSTIN"
-              value={hotel.gst_number}
-              onChange={onHotelChange('gst_number')}
+              value={business.gst_number}
+              onChange={onBusinessChange('gst_number')}
               fullWidth
             />
             <TextField
-              label="FSSAI"
-              value={hotel.fssai_number}
-              onChange={onHotelChange('fssai_number')}
+              label="FSSAI (optional)"
+              value={business.fssai_number}
+              onChange={onBusinessChange('fssai_number')}
               fullWidth
+              helperText={
+                showFssaiHint
+                  ? 'Relevant for restaurants and hotels'
+                  : 'Optional — usually not required for this business type'
+              }
             />
             <TextField
               label="Bill Number Prefix"
-              value={hotel.bill_number_prefix}
-              onChange={onHotelChange('bill_number_prefix')}
+              value={business.bill_number_prefix}
+              onChange={onBusinessChange('bill_number_prefix')}
               helperText="Example: INV-A-"
               fullWidth
               sx={{ gridColumn: { sm: '1 / -1' } }}
@@ -301,12 +359,31 @@ export default function SettingsPage() {
           <Button
             type="submit"
             variant="contained"
-            disabled={savingHotel}
+            disabled={savingBusiness}
             sx={{ alignSelf: 'flex-start' }}
           >
-            {savingHotel ? 'Saving...' : 'Save Changes'}
+            {savingBusiness ? 'Saving...' : 'Save Changes'}
           </Button>
         </Stack>
+      </SettingsSection>
+
+      <Box id="subscription">
+        <SettingsSection
+          title="Subscription"
+          description={`${SUBSCRIPTION_PLAN.priceDisplay} · informational plan details (no in-app payment).`}
+        >
+          <SubscriptionPlanInfo variant="owner" dense />
+        </SettingsSection>
+      </Box>
+
+      <SettingsSection
+        title="Appearance"
+        description="Choose light or dark mode. Your preference is saved on this device."
+        actions={<ThemeModeToggle />}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Current theme: <strong>{mode === 'dark' ? 'Dark' : 'Light'}</strong>
+        </Typography>
       </SettingsSection>
 
       <SettingsSection

@@ -3,6 +3,7 @@
 from flask import current_app
 from flask_jwt_extended import create_access_token
 
+from app.constants.business_types import business_type_label, normalize_business_type
 from app.extensions import db
 from app.models.auth_token import EmailVerificationToken, PasswordResetToken
 from app.models.role import ROLE_OWNER
@@ -84,6 +85,8 @@ class AuthService:
 
     @staticmethod
     def logout(user, ip_address: str | None, user_agent: str | None):
+        # Revoke outstanding JWTs for this user (token_version claim must match).
+        user.token_version = int(user.token_version or 0) + 1
         AuditService.log(
             tenant_id=user.tenant_id,
             action="LOGOUT",
@@ -102,18 +105,25 @@ class AuthService:
         return AuthService.serialize_user(user)
 
     @staticmethod
-    def register_hotel(payload: dict):
-        hotel_name = (payload.get("hotel_name") or "").strip()
-        business_name = (payload.get("business_name") or hotel_name).strip()
+    def register_business(payload: dict):
+        business_name = (payload.get("business_name") or "").strip()
+        display_name = (
+            payload.get("name") or payload.get("hotel_name") or business_name or ""
+        ).strip()
+        if not business_name:
+            business_name = display_name
+        if not display_name:
+            display_name = business_name
+
         owner_name = (payload.get("owner_name") or "").strip()
         owner_email = (payload.get("owner_email") or "").strip().lower()
         password = payload.get("password") or ""
         confirm = payload.get("confirm_password") or ""
 
-        if not hotel_name:
-            raise ValidationError("Hotel name is required")
         if not business_name:
             raise ValidationError("Business name is required")
+        if not display_name:
+            raise ValidationError("Business display name is required")
         if not owner_name:
             raise ValidationError("Owner name is required")
         if not owner_email or "@" not in owner_email:
@@ -123,6 +133,11 @@ class AuthService:
         if len(password) < 8:
             raise ValidationError("Password must be at least 8 characters")
 
+        try:
+            business_type = normalize_business_type(payload.get("business_type"))
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
         if UserRepository.find_by_email(owner_email):
             raise ConflictError("An account with this email already exists")
 
@@ -130,17 +145,18 @@ class AuthService:
         if owner_role is None:
             raise ValidationError("Owner role is not configured")
 
-        hotel_email = (payload.get("email") or owner_email).strip().lower()
+        business_email = (payload.get("email") or owner_email).strip().lower()
         tenant = Tenant(
             id=new_uuid(),
-            name=hotel_name,
+            name=display_name,
             business_name=business_name,
+            business_type=business_type,
             address=(payload.get("address") or "").strip() or None,
             city=(payload.get("city") or "").strip() or None,
             state=(payload.get("state") or "").strip() or None,
             pincode=(payload.get("pincode") or "").strip() or None,
             phone=(payload.get("mobile") or payload.get("phone") or "").strip() or None,
-            email=hotel_email,
+            email=business_email,
             gst_number=(payload.get("gst_number") or "").strip() or None,
             fssai_number=(payload.get("fssai_number") or "").strip() or None,
             status="ACTIVE",
@@ -166,14 +182,15 @@ class AuthService:
 
         AuditService.log(
             tenant_id=tenant.id,
-            action="REGISTER_HOTEL",
+            action="REGISTER_BUSINESS",
             entity_type="TENANT",
             entity_id=tenant.id,
             user_id=owner.id,
             user_name=owner.name,
             new_data={
-                "hotel_name": tenant.name,
+                "name": tenant.name,
                 "business_name": tenant.business_name,
+                "business_type": tenant.business_type,
                 "owner_email": owner.email,
             },
         )
@@ -185,9 +202,10 @@ class AuthService:
         )
 
         result = {
-            "message": "Hotel registered successfully. Please verify your email to sign in.",
+            "message": "Business registered successfully. Please verify your email to sign in.",
             "tenant_id": tenant.id,
             "owner_email": owner.email,
+            "business_type": tenant.business_type,
             "email_verification_required": bool(
                 current_app.config.get("EMAIL_VERIFICATION_REQUIRED")
             ),
@@ -195,6 +213,11 @@ class AuthService:
         if current_app.config.get("ALLOW_DEV_AUTH_TOKENS"):
             result["verification_token"] = raw_token
         return result
+
+    @staticmethod
+    def register_hotel(payload: dict):
+        """Legacy alias for register_business."""
+        return AuthService.register_business(payload)
 
     @staticmethod
     def verify_email(token: str):
@@ -247,6 +270,9 @@ class AuthService:
         user.email_verified = True
         user.email_verified_at = utc_now_naive()
         record.verified_at = utc_now_naive()
+        AuthService._invalidate_unused_email_verification_tokens(
+            user.id, purpose=record.purpose, except_id=record.id
+        )
         db.session.commit()
         return {"message": "Email verified successfully. You can now sign in."}
 
@@ -294,6 +320,7 @@ class AuthService:
         if user is None:
             return result
 
+        AuthService._invalidate_unused_password_reset_tokens(user.id)
         raw_token = generate_token()
         db.session.add(
             PasswordResetToken(
@@ -347,6 +374,7 @@ class AuthService:
 
         AuthService._set_password(user, password)
         record.used_at = utc_now_naive()
+        AuthService._invalidate_unused_password_reset_tokens(user.id, except_id=record.id)
         AuditService.log(
             tenant_id=user.tenant_id,
             action="PASSWORD_CHANGED",
@@ -407,9 +435,38 @@ class AuthService:
         user.token_version = int(user.token_version or 0) + 1
 
     @staticmethod
+    def _invalidate_unused_password_reset_tokens(user_id: str, *, except_id: str | None = None):
+        now = utc_now_naive()
+        query = db.session.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user_id,
+            PasswordResetToken.used_at.is_(None),
+        )
+        if except_id:
+            query = query.filter(PasswordResetToken.id != except_id)
+        query.update({PasswordResetToken.used_at: now}, synchronize_session=False)
+
+    @staticmethod
+    def _invalidate_unused_email_verification_tokens(
+        user_id: str, *, purpose: str, except_id: str | None = None
+    ):
+        now = utc_now_naive()
+        query = db.session.query(EmailVerificationToken).filter(
+            EmailVerificationToken.user_id == user_id,
+            EmailVerificationToken.purpose == purpose,
+            EmailVerificationToken.verified_at.is_(None),
+        )
+        if except_id:
+            query = query.filter(EmailVerificationToken.id != except_id)
+        query.update(
+            {EmailVerificationToken.verified_at: now},
+            synchronize_session=False,
+        )
+
+    @staticmethod
     def _issue_email_verification(
         user: User, *, purpose: str = "signup", new_email: str | None = None
     ) -> str:
+        AuthService._invalidate_unused_email_verification_tokens(user.id, purpose=purpose)
         raw_token = generate_token()
         db.session.add(
             EmailVerificationToken(
@@ -438,6 +495,8 @@ class AuthService:
                 "id": user.tenant.id,
                 "name": user.tenant.name,
                 "business_name": user.tenant.business_name,
+                "business_type": user.tenant.business_type or "other",
+                "business_type_label": business_type_label(user.tenant.business_type),
                 "status": user.tenant.status,
             },
         }

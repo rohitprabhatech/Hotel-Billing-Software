@@ -6,7 +6,7 @@ import ChangePasswordPage from '../pages/account/ChangePasswordPage';
 import ProfilePage from '../pages/account/ProfilePage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import LoginPage from '../pages/auth/LoginPage';
-import RegisterHotelPage from '../pages/auth/RegisterHotelPage';
+import RegisterBusinessPage from '../pages/auth/RegisterBusinessPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
 import BillingBillsPage from '../pages/billing/BillingBillsPage';
@@ -16,6 +16,7 @@ import NewBillPage from '../pages/billing/NewBillPage';
 import HomePage from '../pages/HomePage';
 import PrintBillPage from '../pages/print/PrintBillPage';
 import AuditPage from '../pages/owner/AuditPage';
+import AiAssistantPage from '../pages/owner/AiAssistantPage';
 import CategoriesPage from '../pages/owner/CategoriesPage';
 import ItemActivityPage from '../pages/owner/ItemActivityPage';
 import ItemsPage from '../pages/owner/ItemsPage';
@@ -33,7 +34,7 @@ export default function AppRoutes() {
 
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterHotelPage />} />
+        <Route path="/register" element={<RegisterBusinessPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -48,6 +49,7 @@ export default function AppRoutes() {
           <Route path="item-activity" element={<ItemActivityPage />} />
           <Route path="bills" element={<OwnerBillsPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="ai" element={<AiAssistantPage />} />
           <Route path="audit" element={<AuditPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<SettingsPage />} />

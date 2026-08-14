@@ -45,11 +45,19 @@ import {
 
 const emptyForm = {
   name: '',
+  sku: '',
   category_id: '',
   description: '',
   price: '',
+  cost_price: '',
   gst_percentage: '2.5',
+  stock_quantity: '',
 };
+
+function money(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  return `₹${Number(value).toFixed(2)}`;
+}
 
 export default function ItemsPage() {
   const [items, setItems] = useState([]);
@@ -107,10 +115,16 @@ export default function ItemsPage() {
     setEditing(item);
     setForm({
       name: item.name || '',
+      sku: item.sku || '',
       category_id: item.category_id || '',
       description: item.description || '',
       price: String(item.price ?? ''),
+      cost_price: item.cost_price === null || item.cost_price === undefined ? '' : String(item.cost_price),
       gst_percentage: String(item.gst_percentage ?? '0'),
+      stock_quantity:
+        item.stock_quantity === null || item.stock_quantity === undefined
+          ? ''
+          : String(item.stock_quantity),
     });
     setOpen(true);
   };
@@ -121,10 +135,13 @@ export default function ItemsPage() {
     setSuccess('');
     const payload = {
       name: form.name,
+      sku: form.sku.trim() || null,
       category_id: form.category_id,
       description: form.description || null,
       price: Number(form.price),
+      cost_price: form.cost_price === '' ? null : Number(form.cost_price),
       gst_percentage: Number(form.gst_percentage),
+      stock_quantity: form.stock_quantity === '' ? null : Number(form.stock_quantity),
     };
     try {
       if (editing) {
@@ -192,7 +209,7 @@ export default function ItemsPage() {
           }
         >
           <TextField
-            label="Search"
+            label="Search name or SKU"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -210,7 +227,7 @@ export default function ItemsPage() {
               <MenuItem value="">All</MenuItem>
               {categories.map((c) => (
                 <MenuItem key={c.id} value={c.id}>
-                  {c.name}
+                  {c.hierarchy_path || c.name}
                 </MenuItem>
               ))}
             </Select>
@@ -238,16 +255,18 @@ export default function ItemsPage() {
               <CircularProgress size={28} />
             </Box>
           ) : (
-            <Table size="small" sx={{ minWidth: 960 }}>
+            <Table size="small" sx={{ minWidth: 1100 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Item Name</TableCell>
+                  <TableCell>SKU</TableCell>
                   <TableCell>Category</TableCell>
                   <TableCell align="right">Price</TableCell>
+                  <TableCell align="right">Cost</TableCell>
                   <TableCell align="right">GST</TableCell>
+                  <TableCell align="right">Stock</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Created By</TableCell>
-                  <TableCell>Created At</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -255,13 +274,22 @@ export default function ItemsPage() {
                 {items.map((item) => (
                   <TableRow key={item.id} hover>
                     <TableCell>
-                      <TruncateText value={item.name} maxWidth={180} />
+                      <TruncateText value={item.name} maxWidth={160} />
                     </TableCell>
                     <TableCell>
-                      <TruncateText value={item.category_name || '—'} maxWidth={140} />
+                      <TruncateText value={item.sku || '—'} maxWidth={100} />
                     </TableCell>
-                    <TableCell align="right">₹{Number(item.price).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <TruncateText value={item.category_name || '—'} maxWidth={120} />
+                    </TableCell>
+                    <TableCell align="right">{money(item.price)}</TableCell>
+                    <TableCell align="right">{money(item.cost_price)}</TableCell>
                     <TableCell align="right">{Number(item.gst_percentage).toFixed(2)}%</TableCell>
+                    <TableCell align="right">
+                      {item.stock_quantity === null || item.stock_quantity === undefined
+                        ? '—'
+                        : Number(item.stock_quantity)}
+                    </TableCell>
                     <TableCell>
                       <Stack direction="row" alignItems="center" spacing={1}>
                         <Switch
@@ -276,12 +304,7 @@ export default function ItemsPage() {
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      <TruncateText value={item.created_by_name || '—'} maxWidth={120} />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-                        {item.created_at ? new Date(item.created_at).toLocaleDateString() : '—'}
-                      </Typography>
+                      <TruncateText value={item.created_by_name || '—'} maxWidth={110} />
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
@@ -314,7 +337,7 @@ export default function ItemsPage() {
           {!loading && !items.length ? (
             <EmptyState
               title="No items found"
-              description="There are no menu items matching your search."
+              description="Add catalog items with price, GST, optional SKU, cost, and stock."
               actionLabel="Add Item"
               onAction={openCreate}
             />
@@ -341,7 +364,14 @@ export default function ItemsPage() {
               fullWidth
               sx={{ gridColumn: { sm: '1 / -1' } }}
             />
-            <FormControl fullWidth required sx={{ gridColumn: { sm: '1 / -1' } }}>
+            <TextField
+              label="SKU (optional)"
+              value={form.sku}
+              onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
+              fullWidth
+              helperText="Unique per business when provided"
+            />
+            <FormControl fullWidth required>
               <InputLabel>Category</InputLabel>
               <Select
                 label="Category"
@@ -352,7 +382,7 @@ export default function ItemsPage() {
                   .filter((c) => c.is_active || c.id === form.category_id)
                   .map((c) => (
                     <MenuItem key={c.id} value={c.id}>
-                      {c.name}
+                      {c.hierarchy_path || c.name}
                     </MenuItem>
                   ))}
               </Select>
@@ -367,6 +397,15 @@ export default function ItemsPage() {
               inputProps={{ min: 0, step: '0.01' }}
             />
             <TextField
+              label="Cost Price (₹)"
+              type="number"
+              value={form.cost_price}
+              onChange={(e) => setForm((f) => ({ ...f, cost_price: e.target.value }))}
+              fullWidth
+              inputProps={{ min: 0, step: '0.01' }}
+              helperText="Optional purchase/cost price"
+            />
+            <TextField
               label="GST %"
               type="number"
               value={form.gst_percentage}
@@ -374,6 +413,15 @@ export default function ItemsPage() {
               required
               fullWidth
               inputProps={{ min: 0, max: 100, step: '0.01' }}
+            />
+            <TextField
+              label="Stock Quantity"
+              type="number"
+              value={form.stock_quantity}
+              onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))}
+              fullWidth
+              inputProps={{ min: 0, step: '0.001' }}
+              helperText="Leave blank if you are not tracking stock"
             />
             <TextField
               label="Description"
@@ -400,7 +448,7 @@ export default function ItemsPage() {
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             <Typography variant="body2">
               Soft-deactivate <strong>{deactivateTarget?.name}</strong>. It will leave new bills
-              but remain in history and owner audit logs.
+              but remain in history and owner item activity.
             </Typography>
             <TextField
               label="Reason (optional)"
@@ -409,7 +457,7 @@ export default function ItemsPage() {
               fullWidth
               multiline
               minRows={2}
-              placeholder="e.g. Item temporarily unavailable"
+              placeholder="e.g. Temporarily unavailable"
             />
           </Stack>
         </DialogContent>

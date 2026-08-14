@@ -34,8 +34,8 @@ class UserService:
         ctx = require_request_context()
         UserService._validate_user_payload(name, email, password, require_password=True)
 
-        if UserRepository.find_by_tenant_and_email(ctx.tenant_id, email):
-            raise ConflictError("A user with this email already exists for this hotel")
+        if UserRepository.find_by_email(email.strip().lower()):
+            raise ConflictError("An account with this email already exists")
 
         role = RoleRepository.get_by_name(ROLE_BILLING_USER)
         if role is None:
@@ -90,16 +90,20 @@ class UserService:
             email_norm = email.strip().lower()
             if not email_norm or "@" not in email_norm:
                 raise ValidationError("A valid email is required")
-            existing = UserRepository.find_by_tenant_and_email(ctx.tenant_id, email_norm)
-            if existing and existing.id != user.id:
-                raise ConflictError("A user with this email already exists for this hotel")
+            existing = UserRepository.find_by_email(email_norm)
+            if any(u.id != user.id for u in existing):
+                raise ConflictError("An account with this email already exists")
             user.email = email_norm
 
         if is_active is not None:
             # Owners should not demote/deactivate another owner in v1 via this API casually.
             if user.role_name == ROLE_OWNER and user.id != ctx.user_id and is_active is False:
                 raise ForbiddenError("Cannot deactivate another owner account")
+            becoming_inactive = user.is_active and not bool(is_active)
             user.is_active = bool(is_active)
+            if becoming_inactive:
+                # Revoke outstanding JWTs for deactivated accounts.
+                user.token_version = int(user.token_version or 0) + 1
 
         action = "DEACTIVATE_USER" if old["is_active"] and not user.is_active else "UPDATE_USER"
         AuditService.log(

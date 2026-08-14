@@ -92,7 +92,7 @@ export default function BillingCategoriesPage() {
                   </TableCell>
                   <TableCell>
                     <TruncateText
-                      value={category.parent_category_name || 'None'}
+                      value={category.parent_category_name || 'No Parent / Main Category'}
                       maxWidth={140}
                     />
                   </TableCell>
@@ -105,7 +105,7 @@ export default function BillingCategoriesPage() {
         {!loading && !categories.length ? (
           <EmptyState
             title="No categories found"
-            description="Ask the owner to add categories for this hotel."
+            description="Ask the business owner to add categories for this workspace."
           />
         ) : null}
       </TableCard>

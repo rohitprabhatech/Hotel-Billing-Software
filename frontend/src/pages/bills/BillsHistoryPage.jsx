@@ -2,6 +2,8 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -17,9 +19,13 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import EmptyState from '../../components/EmptyState';
+import FilterBar from '../../components/FilterBar';
+import PageShell from '../../components/PageShell';
+import TableCard from '../../components/TableCard';
+import { filterControlSx } from '../../layouts/shell';
 import {
   cancelBill,
   getBill,
@@ -27,8 +33,9 @@ import {
   openBillPrint,
 } from '../../services/billService';
 import BillPreview from '../../print/BillPreview';
+import { PAYMENT_CASH, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
 
-export default function BillsHistoryPage({ title = 'Bill History', todayDefault = false }) {
+export default function BillsHistoryPage({ todayDefault = false }) {
   const [bills, setBills] = useState([]);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
@@ -40,9 +47,11 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setError('');
+    setLoading(true);
     try {
       const res = await listBills({
         q: q || undefined,
@@ -54,6 +63,8 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
       setBills(res.data || []);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load bills');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,22 +103,24 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
   };
 
   return (
-    <>
-      <Typography variant="h5" gutterBottom>
-        {title}
-      </Typography>
-
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2}>
+    <PageShell>
+      <FilterBar
+        actions={
+          <Button variant="outlined" onClick={load} disabled={loading}>
+            Search
+          </Button>
+        }
+      >
         <TextField
-          label="Search bill / table"
+          label="Search bill / reference"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') load();
           }}
-          fullWidth
+          sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}
         />
-        <FormControl sx={{ minWidth: 160 }}>
+        <FormControl sx={filterControlSx}>
           <InputLabel>Status</InputLabel>
           <Select
             label="Status"
@@ -119,7 +132,7 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
             <MenuItem value="CANCELLED">Cancelled</MenuItem>
           </Select>
         </FormControl>
-        <FormControl sx={{ minWidth: 160 }}>
+        <FormControl sx={filterControlSx}>
           <InputLabel>Payment Method</InputLabel>
           <Select
             label="Payment Method"
@@ -127,11 +140,11 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
             onChange={(e) => setPaymentMethod(e.target.value)}
           >
             <MenuItem value="">All</MenuItem>
-            <MenuItem value="cash">Cash</MenuItem>
-            <MenuItem value="online">Online</MenuItem>
+            <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
+            <MenuItem value={PAYMENT_ONLINE}>Online</MenuItem>
           </Select>
         </FormControl>
-        <FormControl sx={{ minWidth: 160 }}>
+        <FormControl sx={filterControlSx}>
           <InputLabel>Period</InputLabel>
           <Select
             label="Period"
@@ -142,65 +155,79 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
             <MenuItem value="today">Today</MenuItem>
           </Select>
         </FormControl>
-        <Button variant="outlined" onClick={load}>
-          Search
-        </Button>
-      </Stack>
+      </FilterBar>
 
-      {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
-      {success ? <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert> : null}
+      {error ? <Alert severity="error">{error}</Alert> : null}
+      {success ? <Alert severity="success">{success}</Alert> : null}
 
-      <Box sx={{ bgcolor: 'background.paper', borderRadius: 2, overflow: 'auto' }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Bill No</TableCell>
-              <TableCell>Table</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Payment Method</TableCell>
-              <TableCell align="right">Total</TableCell>
-              <TableCell>Prints</TableCell>
-              <TableCell>Created By</TableCell>
-              <TableCell>Time</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {bills.map((bill) => (
-              <TableRow key={bill.id} hover>
-                <TableCell>{bill.bill_number}</TableCell>
-                <TableCell>{bill.table_number || '—'}</TableCell>
-                <TableCell>{bill.status}</TableCell>
-                <TableCell>
-                  {bill.payment_method_label
-                    || (bill.payment_method === 'online' ? 'Online' : 'Cash')}
-                </TableCell>
-                <TableCell align="right">₹{Number(bill.grand_total).toFixed(2)}</TableCell>
-                <TableCell>{bill.printed_count}</TableCell>
-                <TableCell>{bill.created_by_name || '—'}</TableCell>
-                <TableCell>
-                  {bill.created_at ? new Date(bill.created_at).toLocaleString() : '—'}
-                </TableCell>
-                <TableCell align="right">
-                  <Button size="small" onClick={() => openDetails(bill)}>
-                    View
-                  </Button>
-                  <Button size="small" onClick={() => openBillPrint(bill.id)}>
-                    Print
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {!bills.length ? (
+      <TableCard>
+        {loading ? (
+          <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : (
+          <Table size="small" sx={{ minWidth: 960 }}>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={9}>
-                  <Typography color="text.secondary">No bills found.</Typography>
-                </TableCell>
+                <TableCell>Bill No</TableCell>
+                <TableCell>Reference</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Payment Method</TableCell>
+                <TableCell align="right">Total</TableCell>
+                <TableCell>Prints</TableCell>
+                <TableCell>Created By</TableCell>
+                <TableCell>Time</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
-            ) : null}
-          </TableBody>
-        </Table>
-      </Box>
+            </TableHead>
+            <TableBody>
+              {bills.map((bill) => (
+                <TableRow key={bill.id} hover>
+                  <TableCell sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                    {bill.bill_number}
+                  </TableCell>
+                  <TableCell>{bill.reference || bill.table_number || '—'}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={bill.status === 'CANCELLED' ? 'Cancelled' : 'Finalized'}
+                      color={bill.status === 'CANCELLED' ? 'warning' : 'success'}
+                      variant={bill.status === 'CANCELLED' ? 'filled' : 'outlined'}
+                    />
+                  </TableCell>
+                  <TableCell>{paymentMethodLabel(bill.payment_method)}</TableCell>
+                  <TableCell align="right">₹{Number(bill.grand_total).toFixed(2)}</TableCell>
+                  <TableCell>{bill.printed_count}</TableCell>
+                  <TableCell>{bill.created_by_name || '—'}</TableCell>
+                  <TableCell>
+                    {bill.created_at ? new Date(bill.created_at).toLocaleString() : '—'}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Stack direction="row" spacing={0.5} justifyContent="flex-end" useFlexGap flexWrap="wrap">
+                      <Button size="small" onClick={() => openDetails(bill)}>
+                        View
+                      </Button>
+                      <Button size="small" onClick={() => openBillPrint(bill.id)}>
+                        Print
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!bills.length ? (
+                <TableRow>
+                  <TableCell colSpan={9} sx={{ p: 0, border: 0 }}>
+                    <EmptyState
+                      title="No bills found"
+                      description="Try another search, status, payment method, or period."
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        )}
+      </TableCard>
 
       <Dialog
         open={Boolean(selected)}
@@ -214,7 +241,7 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
         </DialogTitle>
         <DialogContent>
           {selected ? (
-            <Stack spacing={2} sx={{ mt: 1 }}>
+            <Stack spacing={2.5} sx={{ pt: 1 }}>
               {selected.status === 'CANCELLED' ? (
                 <Alert severity="warning">
                   Reason: {selected.cancellation_reason || '—'}
@@ -243,16 +270,17 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
       <Dialog open={cancelOpen} onClose={() => setCancelOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Cancel Bill #{selected?.bill_number}</DialogTitle>
         <DialogContent>
-          <TextField
-            label="Cancellation reason"
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-            fullWidth
-            required
-            multiline
-            minRows={3}
-            sx={{ mt: 1 }}
-          />
+          <Stack spacing={2.5} sx={{ pt: 1 }}>
+            <TextField
+              label="Cancellation reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              fullWidth
+              required
+              multiline
+              minRows={3}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCancelOpen(false)}>Back</Button>
@@ -266,6 +294,6 @@ export default function BillsHistoryPage({ title = 'Bill History', todayDefault 
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+    </PageShell>
   );
 }

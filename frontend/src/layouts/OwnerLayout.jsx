@@ -1,4 +1,5 @@
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
@@ -9,7 +10,7 @@ import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
-import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import {
   AppBar,
@@ -32,22 +33,26 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import MainContent from '../components/MainContent';
 import PageHeader from '../components/PageHeader';
+import ThemeModeToggle from '../components/ThemeModeToggle';
 import { useAuth } from '../context/AuthContext';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
+import { DRAWER_WIDTH } from './shell';
 import { logoutRequest } from '../services/authService';
 import { PATHS } from '../routes/paths';
 
-const drawerWidth = 248;
+const drawerWidth = DRAWER_WIDTH;
 
 const navItems = [
   { to: PATHS.ownerDashboard, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
   { to: PATHS.billingHome, label: 'Billing', icon: <PointOfSaleOutlinedIcon /> },
   { to: PATHS.ownerBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
-  { to: PATHS.ownerItems, label: 'Items', icon: <RestaurantMenuOutlinedIcon /> },
+  { to: PATHS.ownerItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
   { to: PATHS.ownerItemActivity, label: 'Item Activity', icon: <HistoryOutlinedIcon /> },
   { to: PATHS.ownerCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
   { to: PATHS.ownerReports, label: 'Sales Reports', icon: <AssessmentOutlinedIcon /> },
+  { to: PATHS.ownerAi, label: 'AI Assistant', icon: <AutoAwesomeOutlinedIcon /> },
   { to: PATHS.ownerAudit, label: 'Audit & Activity', icon: <HistoryOutlinedIcon /> },
   { to: PATHS.ownerUsers, label: 'Users', icon: <PeopleOutlinedIcon /> },
   { to: PATHS.ownerSettings, label: 'Settings', icon: <SettingsOutlinedIcon /> },
@@ -61,35 +66,40 @@ const titles = {
   },
   [PATHS.ownerBills]: {
     title: 'Bills',
-    subtitle: 'Review billing history for your hotel.',
+    subtitle: 'Review billing history for your business.',
   },
   [PATHS.ownerItems]: {
     title: 'Items',
-    subtitle: "Manage your hotel's food and beverage items.",
+    subtitle: 'Manage catalog items, pricing, GST, SKU, and stock.',
   },
   [PATHS.ownerItemActivity]: {
     title: 'Item Activity',
-    subtitle: 'Track item creation, updates, deactivation and reactivation.',
+    subtitle: 'See who created, edited, or deactivated items.',
   },
   [PATHS.ownerCategories]: {
     title: 'Categories',
-    subtitle: 'Manage food and beverage categories.',
+    subtitle: 'Organize business items with main and child categories.',
   },
   [PATHS.ownerReports]: {
     title: 'Sales Reports',
-    subtitle: "Review your hotel's sales performance.",
+    subtitle: 'Review your business sales performance.',
+  },
+  [PATHS.ownerAi]: {
+    title: 'AI Business Assistant',
+    subtitle:
+      'Sales analysis and decision support from real billing history — never invents numbers.',
   },
   [PATHS.ownerAudit]: {
     title: 'Audit Activity',
-    subtitle: 'Track important activities performed within your hotel account.',
+    subtitle: 'Track important activities across your business account.',
   },
   [PATHS.ownerUsers]: {
     title: 'Users',
-    subtitle: 'Manage users who can access this hotel billing system.',
+    subtitle: 'Manage users who can access this billing system.',
   },
   [PATHS.ownerSettings]: {
     title: 'Settings',
-    subtitle: 'Manage profile, hotel information, security and account email.',
+    subtitle: 'Manage profile, business information, subscription, appearance, security, and account email.',
   },
   [PATHS.ownerProfile]: {
     title: 'Profile',
@@ -135,7 +145,7 @@ export default function OwnerLayout() {
             </Typography>
           </Tooltip>
           <Typography variant="caption" color="text.secondary">
-            Owner console
+            Owner · Console
           </Typography>
         </Box>
       </Toolbar>
@@ -180,16 +190,19 @@ export default function OwnerLayout() {
             </IconButton>
           ) : null}
           <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
-            <Tooltip title={user?.tenant?.business_name || 'Hotel Billing'}>
+            <Tooltip title={user?.tenant?.business_name || 'Business Billing'}>
               <Typography variant="subtitle1" fontWeight={700} noWrap>
-                {user?.tenant?.business_name || 'Hotel Billing'}
+                {user?.tenant?.business_name || 'Business Billing'}
               </Typography>
             </Tooltip>
             <Typography variant="caption" color="text.secondary" noWrap>
-              Hotel Billing Dashboard · {meta.title}
+              {user?.tenant?.business_type_label
+                ? `${user.tenant.business_type_label} · ${meta.title}`
+                : `Business Dashboard · ${meta.title}`}
             </Typography>
           </Box>
           <Chip size="small" label="OWNER" color="primary" variant="outlined" sx={{ mr: 1 }} />
+          <ThemeModeToggle sx={{ mr: 0.5 }} />
           <Tooltip title="Account menu">
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu">
               <PersonOutlinedIcon />
@@ -283,16 +296,7 @@ export default function OwnerLayout() {
 
 function OwnerMain({ meta }) {
   return (
-    <Box
-      sx={{
-        px: { xs: 2, sm: 3, lg: 4 },
-        py: { xs: 2.5, md: 3 },
-        width: '100%',
-        maxWidth: 1400,
-        mx: 'auto',
-        boxSizing: 'border-box',
-      }}
-    >
+    <MainContent>
       {!meta.hidePageHeader ? (
         <PageHeader
           title={meta.title}
@@ -301,6 +305,6 @@ function OwnerMain({ meta }) {
         />
       ) : null}
       <Outlet />
-    </Box>
+    </MainContent>
   );
 }

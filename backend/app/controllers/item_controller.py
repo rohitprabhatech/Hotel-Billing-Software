@@ -44,6 +44,9 @@ def create_item():
         description=payload.get("description"),
         price=payload["price"],
         gst_percentage=payload.get("gst_percentage", 0),
+        sku=payload.get("sku"),
+        cost_price=payload.get("cost_price"),
+        stock_quantity=payload.get("stock_quantity"),
     )
     return success_response(data=data, status_code=201)
 
@@ -58,6 +61,12 @@ def update_item(item_id: str):
         description=payload.get("description") if "description" in raw else None,
         price=payload.get("price") if "price" in raw else None,
         gst_percentage=payload.get("gst_percentage") if "gst_percentage" in raw else None,
+        sku=payload.get("sku") if "sku" in raw else None,
+        sku_provided="sku" in raw,
+        cost_price=payload.get("cost_price") if "cost_price" in raw else None,
+        cost_price_provided="cost_price" in raw,
+        stock_quantity=payload.get("stock_quantity") if "stock_quantity" in raw else None,
+        stock_quantity_provided="stock_quantity" in raw,
     )
     return success_response(data=data)
 

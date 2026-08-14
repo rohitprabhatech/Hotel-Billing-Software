@@ -5,8 +5,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -27,7 +25,6 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import PageShell from '../../components/PageShell';
-import Section from '../../components/Section';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { PageActions } from '../../context/PageActionsContext';
@@ -42,7 +39,7 @@ const emptyForm = { name: '', description: '', parent_id: '' };
 
 const ROOT_OPTION = {
   id: '',
-  name: 'No Parent (Root Category)',
+  name: 'No Parent / Main Category',
   isRoot: true,
 };
 
@@ -129,9 +126,16 @@ export default function CategoriesPage() {
       collectDescendantIds(categories, editing.id).forEach((id) => blocked.add(id));
     }
     const options = categories
-      .filter((category) => !blocked.has(category.id))
+      .filter((category) => {
+        if (blocked.has(category.id)) return false;
+        // Parent dropdown is tenant-scoped list only; prefer active parents.
+        if (!category.is_active && category.id !== editing?.parent_id) return false;
+        return true;
+      })
       .slice()
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) =>
+        (a.hierarchy_path || a.name).localeCompare(b.hierarchy_path || b.name)
+      );
     return [ROOT_OPTION, ...options];
   }, [categories, editing]);
 
@@ -220,41 +224,17 @@ export default function CategoriesPage() {
         {error ? <Alert severity="error">{error}</Alert> : null}
         {success ? <Alert severity="success">{success}</Alert> : null}
 
-        {!loading && categories.length ? (
-          <Section title="Category Hierarchy" description="Root categories and their subcategories.">
-            <Card>
-              <CardContent sx={{ p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: { xs: 2, sm: 2.5 } } }}>
-                <Stack spacing={0.75}>
-                  {hierarchyRows.map(({ category, depth }) => (
-                    <Typography
-                      key={category.id}
-                      variant="body2"
-                      sx={{
-                        pl: depth * 2.5,
-                        color: category.is_active ? 'text.primary' : 'text.secondary',
-                      }}
-                    >
-                      {depth > 0 ? '└── ' : ''}
-                      <strong>{category.name}</strong>
-                      {!category.is_active ? ' (Inactive)' : ''}
-                    </Typography>
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
-          </Section>
-        ) : null}
-
         <TableCard>
           {loading ? (
             <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}>
               <CircularProgress size={28} />
             </Box>
           ) : (
-            <Table size="small" sx={{ minWidth: 840 }}>
+            <Table size="small" sx={{ minWidth: 960 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
+                  <TableCell>Path</TableCell>
                   <TableCell>Description</TableCell>
                   <TableCell>Parent Category</TableCell>
                   <TableCell>Status</TableCell>
@@ -263,17 +243,33 @@ export default function CategoriesPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {categories.map((category) => (
+                {hierarchyRows.map(({ category, depth }) => (
                   <TableRow key={category.id} hover>
                     <TableCell>
-                      <TruncateText value={category.name} maxWidth={180} />
-                    </TableCell>
-                    <TableCell>
-                      <TruncateText value={category.description || '—'} maxWidth={240} />
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          pl: depth * 1.5,
+                          fontWeight: depth === 0 ? 650 : 500,
+                          color: category.is_active ? 'text.primary' : 'text.secondary',
+                        }}
+                      >
+                        {depth > 0 ? '└ ' : ''}
+                        {category.name}
+                      </Typography>
                     </TableCell>
                     <TableCell>
                       <TruncateText
-                        value={category.parent_category_name || 'None'}
+                        value={category.hierarchy_path || category.name}
+                        maxWidth={220}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TruncateText value={category.description || '—'} maxWidth={200} />
+                    </TableCell>
+                    <TableCell>
+                      <TruncateText
+                        value={category.parent_category_name || 'No Parent / Main Category'}
                         maxWidth={160}
                       />
                     </TableCell>
@@ -316,7 +312,7 @@ export default function CategoriesPage() {
           {!loading && !categories.length ? (
             <EmptyState
               title="No categories yet"
-              description="Create root categories such as Food or Drinks, then add subcategories."
+              description="Create a main category (for example Food or Clothing), then add child categories."
               actionLabel="Add Category"
               onAction={openCreate}
             />
@@ -351,22 +347,27 @@ export default function CategoriesPage() {
               onChange={(_, option) =>
                 setForm((f) => ({ ...f, parent_id: option?.id || '' }))
               }
-              getOptionLabel={(option) => option.name || ''}
+              getOptionLabel={(option) =>
+                option.isRoot
+                  ? option.name
+                  : option.hierarchy_path || option.name || ''
+              }
               isOptionEqualToValue={(option, value) => option.id === value.id}
               renderOption={(props, option) => (
                 <li {...props} key={option.id || 'root'}>
                   {option.isRoot
                     ? option.name
-                    : option.parent_category_name
-                      ? `${option.name} (under ${option.parent_category_name})`
-                      : option.name}
+                    : option.hierarchy_path ||
+                      (option.parent_category_name
+                        ? `${option.parent_category_name} › ${option.name}`
+                        : option.name)}
                 </li>
               )}
               renderInput={(params) => (
                 <TextField
                   {...params}
                   label="Parent Category"
-                  helperText="Choose a parent, or keep No Parent for a root category."
+                  helperText="Select No Parent / Main Category for a top-level category. Only categories from this business are listed."
                 />
               )}
             />
@@ -375,7 +376,7 @@ export default function CategoriesPage() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving...' : editing ? 'Save Category' : 'Save Category'}
+            {saving ? 'Saving...' : 'Save Category'}
           </Button>
         </DialogActions>
       </Dialog>

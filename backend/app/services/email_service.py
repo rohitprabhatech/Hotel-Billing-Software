@@ -17,6 +17,9 @@ TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "templates" / "emails"
 _outbox: list[dict] = []
 
 
+APP_DISPLAY_NAME = "Business Billing Software"
+
+
 class EmailService:
     @staticmethod
     def clear_outbox():
@@ -77,6 +80,7 @@ class EmailService:
     def _render(template_name: str, **context) -> str:
         path = TEMPLATE_DIR / template_name
         raw = path.read_text(encoding="utf-8")
+        context.setdefault("app_name", APP_DISPLAY_NAME)
         return render_template_string(raw, **context)
 
     @staticmethod
@@ -85,11 +89,10 @@ class EmailService:
             "verify_email.html",
             name=name,
             verify_url=verify_url,
-            app_name="Hotel Billing Software",
         )
         EmailService.send_email(
             to=to,
-            subject="Verify your hotel account",
+            subject="Verify your business account",
             html_body=html,
             text_body=f"Hello {name},\n\nVerify your account: {verify_url}\n",
         )
@@ -100,7 +103,6 @@ class EmailService:
             "reset_password.html",
             name=name,
             reset_url=reset_url,
-            app_name="Hotel Billing Software",
         )
         EmailService.send_email(
             to=to,
@@ -114,7 +116,6 @@ class EmailService:
         html = EmailService._render(
             "password_changed.html",
             name=name,
-            app_name="Hotel Billing Software",
         )
         EmailService.send_email(
             to=to,
@@ -129,7 +130,6 @@ class EmailService:
             "login_notification.html",
             name=name,
             ip_address=ip_address or "unknown",
-            app_name="Hotel Billing Software",
         )
         EmailService.send_email(
             to=to,

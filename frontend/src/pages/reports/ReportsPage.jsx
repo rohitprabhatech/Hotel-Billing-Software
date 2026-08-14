@@ -17,6 +17,7 @@ import {
   TableRow,
   TextField,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import {
   Bar,
@@ -39,7 +40,9 @@ import {
   fetchCustomSales,
   fetchDailySales,
   fetchMonthlySales,
+  fetchWeeklySales,
 } from '../../services/reportService';
+import { PAYMENT_CASH, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
 
 function money(v) {
   return `₹${Number(v || 0).toLocaleString('en-IN', {
@@ -48,7 +51,38 @@ function money(v) {
   })}`;
 }
 
+function ItemSalesTable({ rows, emptyTitle, emptyDescription }) {
+  return (
+    <TableCard>
+      <Table size="small" sx={{ minWidth: 480 }}>
+        <TableHead>
+          <TableRow>
+            <TableCell>Item</TableCell>
+            <TableCell align="right">Qty</TableCell>
+            <TableCell align="right">Revenue</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {(rows || []).map((row) => (
+            <TableRow key={row.item_name} hover>
+              <TableCell>
+                <TruncateText value={row.item_name} maxWidth={280} />
+              </TableCell>
+              <TableCell align="right">{row.quantity}</TableCell>
+              <TableCell align="right">{money(row.revenue)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {!rows?.length ? (
+        <EmptyState title={emptyTitle} description={emptyDescription} />
+      ) : null}
+    </TableCard>
+  );
+}
+
 export default function ReportsPage() {
+  const theme = useTheme();
   const [type, setType] = useState('daily');
   const [date, setDate] = useState('');
   const [fromDate, setFromDate] = useState('');
@@ -69,6 +103,8 @@ export default function ReportsPage() {
       let res;
       if (type === 'daily') {
         res = await fetchDailySales({ ...(date ? { date } : {}), ...paymentParams });
+      } else if (type === 'weekly') {
+        res = await fetchWeeklySales(paymentParams);
       } else if (type === 'monthly') {
         res = await fetchMonthlySales({ year, month, ...paymentParams });
       } else {
@@ -108,7 +144,7 @@ export default function ReportsPage() {
   const metrics = report?.metrics || {};
 
   return (
-    <PageShell spacing={4}>
+    <PageShell>
       <FilterBar
         actions={
           <Button
@@ -129,6 +165,7 @@ export default function ReportsPage() {
             onChange={(e) => setType(e.target.value)}
           >
             <MenuItem value="daily">Daily</MenuItem>
+            <MenuItem value="weekly">Weekly</MenuItem>
             <MenuItem value="monthly">Monthly</MenuItem>
             <MenuItem value="custom">Custom Range</MenuItem>
           </Select>
@@ -144,6 +181,12 @@ export default function ReportsPage() {
             helperText="Leave empty for today"
             sx={{ minWidth: { xs: '100%', sm: 180 } }}
           />
+        ) : null}
+
+        {type === 'weekly' ? (
+          <Alert severity="info" sx={{ py: 0, alignItems: 'center' }}>
+            Current calendar week (business timezone)
+          </Alert>
         ) : null}
 
         {type === 'monthly' ? (
@@ -195,8 +238,8 @@ export default function ReportsPage() {
             onChange={(e) => setPaymentMethod(e.target.value)}
           >
             <MenuItem value="">All</MenuItem>
-            <MenuItem value="cash">Cash</MenuItem>
-            <MenuItem value="online">Online</MenuItem>
+            <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
+            <MenuItem value={PAYMENT_ONLINE}>Online</MenuItem>
           </Select>
         </FormControl>
       </FilterBar>
@@ -207,6 +250,11 @@ export default function ReportsPage() {
         <>
           <Section
             title={report.label}
+            description={
+              report.payment_method
+                ? `Filtered by ${paymentMethodLabel(report.payment_method)} payments`
+                : 'All payment methods'
+            }
             actions={
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                 <Button
@@ -244,12 +292,21 @@ export default function ReportsPage() {
               }}
             >
               <KpiCard title="Total Sales" value={money(metrics.total_sales)} />
-              <KpiCard title="Cash Sales" value={money(metrics.cash_sales)} />
-              <KpiCard title="Online Sales" value={money(metrics.online_sales)} />
               <KpiCard title="Bills" value={metrics.bill_count ?? '—'} />
+              <KpiCard title="Average Bill" value={money(metrics.average_bill)} />
+              <KpiCard
+                title="Cash Sales"
+                value={money(metrics.cash_sales)}
+                hint={`${metrics.cash_bill_count ?? 0} cash bills`}
+              />
+              <KpiCard
+                title="Online Sales"
+                value={money(metrics.online_sales)}
+                hint={`${metrics.online_bill_count ?? 0} online bills`}
+              />
+              <KpiCard title="Items Sold" value={metrics.items_sold ?? '—'} />
               <KpiCard title="Discount" value={money(metrics.total_discount)} />
               <KpiCard title="GST" value={money(metrics.total_gst)} />
-              <KpiCard title="Average Bill" value={money(metrics.average_bill)} />
               <KpiCard title="Cancelled" value={metrics.cancelled_bills ?? '—'} />
             </Box>
           </Section>
@@ -261,11 +318,11 @@ export default function ReportsPage() {
                   {(report.day_wise || []).length ? (
                     <ResponsiveContainer>
                       <BarChart data={report.day_wise || []}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                        <YAxis tick={{ fontSize: 12 }} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
+                        <XAxis dataKey="date" tick={{ fill: theme.palette.text.secondary, fontSize: 12 }} />
+                        <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 12 }} />
                         <Tooltip />
-                        <Bar dataKey="total_sales" fill="#1F4E5F" name="Sales" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="total_sales" fill={theme.palette.primary.main} name="Sales" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -279,21 +336,44 @@ export default function ReportsPage() {
             </Card>
           </Section>
 
-          <Section title="Item-wise Sales">
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 3,
+              gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+            }}
+          >
+            <Section title="Top Items">
+              <ItemSalesTable
+                rows={report.top_items}
+                emptyTitle="No top items"
+                emptyDescription="No item sales in this period."
+              />
+            </Section>
+            <Section title="Low Items">
+              <ItemSalesTable
+                rows={report.low_items}
+                emptyTitle="No low items"
+                emptyDescription="No item sales in this period."
+              />
+            </Section>
+          </Box>
+
+          <Section title="Category Sales">
             <TableCard>
               <Table size="small" sx={{ minWidth: 480 }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Item</TableCell>
+                    <TableCell>Category</TableCell>
                     <TableCell align="right">Qty</TableCell>
                     <TableCell align="right">Revenue</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(report.item_wise || []).map((row) => (
-                    <TableRow key={row.item_name} hover>
+                  {(report.category_wise || []).map((row) => (
+                    <TableRow key={row.category_name} hover>
                       <TableCell>
-                        <TruncateText value={row.item_name} maxWidth={280} />
+                        <TruncateText value={row.category_name} maxWidth={280} />
                       </TableCell>
                       <TableCell align="right">{row.quantity}</TableCell>
                       <TableCell align="right">{money(row.revenue)}</TableCell>
@@ -301,13 +381,21 @@ export default function ReportsPage() {
                   ))}
                 </TableBody>
               </Table>
-              {!report.item_wise?.length ? (
+              {!report.category_wise?.length ? (
                 <EmptyState
-                  title="No item sales"
-                  description="No item-wise data for this report period."
+                  title="No category sales"
+                  description="No category-wise data for this report period."
                 />
               ) : null}
             </TableCard>
+          </Section>
+
+          <Section title="Item-wise Sales">
+            <ItemSalesTable
+              rows={report.item_wise}
+              emptyTitle="No item sales"
+              emptyDescription="No item-wise data for this report period."
+            />
           </Section>
 
           <Section title="Bills">
@@ -334,8 +422,7 @@ export default function ReportsPage() {
                       </TableCell>
                       <TableCell align="right">{money(bill.grand_total)}</TableCell>
                       <TableCell>
-                        {bill.payment_method_label
-                          || (bill.payment_method === 'online' ? 'Online' : 'Cash')}
+                        {paymentMethodLabel(bill.payment_method)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -353,7 +440,7 @@ export default function ReportsPage() {
       ) : !loading ? (
         <EmptyState
           title="No report generated yet"
-          description="Choose a report type and date range, then click Generate."
+          description="Choose daily, weekly, monthly, or a custom range, then click Generate."
           actionLabel="Generate"
           onAction={load}
         />

@@ -23,7 +23,7 @@ class AuditLogService:
     def _ensure_owner():
         ctx = require_request_context()
         if ctx.role != ROLE_OWNER:
-            raise ForbiddenError("Only hotel owners can access audit logs")
+            raise ForbiddenError("Only business owners can access audit logs")
         return ctx
 
     @staticmethod

@@ -21,13 +21,29 @@ from app.utils.exceptions import ForbiddenError, ValidationError
 from app.utils.periods import resolve_period
 from app.utils.request_context import require_request_context
 
+METRIC_LABELS = {
+    "total_sales": "Total Sales",
+    "bill_count": "Bills",
+    "total_discount": "Discount",
+    "total_gst": "GST",
+    "average_bill": "Average Bill",
+    "items_sold": "Items Sold",
+    "cancelled_bills": "Cancelled Bills",
+    "cash_sales": "Cash Sales",
+    "online_sales": "Online Sales",
+    "cash_bill_count": "Cash Bills",
+    "online_bill_count": "Online Bills",
+}
+
+TOP_ITEMS_LIMIT = 5
+
 
 class ReportService:
     @staticmethod
     def _ensure_owner():
         ctx = require_request_context()
         if ctx.role != ROLE_OWNER:
-            raise ForbiddenError("Only hotel owners can access reports")
+            raise ForbiddenError("Only business owners can access reports")
         return ctx
 
     @staticmethod
@@ -66,6 +82,14 @@ class ReportService:
         ]
 
     @staticmethod
+    def _rank_items(item_wise: list[dict]):
+        top_items = item_wise[:TOP_ITEMS_LIMIT]
+        low_items = sorted(item_wise, key=lambda row: (row["revenue"], row["quantity"]))[
+            :TOP_ITEMS_LIMIT
+        ]
+        return top_items, low_items
+
+    @staticmethod
     def _build_report(
         tenant_id: str,
         start,
@@ -75,6 +99,10 @@ class ReportService:
         payment_method: str | None = None,
     ):
         method = ReportService._normalize_filter(payment_method)
+        item_wise = ReportRepository.item_wise(
+            tenant_id, start, end, payment_method=method
+        )
+        top_items, low_items = ReportService._rank_items(item_wise)
         return {
             "period": period,
             "label": label,
@@ -82,7 +110,10 @@ class ReportService:
             "metrics": ReportRepository.period_metrics(
                 tenant_id, start, end, payment_method=method
             ),
-            "item_wise": ReportRepository.item_wise(
+            "item_wise": item_wise,
+            "top_items": top_items,
+            "low_items": low_items,
+            "category_wise": ReportRepository.category_wise(
                 tenant_id, start, end, payment_method=method
             ),
             "day_wise": ReportRepository.day_wise(
@@ -103,13 +134,18 @@ class ReportService:
         )
         current = ReportRepository.period_metrics(ctx.tenant_id, start, end)
         previous = ReportRepository.period_metrics(ctx.tenant_id, prev_start, prev_end)
+        item_wise = ReportRepository.item_wise(ctx.tenant_id, start, end)
+        top_items, low_items = ReportService._rank_items(item_wise)
         return {
             "period": period,
             "label": label,
             "previous_label": prev_label,
             "current": current,
             "previous": previous,
-            "item_wise": ReportRepository.item_wise(ctx.tenant_id, start, end)[:10],
+            "item_wise": item_wise[:10],
+            "top_items": top_items,
+            "low_items": low_items,
+            "category_wise": ReportRepository.category_wise(ctx.tenant_id, start, end),
             "day_wise": ReportRepository.day_wise(ctx.tenant_id, start, end),
         }
 
@@ -122,6 +158,14 @@ class ReportService:
             start, end, label, *_ = ReportService._bounds("today")
         return ReportService._build_report(
             ctx.tenant_id, start, end, label, "daily", payment_method=payment_method
+        )
+
+    @staticmethod
+    def weekly_sales(payment_method: str | None = None):
+        ctx = ReportService._ensure_owner()
+        start, end, label, *_ = ReportService._bounds("this_week")
+        return ReportService._build_report(
+            ctx.tenant_id, start, end, label, "weekly", payment_method=payment_method
         )
 
     @staticmethod
@@ -170,6 +214,8 @@ class ReportService:
         report_type = (report_type or "daily").lower()
         if report_type == "daily":
             report = ReportService.daily_sales(date, payment_method=payment_method)
+        elif report_type == "weekly":
+            report = ReportService.weekly_sales(payment_method=payment_method)
         elif report_type == "monthly":
             report = ReportService.monthly_sales(
                 int(year) if year else None,
@@ -181,10 +227,10 @@ class ReportService:
                 from_date, to_date, payment_method=payment_method
             )
         else:
-            raise ValidationError("type must be daily, monthly, or custom")
+            raise ValidationError("type must be daily, weekly, monthly, or custom")
 
         tenant = TenantRepository.get_by_id(ctx.tenant_id)
-        business = (tenant.business_name if tenant else "Hotel").strip() or "Hotel"
+        business = (tenant.business_name if tenant else "Business").strip() or "Business"
         safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", business)
         safe_period = re.sub(r"[^A-Za-z0-9_-]+", "_", report["label"])
         filename = f"{safe_name}_{safe_period}_Sales.{fmt}"
@@ -210,12 +256,33 @@ class ReportService:
         return ReportService._export_xlsx(report, filename)
 
     @staticmethod
+    def _metric_rows(metrics: dict):
+        return [
+            (METRIC_LABELS.get(key, key.replace("_", " ").title()), value)
+            for key, value in metrics.items()
+        ]
+
+    @staticmethod
     def _export_csv(report, filename):
         buffer = io.StringIO()
         writer = csv.writer(buffer)
         writer.writerow(["Metric", "Value"])
-        for key, value in report["metrics"].items():
-            writer.writerow([key, value])
+        for label, value in ReportService._metric_rows(report["metrics"]):
+            writer.writerow([label, value])
+        writer.writerow([])
+        writer.writerow(["Top Items"])
+        writer.writerow(["Item", "Quantity", "Revenue"])
+        for row in report.get("top_items") or []:
+            writer.writerow([row["item_name"], row["quantity"], row["revenue"]])
+        writer.writerow([])
+        writer.writerow(["Low Items"])
+        writer.writerow(["Item", "Quantity", "Revenue"])
+        for row in report.get("low_items") or []:
+            writer.writerow([row["item_name"], row["quantity"], row["revenue"]])
+        writer.writerow([])
+        writer.writerow(["Category", "Quantity", "Revenue"])
+        for row in report.get("category_wise") or []:
+            writer.writerow([row["category_name"], row["quantity"], row["revenue"]])
         writer.writerow([])
         writer.writerow(["Item", "Quantity", "Revenue"])
         for row in report["item_wise"]:
@@ -252,8 +319,23 @@ class ReportService:
         ws = wb.active
         ws.title = "Summary"
         ws.append(["Metric", "Value"])
-        for key, value in report["metrics"].items():
-            ws.append([key, value])
+        for label, value in ReportService._metric_rows(report["metrics"]):
+            ws.append([label, value])
+
+        ws_top = wb.create_sheet("Top Items")
+        ws_top.append(["Item", "Quantity", "Revenue"])
+        for row in report.get("top_items") or []:
+            ws_top.append([row["item_name"], row["quantity"], row["revenue"]])
+
+        ws_low = wb.create_sheet("Low Items")
+        ws_low.append(["Item", "Quantity", "Revenue"])
+        for row in report.get("low_items") or []:
+            ws_low.append([row["item_name"], row["quantity"], row["revenue"]])
+
+        ws_cat = wb.create_sheet("Category Sales")
+        ws_cat.append(["Category", "Quantity", "Revenue"])
+        for row in report.get("category_wise") or []:
+            ws_cat.append([row["category_name"], row["quantity"], row["revenue"]])
 
         ws2 = wb.create_sheet("Item Wise")
         ws2.append(["Item", "Quantity", "Revenue"])
@@ -292,7 +374,7 @@ class ReportService:
     def _export_pdf(report, filename, business_name):
         mem = io.BytesIO()
         c = canvas.Canvas(mem, pagesize=A4)
-        width, height = A4
+        _width, height = A4
         y = height - 50
         c.setFont("Helvetica-Bold", 14)
         c.drawString(40, y, f"{business_name} - Sales Report")
@@ -302,8 +384,8 @@ class ReportService:
         y -= 20
         c.drawString(40, y, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         y -= 30
-        for key, value in report["metrics"].items():
-            c.drawString(40, y, f"{key}: {value}")
+        for label, value in ReportService._metric_rows(report["metrics"]):
+            c.drawString(40, y, f"{label}: {value}")
             y -= 16
             if y < 80:
                 c.showPage()

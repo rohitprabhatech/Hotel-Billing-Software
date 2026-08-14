@@ -31,6 +31,13 @@ import TruncateText from '../../components/TruncateText';
 import { createBill, openBillPrint } from '../../services/billService';
 import { listCategories } from '../../services/categoryService';
 import { listItems } from '../../services/itemService';
+import {
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_CASH,
+  PAYMENT_ONLINE,
+  isAllowedPaymentMethod,
+  paymentMethodLabel,
+} from '../../utils/paymentMethod';
 
 function sortCategoriesHierarchically(categories) {
   const byParent = new Map();
@@ -66,8 +73,8 @@ export default function NewBillPage() {
   const [categoryId, setCategoryId] = useState('');
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState('0');
-  const [tableNumber, setTableNumber] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [reference, setReference] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -152,12 +159,12 @@ export default function NewBillPage() {
   const clearCart = () => {
     setCart([]);
     setDiscount('0');
-    setTableNumber('');
-    setPaymentMethod('cash');
+    setReference('');
+    setPaymentMethod(DEFAULT_PAYMENT_METHOD);
   };
 
   const finalize = async () => {
-    if (paymentMethod !== 'cash' && paymentMethod !== 'online') {
+    if (!isAllowedPaymentMethod(paymentMethod)) {
       setError('Please select a payment method.');
       return;
     }
@@ -165,7 +172,7 @@ export default function NewBillPage() {
     setError('');
     try {
       const res = await createBill({
-        table_number: tableNumber || null,
+        reference: reference || null,
         discount: Number(discount || 0),
         payment_method: paymentMethod,
         items: cart.map((line) => ({
@@ -193,6 +200,8 @@ export default function NewBillPage() {
             gap: 3,
             gridTemplateColumns: { xs: '1fr', lg: '1.15fr 0.85fr' },
             alignItems: 'start',
+            minWidth: 0,
+            '& > *': { minWidth: 0 },
           }}
         >
           <Card>
@@ -204,7 +213,7 @@ export default function NewBillPage() {
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
                 <TextField
                   label="Search items"
-                  placeholder="Search item..."
+                  placeholder="Name or SKU…"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   onKeyDown={(e) => {
@@ -277,6 +286,7 @@ export default function NewBillPage() {
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                         <TruncateText value={item.name} maxWidth="100%" fontWeight={600} />
                         <Typography variant="caption" color="text.secondary" noWrap display="block" sx={{ mt: 0.5 }}>
+                          {item.sku ? `${item.sku} · ` : ''}
                           {item.category_name || 'Item'} · GST {Number(item.gst_percentage).toFixed(1)}%
                         </Typography>
                       </Box>
@@ -321,10 +331,12 @@ export default function NewBillPage() {
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
                 <TextField
-                  label="Table / Token"
-                  value={tableNumber}
-                  onChange={(e) => setTableNumber(e.target.value)}
+                  label="Reference (optional)"
+                  placeholder="Table, counter, token…"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
                   fullWidth
+                  inputProps={{ maxLength: 30 }}
                 />
                 <TextField
                   label="Discount (₹)"
@@ -373,10 +385,10 @@ export default function NewBillPage() {
                     >
                       ₹{(line.price * line.quantity).toFixed(2)}
                     </Typography>
-                    <Tooltip title="Remove item">
+                    <Tooltip title="Remove from bill (does not delete catalog item)">
                       <IconButton
                         size="small"
-                        aria-label={`Remove ${line.name}`}
+                        aria-label={`Remove ${line.name} from bill`}
                         onClick={() => removeLine(line.item_id)}
                       >
                         <DeleteOutlinedIcon fontSize="small" />
@@ -424,17 +436,20 @@ export default function NewBillPage() {
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 >
                   <FormControlLabel
-                    value="cash"
+                    value={PAYMENT_CASH}
                     control={<Radio size="small" />}
                     label="Cash"
                     sx={{ mr: 3 }}
                   />
                   <FormControlLabel
-                    value="online"
+                    value={PAYMENT_ONLINE}
                     control={<Radio size="small" />}
                     label="Online"
                   />
                 </RadioGroup>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                  Required · defaults to Cash
+                </Typography>
               </FormControl>
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -472,7 +487,7 @@ export default function NewBillPage() {
               Grand total: ₹{Number(createdBill?.grand_total || 0).toFixed(2)}
             </Typography>
             <Typography>
-              Payment Method: {createdBill?.payment_method_label || (createdBill?.payment_method === 'online' ? 'Online' : 'Cash')}
+              Payment Method: {paymentMethodLabel(createdBill?.payment_method)}
             </Typography>
           </Stack>
         </DialogContent>

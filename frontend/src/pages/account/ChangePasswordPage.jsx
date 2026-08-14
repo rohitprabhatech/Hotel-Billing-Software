@@ -56,7 +56,7 @@ export default function ChangePasswordPage() {
     <PageShell>
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Card sx={{ width: '100%', maxWidth: 480 }}>
-          <CardContent sx={{ p: { xs: 3, sm: 4 }, '&:last-child': { pb: { xs: 3, sm: 4 } } }}>
+          <CardContent sx={{ p: { xs: 2.5, sm: 3 }, '&:last-child': { pb: { xs: 2.5, sm: 3 } } }}>
             <Stack spacing={2.5} component="form" onSubmit={onSubmit}>
               {error ? <Alert severity="error">{error}</Alert> : null}
               {success ? <Alert severity="success">{success}</Alert> : null}

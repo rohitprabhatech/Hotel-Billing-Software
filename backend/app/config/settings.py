@@ -44,7 +44,7 @@ class BaseConfig:
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() in {"1", "true", "yes"}
     MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "false").lower() in {"1", "true", "yes"}
-    MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "noreply@hotelbilling.local")
+    MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "noreply@businessbilling.local")
     MAIL_SUPPRESS_SEND = os.getenv("MAIL_SUPPRESS_SEND", "false").lower() in {
         "1",
         "true",
@@ -58,6 +58,12 @@ class BaseConfig:
     ).lower() in {"1", "true", "yes"}
     # Expose raw tokens in API responses for local/testing only
     ALLOW_DEV_AUTH_TOKENS = os.getenv("ALLOW_DEV_AUTH_TOKENS", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+    TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() in {
         "1",
         "true",
         "yes",

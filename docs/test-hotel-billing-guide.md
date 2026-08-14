@@ -1,5 +1,8 @@
 # Hotel Billing Software - Complete Testing Guide
 
+> **Superseded for product terminology:** use [test-business-billing-guide.md](./test-business-billing-guide.md).  
+> This file remains as a long-form hotel-era checklist; prefer Business naming in new work.
+
 **Document type:** Manual QA / UAT guide  
 **Application:** Multi-tenant Hotel Billing SaaS (Flask + React)  
 **Based on:** Actual codebase inspection (routes, services, schemas, frontend pages)  

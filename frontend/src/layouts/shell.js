@@ -15,3 +15,8 @@ export const mainContentSx = {
 export const filterControlSx = {
   minWidth: { xs: '100%', sm: 160 },
 };
+
+/** Slightly wider filter control (category / search-adjacent selects). */
+export const filterControlWideSx = {
+  minWidth: { xs: '100%', sm: 200 },
+};

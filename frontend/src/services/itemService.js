@@ -21,3 +21,8 @@ export async function setItemStatus(id, isActive, reason = null) {
   const { data } = await apiClient.patch(`/items/${id}/status`, body);
   return data;
 }
+
+export async function adjustItemStock(id, payload) {
+  const { data } = await apiClient.post(`/items/${id}/adjust-stock`, payload);
+  return data;
+}

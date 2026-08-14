@@ -34,3 +34,21 @@ export function openBillPrint(billId, { auto = false } = {}) {
   const url = `/print/bills/${billId}${auto ? '?auto=1' : ''}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 }
+
+export async function sendBillWhatsapp(billId, payload = {}) {
+  const { data } = await apiClient.post(`/bills/${billId}/send-whatsapp`, payload);
+  return data;
+}
+
+export async function downloadBillPdf(billId, billNumber = 'bill') {
+  const response = await apiClient.get(`/bills/${billId}/pdf`, { responseType: 'blob' });
+  const blob = new Blob([response.data], { type: 'application/pdf' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${billNumber || 'bill'}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}

@@ -1,669 +1,478 @@
-# Development Roadmap — Multi-Business Billing SaaS
+# Development Roadmap — Business Billing SaaS
 
-**Provider:** Prabha Technology Pvt. Ltd.  
-**Project:** Hotel Billing Software → Generic Multi-Business Billing SaaS  
-**Branch baseline:** `rohit-dev1` @ `60aa84e`  
-**Roadmap date:** 2026-08-14  
-**Rule:** One sprint at a time. Implement → Test → Report → **STOP** → Wait for approval.
+Software: **Business Billing** · Provider: **Prabha Technology Pvt. Ltd.**  
+Stack: Flask + SQLAlchemy + MySQL · React + MUI + Vite · Multi-tenant (`tenant_id`)
 
----
-
-## 0. Project audit summary (Phase 0)
-
-### What already exists (do not rebuild)
-
-| Area | Status | Notes |
-|------|--------|-------|
-| Multi-tenant Flask + React/MUI app | ✅ | Layered MVC: routes → controllers → services → repositories → models |
-| JWT auth + OWNER / BILLING_USER | ✅ | `token_version` invalidation on password change |
-| Self-serve registration | ✅ | Hotel-named (`/register`, `register-hotel` API) |
-| Email verify / forgot / reset / change password | ✅ | Email templates present |
-| Categories + parent hierarchy | ✅ | Circular/self-parent/cross-tenant checks exist |
-| Items CRUD + soft deactivate + `created_by` | ✅ | Billing users can manage items; owner item activity |
-| Billing (discount, GST CGST/SGST, finalize) | ✅ | Line items snapshot historical price/name/GST |
-| Payment method Cash / Online | ✅ | Stored on bill; shown in history/print/reports/dashboard |
-| Bill history + print + cancel | ✅ | Soft cancel with reason; no hard delete |
-| Owner dashboard + reports + export | ✅ | Cash/online KPIs; xlsx/csv/pdf |
-| Audit logs + item activity | ✅ | Append-only; owner alerts |
-| Shared UI system | ✅ | PageShell, FilterBar, KpiCard, TableCard, etc. |
-| Isolation tests | ✅ | Multiple pytest modules cover cross-tenant denial |
-
-### Current architecture (high level)
-
-```
-React (Vite) SPA ──JWT──► Flask /api/v1 ──► MySQL (shared DB, tenant_id isolation)
-     │                         │
-  Owner / Billing layouts   Controllers → Services → Repositories → Models
-```
-
-**Core model tree today:**
-
-```
-Tenant
- ├── Users (OWNER, BILLING_USER)
- ├── Categories (parent_id self-FK)
- │     └── Items (created_by)
- ├── Bills
- │     └── BillItems (price/name/GST snapshots)
- ├── BillNumberCounter
- └── AuditLogs
-```
-
-**Roles:** Global `roles` table — only `OWNER` and `BILLING_USER`.
-
-**Isolation:** Manual — JWT → request context `tenant_id` → every repository filters by tenant. No DB RLS.
-
-### Hotel-specific assumptions (must generalize)
-
-| Finding | Location (examples) |
-|---------|---------------------|
-| Product name “Hotel Billing” | `app/__init__.py`, `HomePage`, layouts, `index.html` |
-| Register Hotel / `hotel_name` / `register-hotel` | Auth UI + `auth_service` / routes |
-| `fssai_number` (food license) | Tenant model, settings, receipt |
-| `table_number` on bills | Bill model / new bill / history |
-| No `business_type` | Tenant model |
-| Seed data “Hotel A / Hotel B” | `seed_demo_data.py` |
-| Docs still hotel-centric | `docs/01-*`, `22-saas-hotel-registration.md`, test guide |
-
-### Problems / risks found
-
-1. **Domain naming** — UI/API/docs say “hotel”; blocks multi-business positioning.
-2. **Missing `business_type`** — cannot classify restaurant vs retail vs grocery.
-3. **No SKU / stock / cost price** — catalog is price+GST only.
-4. **Email uniqueness ambiguity** — DB unique `(tenant_id, email)` but register/login use global email lookup.
-5. **Dual schema paths** — `sql/02_schema.sql` + Alembic + ad-hoc apply scripts (drift risk).
-6. **DRAFT/VOID statuses unused** — SQL allows them; app always creates `FINALIZED`.
-7. **No subscription / plan model** — only marketing placeholder needed later.
-8. **No AI assistant** — not started.
-9. **Light theme only** — no dark mode / persistence.
-10. **Landing page** — minimal health card, not SaaS marketing page.
-11. **Manual tenant filters** — new queries can forget `tenant_id` (process risk).
-12. **Docs drift** — `docs/20-development-sprints.md` marks hotel MVP complete; FE architecture docs miss newer routes.
-
-### Testing gaps (high level)
-
-- No business-type / non-hotel registration tests
-- No SKU/stock tests
-- Limited suspended-tenant edge cases
-- No AI / dark-mode / subscription tests
-- Login ambiguity if same email ever exists in two tenants
+**Execution rule (mandatory):** After each sprint → test → report → **STOP** → ask approval before the next. Never auto-start the next sprint.
 
 ---
 
-## 1. Sprint strategy (adjusted to codebase)
+## Phase 1 — Multi-business conversion (COMPLETE)
 
-The user’s master list is preserved, but **order and scope are adjusted** because many mid-sprints already ship. Later sprints are **harden / generalize / verify**, not greenfield rebuilds.
+Sprints **1–22** (2026-08-14) delivered: `business_type`, Register Business, schema/relationships, categories/items/billing/payments, reports, audit, AI, landing v1, subscription info, UI pass, dark mode, docs, E2E guide, security hardening, final QA.
+
+Status table and outcomes: see **Appendix A — Phase 1** at the end of this file.  
+Release gate: [`final-qa-report.md`](./final-qa-report.md) · Security: [`security-tenant-audit.md`](./security-tenant-audit.md)
+
+---
+
+## Phase 2 — Landing, Category UX, UI polish, Performance, Testing (COMPLETE)
+
+**Program goal:** Commercial-grade landing + clearer parent-category UX + consistent UI/responsive polish + measured performance work + grocery-focused E2E testing — **without rebuilding the product**.
+
+**Release gate:** [`phase2-final-qa-report.md`](./phase2-final-qa-report.md) (2026-08-14)
+
+### Phase 2 audit summary (2026-08-14) — read-only
+
+#### What already works well
+
+| Area | Current state |
+|------|----------------|
+| Auth / tenancy | Register Business, JWT + `token_version`, Owner / Billing User RBAC |
+| Categories BE | Self-ref `parent_id`, tenant-scoped parent, own-parent + circular blocked, inactive parent blocked, soft `is_active` |
+| Categories FE (Owner) | MUI **Autocomplete** parent picker + helper text + hierarchy table indent |
+| Items / bills | Soft deactivate; bill line snapshots; cash/online; reference field; cancel/print |
+| Reports / AI / Audit | Owner-only; tenant-scoped; AI does not invent empty-period metrics |
+| Design system | Shared theme light/dark (`bbs-color-mode`), Owner/Billing shells, PageShell / FilterBar / TableCard |
+| Isolation | App-level `tenant_id` on queries; Sprint 21 security fixes (logout revoke, global email uniqueness) |
+
+#### Gaps vs this improvement program
+
+| Gap | Severity | Notes |
+|-----|----------|--------|
+| Landing looks “product wiki” not commercial SaaS | High | Long stacked sections; Unsplash hero; **no mobile hamburger**; weak conversion hierarchy |
+| Company contact outdated | High | `frontend/src/constants/company.js` still Khed-Shivapur / support@prabhatech.in / +91 20 7123 4567 |
+| Parent category UX clarity | Medium | Mostly done; tighten helper copy (“Leave empty / No Parent…”), Billing Path column, Items category picker |
+| App UI consistency / density | Medium | Not a greenfield redesign — polish spacing, empty/loading states, tables across pages |
+| Responsive edge cases | Medium | Landing mobile nav; wide tables rely on horizontal scroll |
+| Performance | Medium | Item list serialize N+1 (category/creator); no FE page controls (hard `per_page` caps); eager route imports; categories unpaginated |
+| DB edge cases | Low–Med | MySQL UNIQUE + NULL root names; `update_item` may allow inactive category; live DB may lag migrations (`apply_pending_schema.py`) |
+| Grocery E2E sample data | Medium | Guide has B3; seed is hotel-centric; need Shree General Store scripted data |
+| Docs refresh for Phase 2 outcomes | Medium | Manuals/test guide need contact + landing + UX updates after implementation |
+
+#### Explicit non-goals (unless later approved)
+
+- Payment gateway / checkout  
+- Rebuild from scratch / new frameworks  
+- Hard-delete financial history  
+- Invented AI forecasting beyond recorded data  
+
+---
+
+## Phase 2 sprint strategy
+
+Order adjusted to **actual codebase**: landing + contact first (visible commercial gap), then category UX polish, then DB/performance, then verification sprints, then docs/QA.
 
 | Sprint | Title | Nature |
 |--------|-------|--------|
-| 1 | Codebase audit + architecture report | Docs only |
-| 2 | Multi-business / tenant foundation | Schema + rename foundation |
-| 3 | Business registration + authentication | Rename/generalize existing flow |
-| 4 | Database relationship refactor | Migrations + constraints audit |
-| 5 | Category + parent category | Verify + UX polish |
-| 6 | Items module (generic catalog) | SKU/cost/stock options + copy |
-| 7 | Billing module | Verify cart remove + terminology |
-| 8 | Payment method | Verify + close gaps |
-| 9 | Bill history + printing | Historical snapshot + generic labels |
-| 10 | Owner / business dashboard | Business name/type KPIs |
-| 11 | Reports + analytics | Harden + terminology |
-| 12 | Audit + user activity | Harden + terminology |
-| 13 | AI business assistant | New feature |
-| 14 | AI prediction + decision support | New feature |
-| 15 | Public home / landing page | New marketing UI |
-| 16 | Subscription (info only) | Plan display ₹550/mo — no gateway |
-| 17 | Professional UI/UX pass | Cross-app consistency |
-| 18 | Dark mode | Theme + persist |
-| 19 | Documentation refresh | Reflect actual product |
-| 20 | Complete E2E testing guide | Manual + automated |
-| 21 | Security + tenant audit | Hardening pass |
-| 22 | Final QA + production readiness | Release gate |
-
-**Execution rule:** After each sprint → report → ask for approval before the next.
+| **P2-1** | Formal Phase 2 audit report + DB relationship checklist | Docs only |
+| **P2-2** | Landing / Home redesign + company contact update | Major FE |
+| **P2-3** | Registration / login / auth flow verification | Verify + small fixes |
+| **P2-4** | Parent Category UX + hierarchy clarity | FE polish (+ BE if gaps) |
+| **P2-5** | Database relationship corrections + migrations | Schema harden |
+| **P2-6** | Application UI/UX consistency pass | Cross-app polish |
+| **P2-7** | Responsive design pass | Breakpoints 320–1440 |
+| **P2-8** | Performance / speed optimization | Measured only |
+| **P2-9** | Billing + payment method verification | Verify + tests |
+| **P2-10** | Reports + dashboard verification | Verify + tests |
+| **P2-11** | Audit + item activity verification | Verify + tests |
+| **P2-12** | Testing documentation + grocery sample data | Docs + seeds/fixtures |
+| **P2-13** | Security + tenant isolation retest | Tests + report delta |
+| **P2-14** | Final QA + production readiness | Release gate |
 
 ---
 
-## 2. Sprint details
+## Phase 3 — Operational hardening (COMPLETE)
 
-### Sprint 1 — Codebase audit + architecture
+**Program goal:** Fix production-facing operational gaps (AI crash UX, stock enforcement, in-app notifications, WhatsApp delivery, PDF/stock ops) without rebuilding the product.
 
-**Goal:** Formalize Phase 0 findings into an architecture audit report. No major feature changes.
+**Release gate:** [`phase3-final-qa-report.md`](./phase3-final-qa-report.md) (2026-08-14)
+
+| Sprint | Title | Status |
+|--------|-------|--------|
+| **P3-1** | AI blank page + stock enforcement + notifications | **COMPLETED** — [`phase3-p3-1-ai-stock-notifications.md`](./phase3-p3-1-ai-stock-notifications.md) |
+| **P3-2** | Stock/notification polish + route ErrorBoundary | **COMPLETED** — [`phase3-p3-2-stock-notification-polish.md`](./phase3-p3-2-stock-notification-polish.md) |
+| **P3-3** | WhatsApp bill sharing / delivery (Cloud API) | **COMPLETED** — [`phase3-p3-3-whatsapp-bill-delivery.md`](./phase3-p3-3-whatsapp-bill-delivery.md) |
+| **P3-4** | WhatsApp delivery polish (history, audit, rate-limit) | **COMPLETED** — [`phase3-p3-4-whatsapp-delivery-polish.md`](./phase3-p3-4-whatsapp-delivery-polish.md) |
+| **P3-5** | Bill PDF download + stock adjust + ErrorBoundary | **COMPLETED** — [`phase3-p3-5-pdf-stock-adjust.md`](./phase3-p3-5-pdf-stock-adjust.md) |
+| **P3-6** | Phase 3 production gate + residual polish | **COMPLETED** — [`phase3-p3-6-phase3-gate.md`](./phase3-p3-6-phase3-gate.md) · [`phase3-final-qa-report.md`](./phase3-final-qa-report.md) |
+
+---
+
+## Phase 4 — Delivery intelligence (IN PROGRESS)
+
+**Program goal:** Improve outbound bill delivery visibility (WhatsApp status, future channels) without rebuilding billing.
+
+| Sprint | Title | Status |
+|--------|-------|--------|
+| **P4-1** | Meta WhatsApp delivery status webhooks | **COMPLETED** — [`phase4-p4-1-whatsapp-webhooks.md`](./phase4-p4-1-whatsapp-webhooks.md) |
+| **P4-2** | Failure & webhook ops polish | **COMPLETED** — [`phase4-p4-2-whatsapp-ops-polish.md`](./phase4-p4-2-whatsapp-ops-polish.md) |
+
+---
+
+## Phase 2 sprint details
+
+### Sprint P2-1 — Audit report + DB checklist
+
+**Goal:** Publish formal Phase 2 audit artifact; live checklist of FKs/indexes vs `02_schema.sql`.
 
 **Tasks:**
-- Confirm architecture layers and data model
-- Inventory hotel-specific assumptions
-- Inventory duplicates, schema risks, isolation risks, test gaps
-- Publish audit report under `docs/`
+- Document FE/BE/DB findings (this audit)
+- Table-by-table relationship checklist (Tenant→Users/Categories/Items/Bills/Audit; Category self-ref; Bill→BillItems)
+- Note env drift risk (`business_type` / catalog columns via `apply_pending_schema.py`)
 
-**Deliverable:** `docs/architecture-audit-report.md` (+ this roadmap)
-
-**Out of scope:** Feature renames, schema migrations, UI redesign
+**Deliverable:** `docs/phase2-architecture-audit.md` (or extend this roadmap §audit)  
+**Out of scope:** Code changes  
+**Acceptance:** Written audit + checklist committed  
 
 ---
 
-### Sprint 2 — Multi-business / tenant foundation
+### Sprint P2-2 — Landing redesign + company info
 
-**Goal:** Tenant = generic Business.
+**Goal:** Commercial SaaS landing; correct Prabha Technology contacts everywhere.
 
 **Tasks:**
-- Add `business_type` (selectable options; not hardcoded into billing logic)
-- Review Tenant fields: Business Name, Owner, `tenant_id`
-- Make FSSAI optional / business-type contextual (not required for clothing/grocery)
-- Begin replacing hotel-centric API/product strings at foundation level
-- Verify tenant isolation remains intact
+- Redesign `/` — professional hierarchy (Navbar → Hero → Value → Features → Business types → Billing → Reports → AI → Security → Why us → Pricing ₹550 → Support → Contact → Footer)
+- Navbar: brand left; Features / Modules / AI Insights / Pricing / About / Contact; Login + Register; **mobile hamburger**
+- Avoid AI-template look (no purple gradients, pill spam, glass overload, huge headings)
+- Update `company.js` (and any other surfaces) to:
 
-**Acceptance:** New businesses can store a type; existing tenants keep working.
+  - Address: B-05, First Floor, Shreya Business Hub, Pari Chowk, Mokarwadi, Pune, Maharashtra – 411041  
+  - Email: prabha.technology.01@gmail.com  
+  - Phone: 8767865572  
+
+- Hero: “Smart Billing and Business Management” — not “Hotel Billing Software”
+- Pricing informational only (no gateway)
+- Dark mode must still work on landing
+
+**Acceptance:** Mobile nav works; contacts correct site-wide; visual review vs commercial SaaS bar  
 
 ---
 
-### Sprint 3 — Business registration + authentication
+### Sprint P2-3 — Auth / registration verification
 
-**Goal:** Public “Register Business” flow (not “Register Hotel”).
+**Goal:** Prove Register Business + login + verify + password flows against current APIs.
+
+**Tasks:** Smoke/register/login/reset; business_type persistence; legacy `register-hotel` alias still safe  
+**Acceptance:** Documented pass/fail + fixes only if regressions found  
+
+---
+
+### Sprint P2-4 — Parent Category UX
+
+**Goal:** Owners clearly understand Main vs Sub category.
 
 **Tasks:**
-- Rename UI/API copy: Register Business
-- Fields: Business Name, Business Type, Owner Name, Email, Mobile, Password, Confirm Password, Address
-- Keep: Create tenant → create owner → verify email → login → owner dashboard
-- Update auth emails and validation messages
+- Form copy: Category Name, Description, Parent Category  
+- Helper: *“Leave this as No Parent / Main Category to create a main category. Select a category to create a subcategory.”*  
+- Keep/improve Autocomplete (searchable); hierarchy visual on list (Food → Veg / Non-Veg style indent)  
+- Confirm BE validations still block cycles / cross-tenant / inactive parent  
 
-**Acceptance:** End-to-end register/login with business terminology; hotel wording gone from auth surfaces.
+**Acceptance:** Manual create Food → Veg/Non-Veg works without confusion; invalid parent rejected by API  
 
 ---
 
-### Sprint 4 — Database relationship refactor
+### Sprint P2-5 — Database relationships + migrations
 
-**Goal:** Correctness and single source of truth for schema.
+**Goal:** Close remaining schema/relationship edges without destructive resets.
 
 **Tasks:**
-- Review PKs/FKs/indexes/`tenant_id`/cascades/nullables/uniques
-- Align `02_schema.sql` + Alembic + apply scripts
-- Document cascade behavior for categories/items/bills
-- Migrations for Sprint 2–3 fields if not already applied
+- Reconcile live DB vs `sql/02_schema.sql` + Alembic / `apply_pending_schema.py`  
+- Root-name uniqueness strategy (MySQL NULL unique quirk)  
+- Fix `update_item` inactive-category inconsistency if confirmed  
+- Update `docs/database-design.md` / relationships doc  
 
-**Acceptance:** Schema docs match live models; migration path clear for fresh and upgrade installs.
+**Acceptance:** Migration/script path works on clean + existing DB; tests green  
 
 ---
 
-### Sprint 5 — Category + parent category
+### Sprint P2-6 — Application UI/UX consistency
 
-**Goal:** Confirm hierarchy is production-ready for any business.
+**Goal:** One product, one visual system across owner/billing/auth (not a full rewrite).
+
+**Tasks:** Spacing/typography/buttons/tables/dialogs/empty/loading/error states; align Items category picker with hierarchy labels  
+**Avoid:** Random padding, mismatched controls, oversized cards  
+**Acceptance:** Spot-check all key routes for consistency  
+
+---
+
+### Sprint P2-7 — Responsive design
+
+**Goal:** Usable layouts at 320 / 375 / 768 / 1024 / 1280 / 1440.
+
+**Tasks:** Landing, auth, dashboards, tables, dialogs, sidebar; no overlap/clip/horizontal page scroll (table scroll OK inside TableCard)  
+**Acceptance:** Checklist signed for those breakpoints  
+
+---
+
+### Sprint P2-8 — Performance
+
+**Goal:** Fix **measured** bottlenecks only.
 
 **Tasks:**
-- Verify self-parent / circular / cross-tenant prevention (backend + UI)
-- Parent dropdown = current tenant only
-- UX polish on `/owner/categories`
-- Samples for Food and Clothing hierarchies in docs/tests
+- Item list N+1 (eager load category/creator)  
+- FE pagination or load-more for items/bills where needed  
+- Route-level code splitting for heavy pages  
+- Index review for report/dashboard hot paths  
+- Billing catalog search remains fast with many items  
 
-**Acceptance:** Existing hierarchy rules remain; UI copy is business-generic.
-
----
-
-### Sprint 6 — Items module
-
-**Goal:** Generic catalog.
-
-**Tasks:**
-- Add/support fields as appropriate: SKU, description, category, price, cost price (if supported), GST/tax, stock (if supported), status
-- Keep billing-user add/edit/deactivate rules
-- Owner item activity remains visible after deactivate
-- Generic labels (not “menu item”)
-
-**Acceptance:** Items usable for retail and F&B; activity trail intact.
+**Acceptance:** Before/after notes (query counts or perceived load); no functional regressions  
 
 ---
 
-### Sprint 7 — Billing module
+### Sprint P2-9 — Billing + payment verification
 
-**Goal:** Counter billing usable for any business.
+**Goal:** Cash/Online, remove-from-cart, totals, print/cancel still correct.
 
-**Tasks:**
-- Verify search, categories, qty, remove-from-cart (not DB delete), discount, GST, totals, generate, print
-- Generalize `table_number` (e.g. optional reference / table / counter note)
-- Keep backend-authoritative totals
-
-**Acceptance:** Mistaken cart lines removable before generate; calculations unchanged and correct.
+**Acceptance:** Guided tests with sample bills; Biscuits remove does not delete catalog item  
 
 ---
 
-### Sprint 8 — Payment method
+### Sprint P2-10 — Reports + dashboard verification
 
-**Goal:** Close any gaps around Cash / Online.
+**Goal:** Today/week/month totals match manual calc on sample bills.
 
-**Tasks:**
-- Verify radio default Cash; persistence; history; print; reports; dashboards
-- Fill any missing labels/filters
-- Regression tests
-
-**Acceptance:** Cash/Online visible end-to-end for every new bill.
+**Acceptance:** Documented reconciliation for sample data  
 
 ---
 
-### Sprint 9 — Bill history + printing
+### Sprint P2-11 — Audit + item activity verification
 
-**Goal:** Historical integrity + generic receipts.
+**Goal:** LOGIN / CREATE_BILL / item create-edit-deactivate visible to Owner after Billing User actions.
 
-**Tasks:**
-- Confirm BillItem snapshots (old price preserved after catalog price change)
-- Bill numbering, details, print, cancel
-- Receipt header uses Business Name (not “HOTEL” fallback)
-
-**Acceptance:** Price-change regression test still passes; print is business-branded.
+**Acceptance:** History survives deactivate  
 
 ---
 
-### Sprint 10 — Owner / business dashboard
+### Sprint P2-12 — Testing docs + sample data
 
-**Goal:** Professional business dashboard.
+**Goal:** Step-by-step manual with **exact** entries.
 
-**Tasks:**
-- Show Business Name, Business Type
-- KPIs: today sales/bills/avg/cancelled, cash/online, weekly/monthly
-- Clean KPI cards; remove hotel-only copy
+**Sample business:**
+- Shree General Store · Grocery Store  
+- Owner: Rajesh Patil · owner@example.com  
+- Billing: Amit Sharma · billing@example.com  
 
-**Acceptance:** Dashboard reads as multi-business SaaS, not hotel-only.
+**Categories:** Grocery → Rice, Pulses; Beverages → Cold Drinks  
+**Items:** Rice 5kg ₹450; Dal 1kg ₹140; Cold Drink 750ml ₹50; Biscuits ₹30  
+**Bills:** Cash + Online mixes; remove Biscuits before finalize  
 
----
-
-### Sprint 11 — Reports + analytics
-
-**Goal:** Owner performance review.
-
-**Tasks:**
-- Daily/weekly/monthly + filters
-- Total sales, bill count, avg, top/low items, category sales, cash/online
-- Generic terminology in UI/exports
-
-**Acceptance:** Reports remain OWNER-only and tenant-scoped.
+Update: `test-business-billing-guide.md`, user/owner/billing manuals as needed  
 
 ---
 
-### Sprint 12 — Audit + user activity
+### Sprint P2-13 — Security + tenant isolation retest
 
-**Goal:** Immutable operational trail.
+**Goal:** Business A ↛ Business B for categories/items/bills/reports/users/audit/activity.
 
-**Tasks:**
-- Verify item create/edit/deactivate, bill create/cancel, login, password change
-- Item activity survives deactivate
-- Owner-only read; no delete for normal users
-- Generic copy
-
-**Acceptance:** Audit/item-activity cover required events; isolation holds.
+**Acceptance:** Automated + manual isolation matrix green; delta vs Sprint 21 report  
 
 ---
 
-### Sprint 13 — AI business assistant
+### Sprint P2-14 — Final QA
 
-**Goal:** Tenant-scoped analysis of real sales data.
+**Goal:** Phase 2 release gate.
 
-**Tasks:**
-- Today / weekly / monthly / custom range analysis
-- Sales, bills, top/low items, categories, payment mix, trends
-- Never invent numbers; insufficient-data message when needed
-
-**Acceptance:** AI only sees current tenant data.
+**Acceptance:** Signed QA note; landing + UX + perf + tests documented  
 
 ---
 
-### Sprint 14 — AI prediction + decision support
+## Phase 2 status
 
-**Goal:** Recommendations from history.
-
-**Tasks:**
-- Best/slow movers, trends, demand hints, recommendations
-- Explicit insufficient-data handling
-- Tenant isolation mandatory
-
-**Acceptance:** No fabricated metrics.
-
----
-
-### Sprint 15 — Public home / landing page
-
-**Goal:** Professional SaaS landing at `/`.
-
-**Sections:** Hero, Features, Modules, Supported Businesses, Billing, Reports, AI, Security, Subscription, Contact, 24/7 Support, Footer  
-
-**Company block:** Prabha Technology Pvt. Ltd. (Pune address, email, phone)  
-
-**Acceptance:** No hotel-only positioning; CTAs Register Business + Login.
-
----
-
-### Sprint 16 — Subscription (informational)
-
-**Goal:** Show plan ₹550 / month.
-
-**Tasks:**
-- Landing + settings/subscription info
-- Register / Login / Contact CTAs
-- **No payment gateway** unless later required
-
-**Acceptance:** Pricing visible; no fake paid checkout.
+| Item | Status |
+|------|--------|
+| Phase 2 audit (roadmap summary) | ✅ Completed (2026-08-14) |
+| Sprint P2-1 — Formal audit report + DB checklist | ✅ Completed (2026-08-14) |
+| Sprint P2-2 — Landing redesign + company contacts | ✅ Completed (2026-08-14) |
+| Sprint P2-3 — Auth / registration verification | ✅ Completed (2026-08-14) |
+| Sprint P2-4 — Parent Category UX | ✅ Completed (2026-08-14) |
+| Sprint P2-5 — Database relationships + migrations | ✅ Completed (2026-08-14) |
+| Sprint P2-6 — Application UI/UX consistency | ✅ Completed (2026-08-14) |
+| Sprint P2-7 — Responsive design | ✅ Completed (2026-08-14) |
+| Sprint P2-8 — Performance | ✅ Completed (2026-08-14) |
+| Sprint P2-9 — Billing + payment verification | ✅ Completed (2026-08-14) |
+| Sprint P2-10 — Reports + dashboard verification | ✅ Completed (2026-08-14) |
+| Sprint P2-11 — Audit + item activity verification | ✅ Completed (2026-08-14) |
+| Sprint P2-12 — Testing docs + sample data | ✅ Completed (2026-08-14) |
+| Sprint P2-13 — Security + tenant isolation retest | ✅ Completed (2026-08-14) |
+| Sprint P2-14 — Final QA | ✅ Completed (2026-08-14) |
+| Deliverable (P2-1) | [`phase2-architecture-audit.md`](./phase2-architecture-audit.md) |
+| Deliverable (P2-3) | [`phase2-p2-3-auth-verification.md`](./phase2-p2-3-auth-verification.md) |
+| Deliverable (P2-7) | [`phase2-p2-7-responsive-checklist.md`](./phase2-p2-7-responsive-checklist.md) |
+| Deliverable (P2-8) | [`phase2-p2-8-performance.md`](./phase2-p2-8-performance.md) |
+| Deliverable (P2-9) | [`phase2-p2-9-billing-verification.md`](./phase2-p2-9-billing-verification.md) |
+| Deliverable (P2-10) | [`phase2-p2-10-reports-verification.md`](./phase2-p2-10-reports-verification.md) |
+| Deliverable (P2-11) | [`phase2-p2-11-audit-verification.md`](./phase2-p2-11-audit-verification.md) |
+| Deliverable (P2-12) | [`phase2-p2-12-testing-sample-data.md`](./phase2-p2-12-testing-sample-data.md) |
+| Deliverable (P2-13) | [`phase2-p2-13-security-isolation.md`](./phase2-p2-13-security-isolation.md) |
+| Deliverable (P2-14) | [`phase2-final-qa-report.md`](./phase2-final-qa-report.md) |
+| Phase 2 program | ✅ Complete — staging pilot recommended |
 
 ---
 
-### Sprint 17 — Professional UI/UX
+## Phase 2 Sprint P2-1 outcome
 
-**Goal:** Consistency across every page.
-
-**Tasks:** Spacing, typography, tables, forms, dialogs, sidebar, responsive layout  
-**Avoid:** overlap, horizontal overflow, crowded sections, huge controls, wasted whitespace  
-
-**Acceptance:** Shared design system applied consistently.
+1. ✅ Formal Phase 2 architecture audit published  
+2. ✅ Database relationship / FK / index checklist for live-DB verification  
+3. ✅ Gaps prioritized for landing, contacts, category UX, UI, perf, grocery E2E  
+4. ✅ No application code changes in this sprint  
 
 ---
 
-### Sprint 18 — Dark mode
+## Phase 2 Sprint P2-2 outcome
 
-**Goal:** Light / Dark with persistence.
-
-**Surfaces:** Home, auth, owner, billing, reports, items, categories, users, audit, settings, AI  
-
-**Acceptance:** Preference survives refresh.
-
----
-
-### Sprint 19 — Documentation
-
-**Goal:** Docs match implementation.
-
-**Create/update:**
-- `docs/README.md`
-- `docs/development-roadmap.md` (this file)
-- `docs/database-design.md` (or refresh `07`)
-- `docs/api-documentation.md` (or refresh `09`)
-- `docs/user-manual.md`, `owner-manual.md`, `billing-user-manual.md`
-- `docs/test-business-billing-guide.md`
-- `docs/deployment-guide.md`
-
-**Acceptance:** Terminology is Business, not Hotel.
+1. ✅ Commercial landing redesign (`HomePage.jsx`) — brand-first hero, section hierarchy, ₹550 pricing, no gateway  
+2. ✅ Sticky navbar with Features / Modules / AI Insights / Pricing / About / Contact + Login / Register  
+3. ✅ Mobile hamburger drawer  
+4. ✅ Company contacts updated in `company.js`, manuals, and docs README (Pune Shreya Business Hub / new email / phone)  
+5. ✅ Dark mode–compatible palette (teal ink gradients; no Unsplash stock hero)  
 
 ---
 
-### Sprint 20 — Complete testing
+## Phase 2 Sprint P2-3 outcome
 
-**Goal:** Full E2E guide + automated coverage where practical.
-
-**Cover:** Registration, roles, isolation, categories/parents, items, billing cart remove, discount/GST, cash/online, print/history, reports, audit, AI, dark mode, password/settings/subscription  
-
-**Acceptance:** Guide uses realistic multi-business sample data.
-
----
-
-### Sprint 21 — Security + tenant audit
-
-**Goal:** Prove Business A cannot access Business B.
-
-**Tasks:** JWT, RBAC, isolation, IDOR, password handling, route guards, audit immutability  
-
-**Acceptance:** Written security findings + fixes for critical issues.
+1. ✅ Auth pytest suites green (16 passed: login, register, verify, reset, change-password, isolation)  
+2. ✅ Live API smoke: register grocery → block login → verify → login → `business_type` on `/me` and `/tenants/me`  
+3. ✅ Legacy `POST /auth/register-hotel` still works; invalid type → 400  
+4. ✅ Forgot + reset password round-trip OK; FE routes wired to current APIs  
+5. ✅ No regressions found — **no app code changes**  
+6. ✅ Report: [`phase2-p2-3-auth-verification.md`](./phase2-p2-3-auth-verification.md)  
 
 ---
 
-### Sprint 22 — Final QA + production readiness
+## Phase 2 Sprint P2-4 outcome
 
-**Goal:** Release gate.
-
-**Tasks:** Backend/frontend/API/DB/tenant/UI/responsive checks; no broken routes/console/API/migration/tenant leakage; final QA report  
-
-**Acceptance:** Signed-off QA report.
+1. ✅ Owner Categories dialog: Category Name / Description / Parent Category + required helper copy for Main vs Sub  
+2. ✅ Searchable Parent Autocomplete with hierarchy indentation + live “main / subcategory under …” hint  
+3. ✅ List shows tree indent, Main/Sub chips, path as `Food → Veg` style  
+4. ✅ Billing categories list aligned (Type column + tree indent)  
+5. ✅ BE validations reconfirmed via pytest (`test_categories_items` — parent/circular/cross-tenant/inactive parent)  
+6. ✅ Frontend production build OK  
 
 ---
 
-## 3. Terminology standard (all future sprints)
+## Phase 2 Sprint P2-5 outcome
+
+1. ✅ Root-name uniqueness: generated `categories.parent_key` (VIRTUAL `IFNULL(parent_id,'')`) + unique `(tenant_id, parent_key, name)`  
+2. ✅ `02_schema.sql`, Alembic `20260814_category_parent_key`, `apply_category_parent_key.py` wired into `apply_pending_schema.py`  
+3. ✅ Applied successfully on local MySQL (STORED ALTER rejected with 1215; VIRTUAL used)  
+4. ✅ `ItemService.update_item` now rejects inactive category (aligned with create)  
+5. ✅ Docs updated: `database-design.md`, `database-relationships.md`, audit hole closed  
+6. ✅ Pytest green (`test_categories_items` + `test_schema_relationships`, including new duplicate-root + inactive-move cases)  
+
+---
+
+## Phase 2 Sprint P2-6 outcome
+
+1. ✅ Shared `CategoryHierarchyAutocomplete` + hierarchy utils — Items filter/dialog + Categories parent picker  
+2. ✅ Item rows show `category_hierarchy_path` (API field added)  
+3. ✅ Shared `LoadingBlock` / `FormSection`; Bills empty-state sibling pattern; Billing categories chips aligned  
+4. ✅ Filter control widths via `filterControlSx` / `filterControlWideSx` on Items  
+5. ✅ Profile / Settings / Change Password use shared form section chrome  
+6. ✅ Frontend build + category/item pytest green  
+
+---
+
+## Phase 2 Sprint P2-7 outcome
+
+1. ✅ Landing: hamburger through tablet; hero/support CTAs mobile-safe; footer/business grids stepped  
+2. ✅ AppBar: role chip hidden on `xs`; tighter gutters (Owner + Billing)  
+3. ✅ Auth: top-align on small screens; full-width submit buttons  
+4. ✅ New Bill catalog stacks on `xs`; dialogs wrap; TableCard denser on phone  
+5. ✅ KPI/chart polish for drawer + narrow viewports  
+6. ✅ Checklist: [`phase2-p2-7-responsive-checklist.md`](./phase2-p2-7-responsive-checklist.md)  
+
+---
+
+## Phase 2 Sprint P2-8 outcome
+
+1. ✅ Item list N+1 fixed (`joinedload` category/creator + category map for hierarchy path)  
+2. ✅ Items + bills tables paginated (25/page) with `PaginationBar`  
+3. ✅ Route-level `React.lazy` code splitting (main chunk ~325KB vs prior ~1.1MB)  
+4. ✅ Billing catalog search debounced (250ms); report index `ix_bills_tenant_status_created_at`  
+5. ✅ Notes: [`phase2-p2-8-performance.md`](./phase2-p2-8-performance.md)  
+
+---
+
+## Phase 2 Sprint P2-9 outcome
+
+1. ✅ Billing suites green (cash/online, server totals, reference, print/cancel)  
+2. ✅ Biscuits cart-omit test: catalog item remains active when omitted from bill  
+3. ✅ Online + discount totals confirmed with nearest-rupee round-off  
+4. ✅ FE remove-from-cart is cart-state only (tooltip already documents)  
+5. ✅ Report: [`phase2-p2-9-billing-verification.md`](./phase2-p2-9-billing-verification.md) — **no app code changes**  
+
+---
+
+## Phase 2 Sprint P2-10 outcome
+
+1. ✅ Sample bills (cash + online + cancelled) reconciled to hand calc for today / this_week / this_month  
+2. ✅ Cancelled excluded from `total_sales`; cash/online split + average bill match  
+3. ✅ Billing home `/bills/today-summary` aligns with report today metrics  
+4. ✅ Existing `test_reports.py` still green; new `test_p2_10_reports_reconciliation.py`  
+5. ✅ Report: [`phase2-p2-10-reports-verification.md`](./phase2-p2-10-reports-verification.md) — **no app code changes**  
+
+---
+
+## Phase 2 Sprint P2-11 outcome
+
+1. ✅ Owner sees Billing User `LOGIN` and `CREATE_BILL` in audit logs  
+2. ✅ Item create / update / deactivate visible via Item Activity (`entity_type=ITEM`)  
+3. ✅ Soft-deactivate keeps audit snapshots (name + reason); billing still 403 on audit API  
+4. ✅ Suites green: `test_p2_11_audit_item_activity` + `test_audit_logs` + `test_billing_item_management` (18 passed)  
+5. ✅ Report: [`phase2-p2-11-audit-verification.md`](./phase2-p2-11-audit-verification.md) — **no app code changes**  
+
+---
+
+## Phase 2 Sprint P2-12 outcome
+
+1. ✅ Canonical sample: Shree General Store · Rajesh / Amit · grocery hierarchy + four items  
+2. ✅ Exact Script G (Cash ₹620, Online ₹105 after Biscuits cart-remove) in test guide  
+3. ✅ Owner / Billing / User manuals reference the practice sample  
+4. ✅ Docs index links P2-10…P2-12 notes  
+5. ✅ Report: [`phase2-p2-12-testing-sample-data.md`](./phase2-p2-12-testing-sample-data.md) — **docs only**  
+
+---
+
+## Phase 2 Sprint P2-13 outcome
+
+1. ✅ Isolation matrix green: categories / items / bills / reports / users / audit / activity  
+2. ✅ Sprint 21 hardening reconfirmed (logout/deactivate revoke, email uniqueness, audit immutable)  
+3. ✅ No new Critical/High regressions vs [`security-tenant-audit.md`](./security-tenant-audit.md)  
+4. ✅ Residual follow-ups unchanged (non-blocking)  
+5. ✅ Report: [`phase2-p2-13-security-isolation.md`](./phase2-p2-13-security-isolation.md) — **no app code changes**  
+
+---
+
+## Phase 2 Sprint P2-14 outcome
+
+1. ✅ Full backend pytest green (**119** passed)  
+2. ✅ Frontend production build green (lazy chunks retained)  
+3. ✅ Landing + UX + perf + verification sprints rolled into signed gate  
+4. ✅ Staging pilot = Script G (Shree General Store) + schema apply reminder  
+5. ✅ Report: [`phase2-final-qa-report.md`](./phase2-final-qa-report.md) — **Phase 2 release gate signed**  
+
+**Phase 2 complete.** Product owner: approve staging pilot, then production cutover.
+
+---
+
+## Terminology (unchanged)
 
 | Prefer | Avoid |
 |--------|--------|
 | Business | Hotel (as product default) |
-| Business Owner | Hotel Owner |
-| Business User / Billing User | Hotel Staff (as only framing) |
-| Business Dashboard | Hotel Dashboard |
 | Register Business | Register Hotel |
-| Business Items / Categories | Hotel Menu (as only framing) |
+| Business Dashboard | Hotel Dashboard |
 
-Hotel remains a **valid business type**, not the product identity.
-
----
-
-## 4. Technology constraints
-
-- Backend: Python, Flask, REST, SQLAlchemy, MySQL
-- Frontend: React, MUI, Vite
-- Keep existing layered architecture
-- Do not introduce unnecessary frameworks
-- Do not rebuild from scratch
+Hotel remains a **valid business type**, not the product name.
 
 ---
 
-## 5. Current status
+## Appendix A — Phase 1 status (sprints 1–22)
 
 | Item | Status |
 |------|--------|
-| Phase 0 audit | ✅ Completed (2026-08-14) |
-| `docs/development-roadmap.md` | ✅ Created |
-| Sprint 1 — Architecture audit report | ✅ Completed (2026-08-14) |
-| Deliverable | [`architecture-audit-report.md`](./architecture-audit-report.md) |
-| Docs index | [`README.md`](./README.md) |
-| Sprint 2 — Multi-business / tenant foundation | ✅ Completed (2026-08-14) |
-| Sprint 3 — Business registration + authentication | ✅ Completed (2026-08-14) |
-| Sprint 4 — Database relationship refactor | ✅ Completed (2026-08-14) |
-| Sprint 5 — Category + parent category | ✅ Completed (2026-08-14) |
-| Sprint 6 — Items module | ✅ Completed (2026-08-14) |
-| Sprint 7 — Billing module | ✅ Completed (2026-08-14) |
-| Sprint 8 — Payment method | ✅ Completed (2026-08-14) |
-| Sprint 9 — Bill history + printing | ✅ Completed (2026-08-14) |
-| Sprint 10 — Owner / business dashboard | ✅ Completed (2026-08-14) |
-| Sprint 11 — Reports + analytics | ✅ Completed (2026-08-14) |
-| Sprint 12 — Audit + user activity | ✅ Completed (2026-08-14) |
-| Sprint 13 — AI business assistant | ✅ Completed (2026-08-14) |
-| Sprint 14 — AI prediction + decision support | ✅ Completed (2026-08-14) |
-| Sprint 15 — Public home / landing page | ✅ Completed (2026-08-14) |
-| Sprint 16 — Subscription (informational) | ✅ Completed (2026-08-14) |
-| Sprint 17 — Professional UI/UX pass | ✅ Completed (2026-08-14) |
-| Sprint 18 — Dark mode | ✅ Completed (2026-08-14) |
-| Sprint 19 — Documentation refresh | ✅ Completed (2026-08-14) |
-| Sprint 20 — Complete E2E testing | ✅ Completed (2026-08-14) |
-| Sprint 21 — Security + tenant audit | ✅ Completed (2026-08-14) |
-| Sprint 22 — Final QA + production readiness | ✅ Completed (2026-08-14) |
+| Phase 0 + Sprints 1–22 | ✅ Completed (2026-08-14) |
+| Program | Multi-business conversion complete; staging pilot recommended |
 
-**Program status:** Multi-business SaaS conversion sprints **1–22 complete**. Next: staging pilot + production cutover per [final-qa-report.md](./final-qa-report.md).
-
----
-
-## 6. Sprint 22 outcome
-
-1. ✅ Full backend `pytest` green; frontend `npm run build` green  
-2. ✅ Route / API / tenant / UI release checklist documented  
-3. ✅ Final QA report: [`final-qa-report.md`](./final-qa-report.md)  
-4. ✅ Production readiness checklist refreshed: [`21-production-readiness.md`](./21-production-readiness.md)  
-5. ✅ No Critical open defects at release gate; residual items non-blocking  
-
-**Next for product owner:** Approve staging deployment and run E2E Script A + C on staging.
-
----
-
-## Appendix — Sprint 21 outcome (prior)
-
-1. ✅ Security audit report: [`security-tenant-audit.md`](./security-tenant-audit.md) — Business A ↛ Business B confirmed  
-2. ✅ Fixes: logout / deactivate revoke JWT; global email uniqueness; reset & verify token stacking closed; proxy IP gated  
-3. ✅ New tests: `tests/test_security_hardening.py`  
-4. ✅ No Critical IDOR open; residual items documented (DB email unique index, shorter JWT TTL optional)  
-
-**Prior next question:** Should I start Sprint 22?
-
----
-
-## Appendix — Sprint 20 outcome (prior)
-
-1. ✅ Expanded [test-business-billing-guide.md](./test-business-billing-guide.md) with B1–B3 multi-business sample pack, auto/manual matrix, and E2E scripts  
-2. ✅ New automated gaps: `tests/test_sprint20_gaps.py` (suspended tenant, bill qty/empty/merge/discount cap, register other/invalid/default type, tenant settings fields, SKU tenant-scope, billing blocked from weekly/export)  
-3. ✅ Dark mode + subscription UI remain documented as manual-only  
-4. ✅ Gap suite green (`pytest tests/test_sprint20_gaps.py`)  
-
-**Prior next question:** Should I start Sprint 21?
-
----
-
-## Appendix — Sprint 19 outcome (prior)
-
-1. ✅ Docs index + root README use **Business Billing** terminology  
-2. ✅ New canonical docs: `database-design.md`, `api-documentation.md`, `deployment-guide.md`  
-3. ✅ Manuals: `user-manual.md`, `owner-manual.md`, `billing-user-manual.md`  
-4. ✅ `test-business-billing-guide.md` (supersedes hotel test guide for naming)  
-5. ✅ Hotel-era docs marked historical / superseded where needed  
-
-**Prior next question:** Should I start Sprint 20?
-
----
-
-## Appendix — Sprint 18 outcome (prior)
-
-1. ✅ Light / Dark themes via `createAppTheme(mode)` + `ColorModeProvider`  
-2. ✅ Preference persisted in `localStorage` (`bbs-color-mode`); survives refresh (boot script avoids flash)  
-3. ✅ Theme toggle on Home, Auth, Owner AppBar, Billing AppBar, and Settings → Appearance  
-4. ✅ Surfaces adapt: layouts, cards, tables, charts, landing/auth backgrounds  
-
-**Prior next question:** Should I start Sprint 19?
-
----
-
-## Appendix — Sprint 17 outcome (prior)
-
-1. ✅ Shared shell tokens (`DRAWER_WIDTH`, `MainContent`) + theme overflow / toolbar consistency  
-2. ✅ Bills history + Billing home aligned to `PageShell` / `FilterBar` / `TableCard` / `EmptyState`  
-3. ✅ Profile + auth forms match Settings card/spacing patterns; AuthLayout owns page titles  
-4. ✅ Owner/Billing chrome aligned (no AppBar quick-link clutter; account-menu icons; Change Password in menu only)  
-5. ✅ Removed AI duplicate hero + Categories redundant hierarchy block; Settings `hotel*` → `business*`  
-
-**Prior next question:** Should I start Sprint 18?
-
----
-
-## Appendix — Sprint 16 outcome (prior)
-
-1. ✅ Shared plan constants: **₹550 / month** Business Billing Plan  
-2. ✅ Landing `#pricing` shows plan includes + Register / Login / Contact CTAs  
-3. ✅ Owner Settings → Subscription section (email/call support; no checkout)  
-4. ✅ Explicit “no online payment in app” messaging — no fake paid gateway  
-
-**Prior next question:** Should I start Sprint 17?
-
----
-
-## Appendix — Sprint 15 outcome (prior)
-
-1. ✅ Professional landing at `/` — brand-first full-bleed hero  
-2. ✅ Sections: Features, Modules, Businesses, Billing, Reports, AI, Security, Subscription teaser, Contact, 24/7 Support, Footer  
-3. ✅ Company block: Prabha Technology Pvt. Ltd. (Pune address, email, phone)  
-4. ✅ CTAs: Register Business + Login; no hotel-only positioning  
-5. ✅ Sora + Source Sans 3; motion on hero (respects reduced-motion)  
-
-**Prior next question:** Should I start Sprint 16?
-
----
-
-## Appendix — Sprint 14 outcome (prior)
-
-1. ✅ Decision support: best/slow movers, demand hints, recommendations, observed outlook  
-2. ✅ Explicit insufficient-data for empty periods; demand comparison flags missing prior period  
-3. ✅ `GET /api/v1/ai/decisions` + enriched `/ai/analysis` `decisions` block  
-4. ✅ No fabricated forecasts — outlook/recommendations cite recorded totals only  
-5. ✅ Owner UI Decision Support section; tenant isolation tests  
-
-**Prior next question:** Should I start Sprint 15?
-
----
-
-## Appendix — Sprint 13 outcome (prior)
-
-1. ✅ Owner AI Assistant (`GET /api/v1/ai/analysis`) — today / week / month / custom  
-2. ✅ Insights from real tenant sales only: totals, payment mix, top/low items, categories, trends  
-3. ✅ Explicit `insufficient_data` when no finalized bills in period  
-4. ✅ OWNER-only + tenant isolation; billing users blocked  
-5. ✅ Owner UI at `/owner/ai`  
-
-**Prior next question:** Should I start Sprint 14?
-
----
-
-## Appendix — Sprint 12 outcome (prior)
-
-1. ✅ Verified audited events: item create/edit/deactivate, bill create/cancel, login, password change  
-2. ✅ Item activity remains after soft-deactivate; no audit delete endpoints  
-3. ✅ Owner-only read; tenant isolation; billing users blocked  
-4. ✅ Generic business copy (audit/user conflict messages); UI action filters cleaned  
-5. ✅ Expanded `test_audit_logs.py` coverage  
-
-**Prior next question:** Should I start Sprint 13?
-
----
-
-## Appendix — Sprint 11 outcome (prior)
-
-1. ✅ Daily / weekly / monthly / custom reports with payment filter  
-2. ✅ KPIs: sales, bills, avg, cash/online, items sold, discount, GST, cancelled  
-3. ✅ Top/low items + category sales (+ exports)  
-4. ✅ Generic owner-only messaging (no hotel wording); tenant-scoped  
-5. ✅ Excel/CSV/PDF use business-friendly metric labels  
-
-**Prior next question:** Should I start Sprint 12?
-
----
-
-## Appendix — Sprint 10 outcome (prior)
-
-1. ✅ Dashboard shows Business Name + Business Type chip  
-2. ✅ KPIs: sales, bills, average, cash/online (+ counts), cancelled; today/week/month periods  
-3. ✅ Owner/Billing shell copy uses Business Billing (not Hotel Billing)  
-4. ✅ Owner page subtitles generalized away from hotel-only wording  
-5. ✅ Report summary regression covers week/month KPI fields  
-
-**Prior next question:** Should I start Sprint 11?
-
----
-
-## Appendix — Sprint 9 outcome (prior)
-
-1. ✅ BillItem snapshots preserve name, unit price, and GST after catalog changes  
-2. ✅ Unique bill numbers; detail/print/cancel/reprint flows verified  
-3. ✅ Receipt branded with Business Name (`receipt__business`; fallback BUSINESS, not HOTEL)  
-4. ✅ FSSAI on receipt only for restaurant/hotel (or legacy blank type)  
-5. ✅ History UI: status chips, reference search; print payload includes tenant  
-
-**Prior next question:** Should I start Sprint 10?
-
----
-
-## Appendix — Sprint 8 outcome (prior)
-
-1. ✅ Cash / Online required on New Bill (default Cash); persisted on create  
-2. ✅ Visible on history, print, reports, exports, and owner dashboard  
-3. ✅ Filters on bill history + reports; invalid filter rejected  
-4. ✅ Shared frontend payment helpers; dashboard/report cash & online bill counts  
-5. ✅ Regression coverage expanded in `test_billing.py`  
-
-**Prior next question:** Should I start Sprint 9?
-
----
-
-## Appendix — Sprint 7 outcome (prior)
-
-1. ✅ Cart remove / qty≤0 only affects the in-memory bill cart (catalog items unchanged)  
-2. ✅ Discount, GST, and totals remain server-authoritative on generate  
-3. ✅ Optional `reference` API/UI (DB column still `table_number`; legacy alias kept)  
-4. ✅ History + receipt show Reference / Ref.; receipt fallback brand is BUSINESS  
-5. ✅ Billing catalog shows SKU when present; remove-from-cart copy clarified  
-
-**Prior next question:** Should I start Sprint 8?
-
----
-
-## Appendix — Sprint 6 outcome (prior)
-
-1. ✅ Catalog fields: `sku`, `cost_price`, `stock_quantity` (+ unique SKU per tenant)  
-2. ✅ Search by name or SKU; billing users retain create/edit/deactivate  
-3. ✅ Owner/billing Items UI updated; generic (non-menu) copy  
-4. ✅ Item activity still available after deactivate  
-5. ✅ Migration + apply helper + docs update  
-
-**Prior next question:** Should I start Sprint 7?
+Prior detailed outcomes remain in git history of this file / [`final-qa-report.md`](./final-qa-report.md).

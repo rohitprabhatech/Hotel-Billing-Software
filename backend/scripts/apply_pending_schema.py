@@ -24,6 +24,12 @@ SCRIPTS = [
     "apply_tenant_business_type.py",
     "apply_schema_relationship_fixes.py",
     "apply_item_catalog_fields.py",
+    "apply_category_parent_key.py",
+    "apply_bill_report_index.py",
+    "apply_stock_notifications.py",
+    "apply_whatsapp_bill_delivery.py",
+    "apply_users_email_unique.py",
+    "apply_whatsapp_webhook_statuses.py",
 ]
 
 

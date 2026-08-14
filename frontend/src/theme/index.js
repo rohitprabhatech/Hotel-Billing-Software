@@ -290,6 +290,7 @@ export function createAppTheme(mode = 'light') {
           paper: {
             borderRadius: 12,
             margin: 16,
+            maxWidth: 'calc(100% - 32px)',
           },
         },
       },
@@ -299,6 +300,9 @@ export function createAppTheme(mode = 'light') {
             padding: '20px 24px 12px',
             fontSize: '1.125rem',
             fontWeight: 650,
+            '@media (max-width:600px)': {
+              padding: '16px 16px 8px',
+            },
           },
         },
       },
@@ -306,6 +310,9 @@ export function createAppTheme(mode = 'light') {
         styleOverrides: {
           root: {
             padding: '8px 24px 8px',
+            '@media (max-width:600px)': {
+              padding: '4px 16px 8px',
+            },
           },
         },
       },
@@ -314,6 +321,10 @@ export function createAppTheme(mode = 'light') {
           root: {
             padding: '16px 24px 20px',
             gap: 8,
+            flexWrap: 'wrap',
+            '@media (max-width:600px)': {
+              padding: '12px 16px 16px',
+            },
           },
         },
       },

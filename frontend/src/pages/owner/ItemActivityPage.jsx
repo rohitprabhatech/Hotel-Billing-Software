@@ -42,18 +42,28 @@ const ITEM_ACTIONS = [
   'ITEM_REACTIVATED',
   'UPDATE_PRICE',
   'CHANGE_GST',
+  'STOCK_UPDATED',
+  'STOCK_ADJUSTED',
+  'STOCK_DEDUCTED',
+  'STOCK_RESTORED',
 ];
 
 function actionChipColor(action) {
   if (action?.includes('CREATED') || action === 'CREATE_ITEM') return 'success';
   if (action?.includes('DEACTIVATED') || action === 'DEACTIVATE_ITEM') return 'warning';
   if (action?.includes('REACTIVATED')) return 'info';
+  if (action?.includes('STOCK')) return 'secondary';
   return 'default';
 }
 
 function summarizeValues(data) {
   if (!data || typeof data !== 'object') return '—';
   const parts = [];
+  if (data.delta != null) {
+    const d = Number(data.delta);
+    parts.push(`${d > 0 ? '+' : ''}${d}`);
+  }
+  if (data.stock_quantity != null) parts.push(`stock ${Number(data.stock_quantity)}`);
   if (data.price != null) parts.push(`₹${Number(data.price).toFixed(2)}`);
   if (data.gst_percentage != null) parts.push(`GST ${data.gst_percentage}%`);
   if (data.is_active != null) parts.push(data.is_active ? 'Active' : 'Inactive');

@@ -1,11 +1,10 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import {
   Alert,
-  Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -28,20 +27,26 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import CategoryHierarchyAutocomplete from '../../components/CategoryHierarchyAutocomplete';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
+import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { PageActions } from '../../context/PageActionsContext';
+import { filterControlSx, filterControlWideSx } from '../../layouts/shell';
 import { PATHS } from '../../routes/paths';
 import { listCategories } from '../../services/categoryService';
 import {
+  adjustItemStock,
   createItem,
   listItems,
   setItemStatus,
   updateItem,
 } from '../../services/itemService';
+import { formatCategoryPath } from '../../utils/categoryHierarchy';
 
 const emptyForm = {
   name: '',
@@ -52,7 +57,10 @@ const emptyForm = {
   cost_price: '',
   gst_percentage: '2.5',
   stock_quantity: '',
+  minimum_stock_level: '',
 };
+
+const PAGE_SIZE = 25;
 
 function money(value) {
   if (value === null || value === undefined || value === '') return '—';
@@ -65,6 +73,8 @@ export default function ItemsPage() {
   const [q, setQ] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [open, setOpen] = useState(false);
@@ -74,15 +84,20 @@ export default function ItemsPage() {
   const [loading, setLoading] = useState(true);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivateReason, setDeactivateReason] = useState('');
+  const [adjustTarget, setAdjustTarget] = useState(null);
+  const [adjustDelta, setAdjustDelta] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
 
-  const load = async () => {
+  const load = async (nextPage = page) => {
     setError('');
     setLoading(true);
     try {
       const params = {
         q: q || undefined,
         category_id: categoryFilter || undefined,
-        per_page: 100,
+        page: nextPage,
+        per_page: PAGE_SIZE,
       };
       if (statusFilter === 'active') params.is_active = true;
       if (statusFilter === 'inactive') params.is_active = false;
@@ -93,6 +108,8 @@ export default function ItemsPage() {
       ]);
       setCategories(catRes.data || []);
       setItems(itemRes.data || []);
+      setMeta(itemRes.meta || { page: nextPage, per_page: PAGE_SIZE, total: 0 });
+      setPage(itemRes.meta?.page || nextPage);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to load items.');
     } finally {
@@ -101,7 +118,7 @@ export default function ItemsPage() {
   };
 
   useEffect(() => {
-    load();
+    load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, statusFilter]);
 
@@ -118,30 +135,38 @@ export default function ItemsPage() {
       sku: item.sku || '',
       category_id: item.category_id || '',
       description: item.description || '',
-      price: String(item.price ?? ''),
-      cost_price: item.cost_price === null || item.cost_price === undefined ? '' : String(item.cost_price),
-      gst_percentage: String(item.gst_percentage ?? '0'),
-      stock_quantity:
-        item.stock_quantity === null || item.stock_quantity === undefined
-          ? ''
-          : String(item.stock_quantity),
+      price: item.price ?? '',
+      cost_price: item.cost_price ?? '',
+      gst_percentage: item.gst_percentage ?? '2.5',
+      stock_quantity: item.stock_quantity ?? '',
+      minimum_stock_level: item.minimum_stock_level ?? '',
     });
     setOpen(true);
   };
 
   const onSave = async () => {
+    if (!form.name.trim()) {
+      setError('Item name is required.');
+      return;
+    }
+    if (!form.category_id) {
+      setError('Category is required.');
+      return;
+    }
     setSaving(true);
     setError('');
     setSuccess('');
     const payload = {
-      name: form.name,
+      name: form.name.trim(),
       sku: form.sku.trim() || null,
       category_id: form.category_id,
       description: form.description || null,
-      price: Number(form.price),
-      cost_price: form.cost_price === '' ? null : Number(form.cost_price),
-      gst_percentage: Number(form.gst_percentage),
-      stock_quantity: form.stock_quantity === '' ? null : Number(form.stock_quantity),
+      price: form.price,
+      cost_price: form.cost_price === '' ? null : form.cost_price,
+      gst_percentage: form.gst_percentage,
+      stock_quantity: form.stock_quantity === '' ? null : form.stock_quantity,
+      minimum_stock_level:
+        form.minimum_stock_level === '' ? null : form.minimum_stock_level,
     };
     try {
       if (editing) {
@@ -152,7 +177,7 @@ export default function ItemsPage() {
         setSuccess('Item created successfully.');
       }
       setOpen(false);
-      await load();
+      await load(editing ? page : 1);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to save item');
     } finally {
@@ -169,7 +194,7 @@ export default function ItemsPage() {
     setItemStatus(item.id, true)
       .then(() => {
         setSuccess('Item reactivated successfully.');
-        return load();
+        return load(page);
       })
       .catch((err) => {
         setError(err.response?.data?.error?.message || 'Failed to update status');
@@ -184,7 +209,7 @@ export default function ItemsPage() {
       await setItemStatus(deactivateTarget.id, false, deactivateReason || null);
       setSuccess('Item deactivated successfully.');
       setDeactivateTarget(null);
-      await load();
+      await load(page);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to deactivate item');
     } finally {
@@ -203,7 +228,7 @@ export default function ItemsPage() {
       <PageShell>
         <FilterBar
           actions={
-            <Button variant="outlined" onClick={load}>
+            <Button variant="outlined" onClick={() => load(1)}>
               Search
             </Button>
           }
@@ -213,31 +238,32 @@ export default function ItemsPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') load();
+              if (e.key === 'Enter') load(1);
             }}
-            sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
+            sx={{ ...filterControlWideSx, flex: 1 }}
           />
-          <FormControl sx={{ minWidth: { xs: '100%', sm: 180 } }}>
-            <InputLabel>Category</InputLabel>
-            <Select
-              label="Category"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <MenuItem value="">All</MenuItem>
-              {categories.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.hierarchy_path || c.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl sx={{ minWidth: { xs: '100%', sm: 140 } }}>
+          <CategoryHierarchyAutocomplete
+            categories={categories}
+            valueId={categoryFilter}
+            onChange={(id) => {
+              setCategoryFilter(id);
+              setPage(1);
+            }}
+            label="Category"
+            allowEmpty
+            emptyOption={{ id: '', name: 'All categories', isEmpty: true }}
+            activeOnly={false}
+            sx={filterControlWideSx}
+          />
+          <FormControl sx={filterControlSx}>
             <InputLabel>Status</InputLabel>
             <Select
               label="Status"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
             >
               <MenuItem value="">All</MenuItem>
               <MenuItem value="active">Active</MenuItem>
@@ -251,9 +277,7 @@ export default function ItemsPage() {
 
         <TableCard>
           {loading ? (
-            <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}>
-              <CircularProgress size={28} />
-            </Box>
+            <LoadingBlock />
           ) : (
             <Table size="small" sx={{ minWidth: 1100 }}>
               <TableHead>
@@ -280,7 +304,12 @@ export default function ItemsPage() {
                       <TruncateText value={item.sku || '—'} maxWidth={100} />
                     </TableCell>
                     <TableCell>
-                      <TruncateText value={item.category_name || '—'} maxWidth={120} />
+                      <TruncateText
+                        value={formatCategoryPath(
+                          item.category_hierarchy_path || item.category_name || '—'
+                        )}
+                        maxWidth={180}
+                      />
                     </TableCell>
                     <TableCell align="right">{money(item.price)}</TableCell>
                     <TableCell align="right">{money(item.cost_price)}</TableCell>
@@ -289,6 +318,11 @@ export default function ItemsPage() {
                       {item.stock_quantity === null || item.stock_quantity === undefined
                         ? '—'
                         : Number(item.stock_quantity)}
+                      {item.minimum_stock_level != null ? (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          min {Number(item.minimum_stock_level)}
+                        </Typography>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" alignItems="center" spacing={1}>
@@ -308,6 +342,23 @@ export default function ItemsPage() {
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        {item.stock_quantity !== null && item.stock_quantity !== undefined ? (
+                          <Tooltip title="Adjust stock">
+                            <IconButton
+                              size="small"
+                              aria-label={`Adjust stock for ${item.name}`}
+                              onClick={() => {
+                                setAdjustTarget(item);
+                                setAdjustDelta('');
+                                setAdjustReason('');
+                                setError('');
+                                setSuccess('');
+                              }}
+                            >
+                              <Inventory2OutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
                         <Tooltip title="Edit">
                           <IconButton
                             size="small"
@@ -342,13 +393,22 @@ export default function ItemsPage() {
               onAction={openCreate}
             />
           ) : null}
+          {!loading && items.length ? (
+            <PaginationBar
+              page={meta.page}
+              perPage={meta.per_page}
+              total={meta.total}
+              onPageChange={(next) => load(next)}
+            />
+          ) : null}
         </TableCard>
       </PageShell>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>{editing ? 'Edit Item' : 'Add Item'}</DialogTitle>
         <DialogContent>
-          <Box
+          <Stack
+            spacing={2.5}
             sx={{
               mt: 1,
               display: 'grid',
@@ -371,22 +431,15 @@ export default function ItemsPage() {
               fullWidth
               helperText="Unique per business when provided"
             />
-            <FormControl fullWidth required>
-              <InputLabel>Category</InputLabel>
-              <Select
-                label="Category"
-                value={form.category_id}
-                onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
-              >
-                {categories
-                  .filter((c) => c.is_active || c.id === form.category_id)
-                  .map((c) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.hierarchy_path || c.name}
-                    </MenuItem>
-                  ))}
-              </Select>
-            </FormControl>
+            <CategoryHierarchyAutocomplete
+              categories={categories}
+              valueId={form.category_id}
+              onChange={(id) => setForm((f) => ({ ...f, category_id: id }))}
+              label="Category"
+              required
+              activeOnly
+              includeInactiveIds={[form.category_id]}
+            />
             <TextField
               label="Price (₹)"
               type="number"
@@ -424,6 +477,17 @@ export default function ItemsPage() {
               helperText="Leave blank if you are not tracking stock"
             />
             <TextField
+              label="Minimum Stock Level"
+              type="number"
+              value={form.minimum_stock_level}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, minimum_stock_level: e.target.value }))
+              }
+              fullWidth
+              inputProps={{ min: 0, step: '0.001' }}
+              helperText="Low-stock alert when stock reaches this level (blank = no alert)"
+            />
+            <TextField
               label="Description"
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -432,7 +496,7 @@ export default function ItemsPage() {
               minRows={2}
               sx={{ gridColumn: { sm: '1 / -1' } }}
             />
-          </Box>
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
@@ -465,6 +529,73 @@ export default function ItemsPage() {
           <Button onClick={() => setDeactivateTarget(null)}>Cancel</Button>
           <Button variant="contained" color="warning" onClick={confirmDeactivate} disabled={saving}>
             {saving ? 'Saving...' : 'Deactivate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(adjustTarget)}
+        onClose={() => !adjusting && setAdjustTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Adjust stock — {adjustTarget?.name}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Current stock: <strong>{Number(adjustTarget?.stock_quantity ?? 0)}</strong>
+              {adjustTarget?.minimum_stock_level != null
+                ? ` · Min ${Number(adjustTarget.minimum_stock_level)}`
+                : ''}
+            </Typography>
+            <TextField
+              label="Adjustment (+ add / − remove)"
+              type="number"
+              value={adjustDelta}
+              onChange={(e) => setAdjustDelta(e.target.value)}
+              fullWidth
+              helperText="Example: 10 to restock, -2 to write off"
+              inputProps={{ step: '1' }}
+              autoFocus
+            />
+            <TextField
+              label="Reason (optional)"
+              value={adjustReason}
+              onChange={(e) => setAdjustReason(e.target.value)}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAdjustTarget(null)} disabled={adjusting}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={adjusting || !adjustDelta || Number(adjustDelta) === 0}
+            onClick={async () => {
+              if (!adjustTarget) return;
+              setAdjusting(true);
+              setError('');
+              setSuccess('');
+              try {
+                const res = await adjustItemStock(adjustTarget.id, {
+                  delta: Number(adjustDelta),
+                  reason: adjustReason || null,
+                });
+                setSuccess(
+                  `Stock for ${res.data?.name || adjustTarget.name} is now ${res.data?.stock_quantity}.`,
+                );
+                setAdjustTarget(null);
+                await load(page);
+              } catch (err) {
+                setError(err.response?.data?.error?.message || 'Stock adjustment failed.');
+              } finally {
+                setAdjusting(false);
+              }
+            }}
+          >
+            {adjusting ? 'Saving...' : 'Apply'}
           </Button>
         </DialogActions>
       </Dialog>

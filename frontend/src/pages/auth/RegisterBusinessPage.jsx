@@ -255,6 +255,7 @@ export default function RegisterBusinessPage() {
         type="submit"
         variant="contained"
         size="large"
+        fullWidth
         disabled={loading || Boolean(success)}
         startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
       >

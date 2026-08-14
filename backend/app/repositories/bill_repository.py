@@ -2,11 +2,12 @@
 
 from datetime import datetime
 
-from sqlalchemy import case, func
+from sqlalchemy import and_, case, func
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models.bill import Bill, BillItem, BillNumberCounter
+from app.models.bill_delivery import BillDelivery
 
 
 class BillRepository:
@@ -29,6 +30,7 @@ class BillRepository:
         date_to: datetime | None = None,
         q: str | None = None,
         payment_method: str | None = None,
+        whatsapp_status: str | None = None,
         page: int = 1,
         per_page: int = 50,
     ) -> tuple[list[Bill], int]:
@@ -47,6 +49,32 @@ class BillRepository:
             like = f"%{q.strip()}%"
             query = query.filter(
                 (Bill.bill_number.ilike(like)) | (Bill.table_number.ilike(like))
+            )
+        if whatsapp_status:
+            latest = (
+                db.session.query(
+                    BillDelivery.bill_id.label("bill_id"),
+                    func.max(BillDelivery.created_at).label("max_created"),
+                )
+                .filter(
+                    BillDelivery.tenant_id == tenant_id,
+                    BillDelivery.delivery_method == "WHATSAPP",
+                )
+                .group_by(BillDelivery.bill_id)
+                .subquery()
+            )
+            query = (
+                query.join(latest, Bill.id == latest.c.bill_id)
+                .join(
+                    BillDelivery,
+                    and_(
+                        BillDelivery.bill_id == Bill.id,
+                        BillDelivery.tenant_id == tenant_id,
+                        BillDelivery.delivery_method == "WHATSAPP",
+                        BillDelivery.created_at == latest.c.max_created,
+                    ),
+                )
+                .filter(BillDelivery.status == whatsapp_status)
             )
 
         total = query.count()

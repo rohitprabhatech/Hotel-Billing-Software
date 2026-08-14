@@ -35,6 +35,7 @@ class Item(db.Model, TimestampMixin):
         Numeric(5, 2), nullable=False, default=Decimal("0.00")
     )
     stock_quantity: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+    minimum_stock_level: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     category = relationship("Category", back_populates="items")

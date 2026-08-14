@@ -35,7 +35,9 @@ import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainContent from '../components/MainContent';
 import PageHeader from '../components/PageHeader';
+import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import ThemeModeToggle from '../components/ThemeModeToggle';
+import NotificationBell from '../components/NotificationBell';
 import { useAuth } from '../context/AuthContext';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
 import { DRAWER_WIDTH } from './shell';
@@ -183,9 +185,9 @@ export default function OwnerLayout() {
           ml: { md: `${drawerWidth}px` },
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ px: { xs: 1, sm: 2 }, gap: 0.5, minHeight: { xs: 56, sm: 64 } }}>
           {isMobile ? (
-            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }} aria-label="Open menu">
+            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 0.5 }} aria-label="Open menu">
               <MenuIcon />
             </IconButton>
           ) : null}
@@ -201,8 +203,15 @@ export default function OwnerLayout() {
                 : `Business Dashboard · ${meta.title}`}
             </Typography>
           </Box>
-          <Chip size="small" label="OWNER" color="primary" variant="outlined" sx={{ mr: 1 }} />
-          <ThemeModeToggle sx={{ mr: 0.5 }} />
+          <Chip
+            size="small"
+            label="OWNER"
+            color="primary"
+            variant="outlined"
+            sx={{ mr: 0.5, display: { xs: 'none', sm: 'inline-flex' } }}
+          />
+          <NotificationBell />
+          <ThemeModeToggle sx={{ mr: 0.25 }} />
           <Tooltip title="Account menu">
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu">
               <PersonOutlinedIcon />
@@ -295,6 +304,7 @@ export default function OwnerLayout() {
 }
 
 function OwnerMain({ meta }) {
+  const location = useLocation();
   return (
     <MainContent>
       {!meta.hidePageHeader ? (
@@ -304,7 +314,9 @@ function OwnerMain({ meta }) {
           actions={<PageActionsSlot />}
         />
       ) : null}
-      <Outlet />
+      <RouteErrorBoundary key={location.pathname}>
+        <Outlet />
+      </RouteErrorBoundary>
     </MainContent>
   );
 }

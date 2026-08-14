@@ -49,6 +49,10 @@ const ACTIONS = [
   'CANCEL_BILL',
   'PRINT_BILL',
   'REPRINT_BILL',
+  'BILL_SENT_WHATSAPP',
+  'BILL_WHATSAPP_FAILED',
+  'STOCK_ADJUSTED',
+  'STOCK_UPDATED',
   'ITEM_CREATED',
   'ITEM_UPDATED',
   'ITEM_DEACTIVATED',
@@ -80,10 +84,26 @@ function describeLog(row) {
   if (row.action === 'CANCEL_BILL') {
     return row.new_data?.cancellation_reason || 'Bill cancelled';
   }
+  if (row.action === 'BILL_SENT_WHATSAPP') {
+    return `WhatsApp sent${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
+  }
+  if (row.action === 'BILL_WHATSAPP_FAILED') {
+    return `WhatsApp failed${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
+  }
+  if (row.action === 'STOCK_ADJUSTED') {
+    const d = row.new_data?.delta;
+    const stock = row.new_data?.stock_quantity;
+    const bits = [];
+    if (d != null) bits.push(`${Number(d) > 0 ? '+' : ''}${Number(d)}`);
+    if (stock != null) bits.push(`→ ${stock}`);
+    if (row.new_data?.reason) bits.push(row.new_data.reason);
+    return bits.length ? bits.join(' · ') : 'Stock adjusted';
+  }
   if (row.action === 'PASSWORD_CHANGED') return 'Password changed';
   if (row.action === 'LOGIN') return 'Signed in';
   if (row.action === 'LOGOUT') return 'Signed out';
   if (row.bill_number) return `Bill ${row.bill_number}`;
+  if (row.new_data?.bill_number) return `Bill ${row.new_data.bill_number}`;
   if (row.new_data?.name) return row.new_data.name;
   if (row.old_data?.name) return row.old_data.name;
   return row.entity_type || '—';

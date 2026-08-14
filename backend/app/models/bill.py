@@ -46,6 +46,10 @@ class Bill(db.Model, TimestampMixin):
     # Optional bill reference (table / counter / token / customer note).
     # Column name retained as table_number for backward compatibility.
     table_number: Mapped[str | None] = mapped_column(String(30))
+    customer_name: Mapped[str | None] = mapped_column(String(120))
+    customer_phone_country_code: Mapped[str | None] = mapped_column(String(8))
+    customer_phone_national: Mapped[str | None] = mapped_column(String(20))
+    customer_phone_e164: Mapped[str | None] = mapped_column(String(20))
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     discount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     taxable_amount: Mapped[Decimal] = mapped_column(

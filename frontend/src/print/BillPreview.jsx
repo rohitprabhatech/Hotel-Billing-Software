@@ -28,6 +28,8 @@ export default function BillPreview({ bill, onPrint, printing = false }) {
           borderColor: 'divider',
           bgcolor: '#fff',
           p: 1,
+          maxWidth: '100%',
+          overflowX: 'auto',
         }}
       >
         <PrintableReceipt bill={bill} width={width} />

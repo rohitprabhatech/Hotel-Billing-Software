@@ -3,17 +3,18 @@
 export const COMPANY = {
   legalName: 'Prabha Technology Pvt. Ltd.',
   productName: 'Business Billing',
-  tagline: 'Billing software for every kind of shop.',
+  tagline: 'Smart billing and business management for every kind of shop.',
   addressLines: [
-    'Pune Satara Road, Khed-Shivapur',
-    'Pune, Maharashtra 412205',
-    'India',
+    'B-05, First Floor, Shreya Business Hub',
+    'Pari Chowk, Mokarwadi',
+    'Pune, Maharashtra – 411041',
   ],
-  email: 'support@prabhatech.in',
-  phone: '+91 20 7123 4567',
-  phoneHref: 'tel:+912071234567',
-  emailHref: 'mailto:support@prabhatech.in',
-  supportNote: '24/7 support for registered businesses',
+  email: 'prabha.technology.01@gmail.com',
+  phone: '8767865572',
+  phoneDisplay: '87678 65572',
+  phoneHref: 'tel:+918767865572',
+  emailHref: 'mailto:prabha.technology.01@gmail.com',
+  supportNote: '24/7 technical support for registered businesses',
   planPriceLabel: '₹550 / month',
 };
 
@@ -34,7 +35,7 @@ export const SUBSCRIPTION_PLAN = {
     'AI business assistant (tenant-scoped)',
     'Audit trail and 24/7 support access',
   ],
-  ctaRegister: 'Register Business',
+  ctaRegister: 'Register Your Business',
   ctaLogin: 'Login',
   ctaContact: 'Contact to subscribe',
 };

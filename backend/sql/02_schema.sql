@@ -14,6 +14,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- Drop in dependency order (safe re-run for local/dev)
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS bill_items;
 DROP TABLE IF EXISTS bills;
 DROP TABLE IF EXISTS bill_number_counters;
@@ -90,6 +91,7 @@ CREATE TABLE users (
     updated_at           DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_tenant_email (tenant_id, email),
+    UNIQUE KEY uq_users_email (email),
     INDEX ix_users_tenant_id (tenant_id),
     INDEX ix_users_tenant_role (tenant_id, role_id),
     INDEX ix_users_tenant_active (tenant_id, is_active),
@@ -148,13 +150,16 @@ CREATE TABLE categories (
     id           CHAR(36)     NOT NULL,
     tenant_id    CHAR(36)     NOT NULL,
     parent_id    CHAR(36)     NULL,
+    -- Coalesce NULL parent_id so main-category names are unique per tenant
+    -- (MySQL UNIQUE ignores NULL duplicates in multi-column unique keys).
+    parent_key   CHAR(36)     GENERATED ALWAYS AS (IFNULL(parent_id, '')) VIRTUAL,
     name         VARCHAR(120) NOT NULL,
     description  TEXT         NULL,
     is_active    TINYINT(1)   NOT NULL DEFAULT 1,
     created_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
-    UNIQUE KEY uq_categories_tenant_parent_name (tenant_id, parent_id, name),
+    UNIQUE KEY uq_categories_tenant_parent_key_name (tenant_id, parent_key, name),
     INDEX ix_categories_tenant_id (tenant_id),
     INDEX ix_categories_tenant_active (tenant_id, is_active),
     INDEX ix_categories_parent_id (parent_id),
@@ -181,6 +186,7 @@ CREATE TABLE items (
     cost_price       DECIMAL(12,2)  NULL,
     gst_percentage   DECIMAL(5,2)   NOT NULL DEFAULT 0.00,
     stock_quantity   DECIMAL(12,3)  NULL,
+    minimum_stock_level DECIMAL(12,3) NULL,
     is_active        TINYINT(1)     NOT NULL DEFAULT 1,
     created_at       DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at       DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
@@ -205,6 +211,7 @@ CREATE TABLE items (
     CONSTRAINT chk_items_price CHECK (price >= 0),
     CONSTRAINT chk_items_cost_price CHECK (cost_price IS NULL OR cost_price >= 0),
     CONSTRAINT chk_items_stock CHECK (stock_quantity IS NULL OR stock_quantity >= 0),
+    CONSTRAINT chk_items_min_stock CHECK (minimum_stock_level IS NULL OR minimum_stock_level >= 0),
     CONSTRAINT chk_items_gst CHECK (gst_percentage >= 0 AND gst_percentage <= 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -231,6 +238,10 @@ CREATE TABLE bills (
     bill_number           VARCHAR(50)    NOT NULL,
     bill_sequence         BIGINT         NOT NULL,
     table_number          VARCHAR(30)    NULL,  -- bill reference (table/counter/token/note)
+    customer_name         VARCHAR(120)   NULL,
+    customer_phone_country_code VARCHAR(8) NULL,
+    customer_phone_national VARCHAR(20)  NULL,
+    customer_phone_e164   VARCHAR(20)    NULL,
     subtotal              DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     discount              DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     taxable_amount        DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
@@ -253,6 +264,7 @@ CREATE TABLE bills (
     UNIQUE KEY uq_bills_tenant_bill_sequence (tenant_id, bill_sequence),
     INDEX ix_bills_tenant_created_at (tenant_id, created_at),
     INDEX ix_bills_tenant_status (tenant_id, status),
+    INDEX ix_bills_tenant_status_created_at (tenant_id, status, created_at),
     INDEX ix_bills_tenant_created_by (tenant_id, created_by),
     INDEX ix_bills_tenant_payment_method (tenant_id, payment_method),
     CONSTRAINT fk_bills_tenant
@@ -309,6 +321,96 @@ CREATE TABLE bill_items (
         AND cgst_amount >= 0 AND sgst_amount >= 0 AND total >= 0
         AND gst_percentage >= 0 AND gst_percentage <= 100
     )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- notifications (tenant-scoped in-app alerts)
+-- -----------------------------------------------------------------------------
+CREATE TABLE notifications (
+    id            CHAR(36)     NOT NULL,
+    tenant_id     CHAR(36)     NOT NULL,
+    user_id       CHAR(36)     NULL,
+    type          VARCHAR(50)  NOT NULL,
+    title         VARCHAR(160) NOT NULL,
+    message       TEXT         NOT NULL,
+    entity_type   VARCHAR(50)  NULL,
+    entity_id     CHAR(36)     NULL,
+    is_read       BOOLEAN      NOT NULL DEFAULT FALSE,
+    read_at       DATETIME(6)  NULL,
+    created_at    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                         ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_notifications_tenant_created (tenant_id, created_at),
+    INDEX ix_notifications_tenant_unread (tenant_id, is_read, created_at),
+    INDEX ix_notifications_tenant_entity (tenant_id, entity_type, entity_id),
+    CONSTRAINT fk_notifications_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- tenant_whatsapp_configs (per-tenant WhatsApp Cloud API credentials)
+-- -----------------------------------------------------------------------------
+CREATE TABLE tenant_whatsapp_configs (
+    tenant_id               CHAR(36)     NOT NULL,
+    phone_number_id         VARCHAR(64)  NULL,
+    waba_id                 VARCHAR(64)  NULL,
+    display_phone_e164      VARCHAR(20)  NULL,
+    access_token_encrypted  TEXT         NULL,
+    template_name           VARCHAR(120) NULL,
+    template_language       VARCHAR(20)  NOT NULL DEFAULT 'en',
+    is_enabled              TINYINT(1)   NOT NULL DEFAULT 0,
+    connected_at            DATETIME(6)  NULL,
+    created_at              DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at              DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                         ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (tenant_id),
+    CONSTRAINT fk_tenant_whatsapp_configs_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- bill_deliveries (WhatsApp / delivery attempts — not financial status)
+-- -----------------------------------------------------------------------------
+CREATE TABLE bill_deliveries (
+    id                        CHAR(36)     NOT NULL,
+    tenant_id                 CHAR(36)     NOT NULL,
+    bill_id                   CHAR(36)     NOT NULL,
+    delivery_method           VARCHAR(20)  NOT NULL,
+    recipient_phone_e164      VARCHAR(20)  NULL,
+    recipient_phone_masked    VARCHAR(32)  NULL,
+    status                    VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    provider_message_id       VARCHAR(120) NULL,
+    error_message             TEXT         NULL,
+    attempted_by              CHAR(36)     NULL,
+    sent_at                   DATETIME(6)  NULL,
+    delivered_at              DATETIME(6)  NULL,
+    read_at                   DATETIME(6)  NULL,
+    created_at                DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at                DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                         ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_bill_deliveries_tenant_bill (tenant_id, bill_id),
+    INDEX ix_bill_deliveries_tenant_created (tenant_id, created_at),
+    INDEX ix_bill_deliveries_provider_message (provider_message_id),
+    CONSTRAINT fk_bill_deliveries_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_bill_deliveries_bill
+        FOREIGN KEY (bill_id) REFERENCES bills (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_bill_deliveries_user
+        FOREIGN KEY (attempted_by) REFERENCES users (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_bill_deliveries_method
+        CHECK (delivery_method IN ('WHATSAPP', 'PRINT')),
+    CONSTRAINT chk_bill_deliveries_status
+        CHECK (status IN ('PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------

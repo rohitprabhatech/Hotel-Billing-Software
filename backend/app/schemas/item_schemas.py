@@ -15,6 +15,7 @@ class CreateItemSchema(Schema):
     cost_price = fields.Decimal(load_default=None, allow_none=True, as_string=False)
     gst_percentage = fields.Decimal(load_default=0, as_string=False)
     stock_quantity = fields.Decimal(load_default=None, allow_none=True, as_string=False)
+    minimum_stock_level = fields.Decimal(load_default=None, allow_none=True, as_string=False)
 
 
 class UpdateItemSchema(Schema):
@@ -29,6 +30,7 @@ class UpdateItemSchema(Schema):
     cost_price = fields.Decimal(load_default=None, allow_none=True, as_string=False)
     gst_percentage = fields.Decimal(load_default=None, as_string=False)
     stock_quantity = fields.Decimal(load_default=None, allow_none=True, as_string=False)
+    minimum_stock_level = fields.Decimal(load_default=None, allow_none=True, as_string=False)
 
 
 class ItemStatusSchema(Schema):
@@ -39,6 +41,15 @@ class ItemStatusSchema(Schema):
     reason = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=500))
 
 
+class AdjustStockSchema(Schema):
+    class Meta:
+        unknown = EXCLUDE
+
+    delta = fields.Decimal(required=True, as_string=False)
+    reason = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=500))
+
+
 create_item_schema = CreateItemSchema()
 update_item_schema = UpdateItemSchema()
 item_status_schema = ItemStatusSchema()
+adjust_stock_schema = AdjustStockSchema()

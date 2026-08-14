@@ -7,6 +7,7 @@ from app.models.item import Item
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.item_repository import ItemRepository
 from app.services.audit_service import AuditService
+from app.services.category_service import CategoryService
 from app.utils.exceptions import ConflictError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.request_context import require_request_context
@@ -24,8 +25,11 @@ class ItemService:
             page=page,
             per_page=per_page,
         )
+        # One tenant category map avoids N+1 while building hierarchy_path.
+        categories = CategoryRepository.list_by_tenant(ctx.tenant_id, active_only=False)
+        by_id = {category.id: category for category in categories}
         return (
-            [ItemService.serialize(i) for i in items],
+            [ItemService.serialize(i, category_by_id=by_id) for i in items],
             {
                 "page": max(int(page or 1), 1),
                 "per_page": min(max(int(per_page or 50), 1), 100),
@@ -52,6 +56,7 @@ class ItemService:
         sku=None,
         cost_price=None,
         stock_quantity=None,
+        minimum_stock_level=None,
     ):
         ctx = require_request_context()
         name = (name or "").strip()
@@ -74,6 +79,7 @@ class ItemService:
         price_dec = ItemService._parse_money(price, "price")
         cost_dec = ItemService._parse_optional_money(cost_price, "cost_price")
         stock_dec = ItemService._parse_optional_stock(stock_quantity)
+        min_stock_dec = ItemService._parse_optional_stock(minimum_stock_level)
         gst_dec = ItemService._parse_gst(gst_percentage)
 
         item = Item(
@@ -88,6 +94,7 @@ class ItemService:
             cost_price=cost_dec,
             gst_percentage=gst_dec,
             stock_quantity=stock_dec,
+            minimum_stock_level=min_stock_dec,
             is_active=True,
         )
         ItemRepository.add(item)
@@ -116,6 +123,8 @@ class ItemService:
         cost_price_provided=False,
         stock_quantity=None,
         stock_quantity_provided=False,
+        minimum_stock_level=None,
+        minimum_stock_level_provided=False,
     ):
         ctx = require_request_context()
         item = ItemRepository.get_by_id_and_tenant(item_id, ctx.tenant_id)
@@ -125,6 +134,10 @@ class ItemService:
         old = ItemService.serialize(item)
         price_changed = False
         gst_changed = False
+        stock_changed = False
+        previous_stock = (
+            Decimal(item.stock_quantity) if item.stock_quantity is not None else None
+        )
 
         if name is not None:
             name = name.strip()
@@ -139,6 +152,8 @@ class ItemService:
             category = CategoryRepository.get_by_id_and_tenant(category_id, ctx.tenant_id)
             if category is None:
                 raise ValidationError("Category not found")
+            if not category.is_active:
+                raise ValidationError("Cannot move item to an inactive category")
             item.category_id = category.id
 
         if description is not None:
@@ -169,6 +184,10 @@ class ItemService:
 
         if stock_quantity_provided:
             item.stock_quantity = ItemService._parse_optional_stock(stock_quantity)
+            stock_changed = True
+
+        if minimum_stock_level_provided:
+            item.minimum_stock_level = ItemService._parse_optional_stock(minimum_stock_level)
 
         new_data = ItemService.serialize(item)
         AuditService.log(
@@ -197,6 +216,27 @@ class ItemService:
                 old_data={"gst_percentage": old["gst_percentage"], "name": old["name"]},
                 new_data={"gst_percentage": new_data["gst_percentage"], "name": new_data["name"]},
             )
+        if stock_changed:
+            AuditService.log(
+                tenant_id=ctx.tenant_id,
+                action="STOCK_UPDATED",
+                entity_type="ITEM",
+                entity_id=item.id,
+                old_data={"name": old["name"], "stock_quantity": old["stock_quantity"]},
+                new_data={"name": new_data["name"], "stock_quantity": new_data["stock_quantity"]},
+            )
+            new_stock = (
+                Decimal(item.stock_quantity) if item.stock_quantity is not None else None
+            )
+            from app.services.notification_service import NotificationService
+
+            if previous_stock is not None and new_stock is not None:
+                NotificationService.notify_stock_transition(
+                    tenant_id=ctx.tenant_id,
+                    item=item,
+                    previous=previous_stock,
+                    new_stock=new_stock,
+                )
 
         db.session.commit()
         return new_data
@@ -226,6 +266,58 @@ class ItemService:
             entity_id=item.id,
             old_data=old,
             new_data=new_data,
+        )
+        db.session.commit()
+        return ItemService.serialize(item)
+
+    @staticmethod
+    def adjust_stock(item_id: str, *, delta, reason: str | None = None):
+        """Apply a signed stock delta with row lock (null stock = untracked → reject)."""
+        ctx = require_request_context()
+        item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
+        if item is None:
+            raise NotFoundError("Item not found")
+        if item.stock_quantity is None:
+            raise ValidationError(
+                "This item does not track stock. Set an initial stock quantity first."
+            )
+
+        try:
+            change = Decimal(str(delta))
+        except Exception as exc:
+            raise ValidationError("Invalid stock adjustment amount.") from exc
+        if change == 0:
+            raise ValidationError("Adjustment amount cannot be zero.")
+
+        previous = Decimal(item.stock_quantity)
+        new_stock = previous + change
+        if new_stock < 0:
+            raise ValidationError(
+                f"Insufficient stock. Available: {float(previous):g}, adjustment: {float(change):g}."
+            )
+
+        item.stock_quantity = new_stock
+        reason_text = (reason or "").strip() or None
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="STOCK_ADJUSTED",
+            entity_type="ITEM",
+            entity_id=item.id,
+            old_data={"name": item.name, "stock_quantity": float(previous)},
+            new_data={
+                "name": item.name,
+                "stock_quantity": float(new_stock),
+                "delta": float(change),
+                "reason": reason_text,
+            },
+        )
+        from app.services.notification_service import NotificationService
+
+        NotificationService.notify_stock_transition(
+            tenant_id=ctx.tenant_id,
+            item=item,
+            previous=previous,
+            new_stock=new_stock,
         )
         db.session.commit()
         return ItemService.serialize(item)
@@ -276,11 +368,18 @@ class ItemService:
         return gst.quantize(Decimal("0.01"))
 
     @staticmethod
-    def serialize(item: Item):
+    def serialize(item: Item, *, category_by_id: dict | None = None):
+        category = item.category
+        hierarchy_path = None
+        if category is not None:
+            hierarchy_path = CategoryService._hierarchy_path(
+                category, by_id=category_by_id
+            )
         return {
             "id": item.id,
             "category_id": item.category_id,
-            "category_name": item.category.name if item.category else None,
+            "category_name": category.name if category else None,
+            "category_hierarchy_path": hierarchy_path,
             "name": item.name,
             "sku": item.sku,
             "description": item.description,
@@ -289,6 +388,11 @@ class ItemService:
             "gst_percentage": float(item.gst_percentage),
             "stock_quantity": (
                 float(item.stock_quantity) if item.stock_quantity is not None else None
+            ),
+            "minimum_stock_level": (
+                float(item.minimum_stock_level)
+                if item.minimum_stock_level is not None
+                else None
             ),
             "is_active": item.is_active,
             "created_by": item.created_by,

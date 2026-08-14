@@ -18,7 +18,8 @@ from app.repositories.bill_repository import BillRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
-from app.utils.exceptions import NotFoundError, ValidationError
+from app.services.notification_service import NotificationService
+from app.utils.exceptions import InsufficientStockError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.money import calculate_bill_totals, money, qty
 from app.utils.request_context import require_request_context
@@ -33,6 +34,9 @@ class BillService:
         reference: str | None = None,
         table_number: str | None = None,
         payment_method: str | None = None,
+        customer_name: str | None = None,
+        customer_phone_country_code: str | None = None,
+        customer_phone: str | None = None,
     ):
         ctx = require_request_context()
         if not items:
@@ -48,6 +52,20 @@ class BillService:
         bill_reference = (reference if reference is not None else table_number) or ""
         bill_reference = bill_reference.strip() or None
 
+        customer_name_value = (customer_name or "").strip() or None
+        phone_cc = (customer_phone_country_code or "").strip() or None
+        phone_nat = (customer_phone or "").strip() or None
+        phone_e164 = None
+        phone_national_store = None
+        phone_cc_store = None
+        if phone_cc or phone_nat:
+            from app.utils.phone import normalize_phone
+
+            parsed = normalize_phone(country_code=phone_cc, national_number=phone_nat)
+            phone_cc_store = parsed["country_code"]
+            phone_national_store = parsed["national"]
+            phone_e164 = parsed["e164"]
+
         # Merge duplicate item_ids from cart
         merged: dict[str, Decimal] = {}
         for row in items:
@@ -62,11 +80,61 @@ class BillService:
                 raise ValidationError("Quantity must be greater than zero")
             merged[item_id] = merged.get(item_id, Decimal("0")) + quantity
 
-        calc_lines = []
-        for item_id, quantity in merged.items():
-            item = ItemRepository.get_by_id_and_tenant(item_id, ctx.tenant_id)
+        # Lock items in stable order, validate all stock, then deduct (atomic with bill).
+        locked = {}
+        for item_id in sorted(merged.keys()):
+            item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
             if item is None or not item.is_active:
                 raise ValidationError(f"Item is inactive or not found: {item_id}")
+            locked[item_id] = item
+
+        for item_id, quantity in merged.items():
+            item = locked[item_id]
+            if item.stock_quantity is None:
+                continue
+            available = Decimal(item.stock_quantity)
+            if available <= 0:
+                NotificationService.notify_insufficient_attempt(
+                    tenant_id=ctx.tenant_id,
+                    item_name=item.name,
+                    item_id=item.id,
+                    available=available,
+                    requested=quantity,
+                    user_id=ctx.user_id,
+                )
+                db.session.commit()
+                raise InsufficientStockError(
+                    f"Item is out of stock: {item.name}",
+                    details={
+                        "item_id": item.id,
+                        "item_name": item.name,
+                        "available": float(available),
+                        "requested": float(quantity),
+                    },
+                )
+            if quantity > available:
+                NotificationService.notify_insufficient_attempt(
+                    tenant_id=ctx.tenant_id,
+                    item_name=item.name,
+                    item_id=item.id,
+                    available=available,
+                    requested=quantity,
+                    user_id=ctx.user_id,
+                )
+                db.session.commit()
+                raise InsufficientStockError(
+                    f"Insufficient stock. Available: {float(available):g}, requested: {float(quantity):g}.",
+                    details={
+                        "item_id": item.id,
+                        "item_name": item.name,
+                        "available": float(available),
+                        "requested": float(quantity),
+                    },
+                )
+
+        calc_lines = []
+        for item_id, quantity in merged.items():
+            item = locked[item_id]
             calc_lines.append(
                 {
                     "item_id": item.id,
@@ -82,6 +150,15 @@ class BillService:
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
 
+        stock_moves = []
+        for item_id, quantity in merged.items():
+            item = locked[item_id]
+            if item.stock_quantity is not None:
+                previous = Decimal(item.stock_quantity)
+                new_stock = previous - quantity
+                item.stock_quantity = new_stock
+                stock_moves.append((item, previous, new_stock, quantity))
+
         tenant = TenantRepository.get_by_id(ctx.tenant_id)
         sequence, bill_number = BillRepository.allocate_bill_number(
             ctx.tenant_id, tenant.bill_number_prefix if tenant else None
@@ -93,6 +170,10 @@ class BillService:
             bill_number=bill_number,
             bill_sequence=sequence,
             table_number=bill_reference,
+            customer_name=customer_name_value,
+            customer_phone_country_code=phone_cc_store,
+            customer_phone_national=phone_national_store,
+            customer_phone_e164=phone_e164,
             subtotal=calculated["subtotal"],
             discount=calculated["discount"],
             taxable_amount=calculated["taxable_amount"],
@@ -141,6 +222,32 @@ class BillService:
                 "item_count": len(calculated["lines"]),
             },
         )
+
+        for item, previous, new_stock, quantity in stock_moves:
+            AuditService.log(
+                tenant_id=ctx.tenant_id,
+                action="STOCK_DEDUCTED",
+                entity_type="ITEM",
+                entity_id=item.id,
+                old_data={
+                    "name": item.name,
+                    "stock_quantity": float(previous),
+                },
+                new_data={
+                    "name": item.name,
+                    "stock_quantity": float(new_stock),
+                    "quantity": float(quantity),
+                    "bill_id": bill.id,
+                    "bill_number": bill.bill_number,
+                },
+            )
+            NotificationService.notify_stock_transition(
+                tenant_id=ctx.tenant_id,
+                item=item,
+                previous=previous,
+                new_stock=new_stock,
+            )
+
         db.session.commit()
         return BillService.get_bill(bill.id)
 
@@ -154,7 +261,21 @@ class BillService:
             # Billing users can still see today's tenant bills for reprint/ops —
             # keep tenant scoped; allow all tenant bills for counter workflow.
             pass
-        return BillService.serialize(bill, include_items=True, include_tenant=True)
+        from app.repositories.bill_delivery_repository import BillDeliveryRepository
+        from app.services.whatsapp_bill_service import WhatsappBillService
+
+        status_map = BillDeliveryRepository.latest_whatsapp_status_map(ctx.tenant_id, [bill.id])
+        data = BillService.serialize(
+            bill,
+            include_items=True,
+            include_tenant=True,
+            whatsapp_delivery_status=status_map.get(bill.id),
+        )
+        deliveries = BillDeliveryRepository.list_for_bill(ctx.tenant_id, bill.id)
+        data["deliveries"] = [
+            WhatsappBillService.serialize_delivery(row) for row in deliveries[:20]
+        ]
+        return data
 
     @staticmethod
     def list_bills(
@@ -165,6 +286,7 @@ class BillService:
         today_only=False,
         q=None,
         payment_method=None,
+        whatsapp_status=None,
     ):
         ctx = require_request_context()
         date_from = date_to = None
@@ -178,6 +300,12 @@ class BillService:
             except ValueError as exc:
                 raise ValidationError("Invalid payment method filter") from exc
 
+        wa_status = None
+        if whatsapp_status:
+            wa_status = str(whatsapp_status).strip().upper()
+            if wa_status not in {"PENDING", "SENT", "DELIVERED", "READ", "FAILED"}:
+                raise ValidationError("Invalid WhatsApp delivery status filter")
+
         bills, total = BillRepository.list_by_tenant(
             ctx.tenant_id,
             status=status,
@@ -185,11 +313,24 @@ class BillService:
             date_to=date_to,
             q=q,
             payment_method=method,
+            whatsapp_status=wa_status,
             page=page,
             per_page=per_page,
         )
+        from app.repositories.bill_delivery_repository import BillDeliveryRepository
+
+        status_map = BillDeliveryRepository.latest_whatsapp_status_map(
+            ctx.tenant_id, [b.id for b in bills]
+        )
         return (
-            [BillService.serialize(b, include_items=False) for b in bills],
+            [
+                BillService.serialize(
+                    b,
+                    include_items=False,
+                    whatsapp_delivery_status=status_map.get(b.id),
+                )
+                for b in bills
+            ],
             {
                 "page": max(int(page or 1), 1),
                 "per_page": min(max(int(per_page or 50), 1), 100),
@@ -211,6 +352,50 @@ class BillService:
             raise ValidationError("Only finalized bills can be cancelled")
 
         old = BillService.serialize(bill, include_items=False)
+
+        # Restore stock for tracked items (same transaction as cancel).
+        line_items = list(bill.items or [])
+        restore_ids = sorted({line.item_id for line in line_items if line.item_id})
+        locked = {}
+        for item_id in restore_ids:
+            item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
+            if item is not None:
+                locked[item_id] = item
+
+        from app.services.notification_service import NotificationService
+
+        for line in line_items:
+            item = locked.get(line.item_id)
+            if item is None or item.stock_quantity is None:
+                continue
+            previous = Decimal(item.stock_quantity)
+            restored_qty = Decimal(line.quantity)
+            new_stock = previous + restored_qty
+            item.stock_quantity = new_stock
+            AuditService.log(
+                tenant_id=ctx.tenant_id,
+                action="STOCK_RESTORED",
+                entity_type="ITEM",
+                entity_id=item.id,
+                old_data={
+                    "name": item.name,
+                    "stock_quantity": float(previous),
+                },
+                new_data={
+                    "name": item.name,
+                    "stock_quantity": float(new_stock),
+                    "quantity": float(restored_qty),
+                    "bill_id": bill.id,
+                    "bill_number": bill.bill_number,
+                },
+            )
+            NotificationService.notify_stock_transition(
+                tenant_id=ctx.tenant_id,
+                item=item,
+                previous=previous,
+                new_stock=new_stock,
+            )
+
         bill.status = "CANCELLED"
         bill.cancelled_by = ctx.user_id
         bill.cancelled_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -290,13 +475,25 @@ class BillService:
         return start, end
 
     @staticmethod
-    def serialize(bill: Bill, *, include_items=False, include_tenant=False):
+    def serialize(
+        bill: Bill,
+        *,
+        include_items=False,
+        include_tenant=False,
+        whatsapp_delivery_status=None,
+    ):
+        from app.utils.phone import mask_e164
+
         data = {
             "id": bill.id,
             "bill_number": bill.bill_number,
             "bill_sequence": bill.bill_sequence,
             "reference": bill.table_number,
             "table_number": bill.table_number,  # legacy alias
+            "customer_name": bill.customer_name,
+            "customer_phone_country_code": bill.customer_phone_country_code,
+            "customer_phone_national": bill.customer_phone_national,
+            "customer_phone_masked": mask_e164(bill.customer_phone_e164),
             "subtotal": float(bill.subtotal),
             "discount": float(bill.discount),
             "taxable_amount": float(bill.taxable_amount),
@@ -312,6 +509,7 @@ class BillService:
             "created_by_name": bill.creator.name if bill.creator else None,
             "created_at": bill.created_at.isoformat() if bill.created_at else None,
             "printed_count": bill.printed_count,
+            "whatsapp_delivery_status": whatsapp_delivery_status,
             "cancellation_reason": bill.cancellation_reason,
             "cancelled_by": bill.cancelled_by,
             "cancelled_at": bill.cancelled_at.isoformat() if bill.cancelled_at else None,

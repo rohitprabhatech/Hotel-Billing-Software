@@ -1,6 +1,7 @@
 """Item data access — tenant scoped."""
 
 from sqlalchemy import or_, func
+from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models.item import Item
@@ -11,7 +12,18 @@ class ItemRepository:
     def get_by_id_and_tenant(item_id: str, tenant_id: str) -> Item | None:
         return (
             db.session.query(Item)
+            .options(joinedload(Item.category), joinedload(Item.creator))
             .filter(Item.id == item_id, Item.tenant_id == tenant_id)
+            .first()
+        )
+
+    @staticmethod
+    def lock_by_id_and_tenant(item_id: str, tenant_id: str) -> Item | None:
+        """Row-lock item for concurrent stock updates (MySQL FOR UPDATE; SQLite no-op)."""
+        return (
+            db.session.query(Item)
+            .filter(Item.id == item_id, Item.tenant_id == tenant_id)
+            .with_for_update()
             .first()
         )
 
@@ -63,7 +75,8 @@ class ItemRepository:
         page = max(page, 1)
         per_page = min(max(per_page, 1), 100)
         items = (
-            query.order_by(Item.name.asc())
+            query.options(joinedload(Item.category), joinedload(Item.creator))
+            .order_by(Item.name.asc())
             .offset((page - 1) * per_page)
             .limit(per_page)
             .all()

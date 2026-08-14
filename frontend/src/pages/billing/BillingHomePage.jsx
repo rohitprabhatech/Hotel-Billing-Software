@@ -77,7 +77,7 @@ export default function BillingHomePage() {
             gridTemplateColumns: {
               xs: '1fr',
               sm: '1fr 1fr',
-              md: 'repeat(4, 1fr)',
+              lg: 'repeat(4, 1fr)',
             },
           }}
         >

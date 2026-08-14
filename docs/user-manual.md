@@ -22,6 +22,8 @@ Cloud billing for **any** shop type: restaurant, hotel, clothing, grocery, pharm
 3. Sign in — Owners land on the Owner Dashboard; Billing Users on Billing.  
 4. Optional: switch **Light / Dark** mode (saved on this device).
 
+**QA sample business:** Shree General Store (Grocery) — Owner `owner@example.com`, Billing `billing@example.com`. Exact catalog and bill steps: [test-business-billing-guide.md](./test-business-billing-guide.md).
+
 ## Common workflows
 
 | Goal | Where |
@@ -31,22 +33,24 @@ Cloud billing for **any** shop type: restaurant, hotel, clothing, grocery, pharm
 | Manage catalog | Items / Categories |
 | Sales performance | Owner → Sales Reports |
 | Insights | Owner → AI Assistant |
-| Business profile & plan info | Owner → Settings |
+| Business profile, WhatsApp & plan | Owner → Settings |
 | Change password | Account menu → Change Password |
 
 ## Bill basics
 
 - Search items → add to cart → adjust qty (qty ≤ 0 removes line) → optional discount  
 - Set **Reference** (table / token / counter note — not hotel-only)  
+- Optional customer mobile for WhatsApp delivery  
 - Choose **Cash** or **Online**  
-- Generate → print receipt in the browser  
+- Generate → **Print Bill** and/or **Send on WhatsApp** (independent)  
 - Cancel finalized bills with a reason (history retained)
 
 ## Support
 
-- Email: support@prabhatech.in  
-- Phone: +91 20 7123 4567  
-- Address: Pune Satara Road, Khed-Shivapur, Pune 412205  
+- Email: prabha.technology.01@gmail.com  
+- Phone: 8767865572  
+- Address: B-05, First Floor, Shreya Business Hub, Pari Chowk, Mokarwadi, Pune, Maharashtra – 411041  
+
 
 ## Related manuals
 

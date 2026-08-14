@@ -3,8 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -16,6 +14,8 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import FormSection from '../../components/FormSection';
+import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import SubscriptionPlanInfo from '../../components/SubscriptionPlanInfo';
 import ThemeModeToggle from '../../components/ThemeModeToggle';
@@ -31,6 +31,11 @@ import {
 import {
   fetchBusinessTypes,
   fetchMyTenant,
+  fetchWhatsappConfig,
+  saveWhatsappConfig,
+  testWhatsappConfig,
+  disconnectWhatsappConfig,
+  simulateWhatsappDeliveryStatus,
   updateMyTenant,
 } from '../../services/tenantService';
 
@@ -49,35 +54,6 @@ const emptyBusiness = {
   bill_number_prefix: '',
 };
 
-function SettingsSection({ title, description, children, actions }) {
-  return (
-    <Card>
-      <CardContent sx={{ p: { xs: 2.5, sm: 3 }, '&:last-child': { pb: { xs: 2.5, sm: 3 } } }}>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="space-between"
-          alignItems={{ xs: 'stretch', sm: 'flex-start' }}
-          spacing={2}
-          sx={{ mb: 3 }}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h6" component="h2">
-              {title}
-            </Typography>
-            {description ? (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, maxWidth: 560 }}>
-                {description}
-              </Typography>
-            ) : null}
-          </Box>
-          {actions}
-        </Stack>
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function SettingsPage() {
   const { user, login } = useAuth();
   const { mode } = useColorMode();
@@ -93,11 +69,28 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [waStatus, setWaStatus] = useState(null);
+  const [waForm, setWaForm] = useState({
+    phone_number_id: '',
+    waba_id: '',
+    access_token: '',
+    display_phone: '',
+    template_name: '',
+    template_language: 'en',
+  });
+  const [waSaving, setWaSaving] = useState(false);
+  const [waTesting, setWaTesting] = useState(false);
+  const [waSimForm, setWaSimForm] = useState({
+    provider_message_id: '',
+    status: 'delivered',
+    error_message: '',
+  });
+  const [waSimulating, setWaSimulating] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchMyTenant(), fetchProfile(), fetchBusinessTypes()])
-      .then(([tenantRes, profileRes, typesRes]) => {
+    Promise.all([fetchMyTenant(), fetchProfile(), fetchBusinessTypes(), fetchWhatsappConfig()])
+      .then(([tenantRes, profileRes, typesRes, waRes]) => {
         const t = tenantRes.data || {};
         setBusiness({
           name: t.name || '',
@@ -118,6 +111,17 @@ export default function SettingsPage() {
         setProfileName(profile.name || '');
         setProfilePhone(profile.phone || '');
         setProfileEmail(profile.email || '');
+        const wa = waRes.data || {};
+        setWaStatus(wa);
+        setWaForm((prev) => ({
+          ...prev,
+          display_phone: wa.display_phone_e164 || '',
+          template_name: wa.template_name || '',
+          template_language: wa.template_language || 'en',
+          phone_number_id: '',
+          waba_id: '',
+          access_token: '',
+        }));
       })
       .catch((err) => {
         setError(err.response?.data?.error?.message || 'Unable to load settings.');
@@ -205,9 +209,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <PageShell maxWidth={880}>
-        <Box sx={{ py: 6, display: 'grid', placeItems: 'center' }}>
-          <CircularProgress size={28} />
-        </Box>
+        <LoadingBlock py={6} />
       </PageShell>
     );
   }
@@ -217,7 +219,7 @@ export default function SettingsPage() {
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
-      <SettingsSection
+      <FormSection
         title="Profile"
         description="Your personal account details for this business."
       >
@@ -260,9 +262,9 @@ export default function SettingsPage() {
             {savingProfile ? 'Saving...' : 'Save Changes'}
           </Button>
         </Stack>
-      </SettingsSection>
+      </FormSection>
 
-      <SettingsSection
+      <FormSection
         title="Business Information"
         description="Details shown on receipts and used across billing."
       >
@@ -365,18 +367,270 @@ export default function SettingsPage() {
             {savingBusiness ? 'Saving...' : 'Save Changes'}
           </Button>
         </Stack>
-      </SettingsSection>
+      </FormSection>
+
+      <FormSection
+        title="WhatsApp Business Integration"
+        description="Configure official WhatsApp Cloud API credentials for this business only. Access tokens are stored securely on the server and never shown again."
+      >
+        <Stack spacing={2.5} maxWidth={640}>
+          <Typography variant="body2">
+            Status:{' '}
+            <strong>
+              {waStatus?.status === 'connected' ? 'Connected' : 'Not Connected'}
+            </strong>
+            {waStatus?.has_token ? ' · Token on file' : ''}
+          </Typography>
+          {waStatus?.phone_number_id_masked ? (
+            <Typography variant="body2" color="text.secondary">
+              Phone Number ID: {waStatus.phone_number_id_masked}
+            </Typography>
+          ) : null}
+          {waStatus?.waba_id_masked ? (
+            <Typography variant="body2" color="text.secondary">
+              WhatsApp Business Account: {waStatus.waba_id_masked}
+            </Typography>
+          ) : null}
+          {waStatus?.display_phone_e164 ? (
+            <Typography variant="body2" color="text.secondary">
+              Business phone: {waStatus.display_phone_e164}
+            </Typography>
+          ) : null}
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 2,
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+            }}
+          >
+            <TextField
+              label="Phone Number ID"
+              value={waForm.phone_number_id}
+              onChange={(e) => setWaForm((p) => ({ ...p, phone_number_id: e.target.value }))}
+              fullWidth
+              placeholder={waStatus?.has_token ? 'Leave blank to keep current' : ''}
+              sx={{ gridColumn: { sm: '1 / -1' } }}
+            />
+            <TextField
+              label="WhatsApp Business Account ID"
+              value={waForm.waba_id}
+              onChange={(e) => setWaForm((p) => ({ ...p, waba_id: e.target.value }))}
+              fullWidth
+              placeholder={waStatus?.has_token ? 'Leave blank to keep current' : ''}
+              sx={{ gridColumn: { sm: '1 / -1' } }}
+            />
+            <TextField
+              label="Access Token"
+              type="password"
+              value={waForm.access_token}
+              onChange={(e) => setWaForm((p) => ({ ...p, access_token: e.target.value }))}
+              fullWidth
+              autoComplete="new-password"
+              helperText="Write-only — never displayed after save"
+              sx={{ gridColumn: { sm: '1 / -1' } }}
+            />
+            <TextField
+              label="Display phone (optional)"
+              value={waForm.display_phone}
+              onChange={(e) => setWaForm((p) => ({ ...p, display_phone: e.target.value }))}
+              fullWidth
+            />
+            <TextField
+              label="Template language"
+              value={waForm.template_language}
+              onChange={(e) => setWaForm((p) => ({ ...p, template_language: e.target.value }))}
+              fullWidth
+            />
+            <TextField
+              label="Approved template name"
+              value={waForm.template_name}
+              onChange={(e) => setWaForm((p) => ({ ...p, template_name: e.target.value }))}
+              fullWidth
+              helperText="Must match a Meta-approved WhatsApp template"
+              sx={{ gridColumn: { sm: '1 / -1' } }}
+            />
+          </Box>
+          <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap">
+            <Button
+              variant="contained"
+              disabled={waSaving}
+              onClick={async () => {
+                setWaSaving(true);
+                setError('');
+                setSuccess('');
+                try {
+                  const payload = {
+                    template_name: waForm.template_name,
+                    template_language: waForm.template_language,
+                    display_phone: waForm.display_phone || null,
+                  };
+                  if (waForm.phone_number_id.trim()) {
+                    payload.phone_number_id = waForm.phone_number_id.trim();
+                  }
+                  if (waForm.waba_id.trim()) payload.waba_id = waForm.waba_id.trim();
+                  if (waForm.access_token.trim()) {
+                    payload.access_token = waForm.access_token.trim();
+                  }
+                  const res = await saveWhatsappConfig(payload);
+                  setWaStatus(res.data);
+                  setWaForm((p) => ({ ...p, access_token: '', phone_number_id: '', waba_id: '' }));
+                  setSuccess('WhatsApp configuration saved.');
+                } catch (err) {
+                  setError(err.response?.data?.error?.message || 'Failed to save WhatsApp settings.');
+                } finally {
+                  setWaSaving(false);
+                }
+              }}
+            >
+              {waSaving ? 'Saving...' : 'Save Configuration'}
+            </Button>
+            <Button
+              variant="outlined"
+              disabled={waTesting || waStatus?.status !== 'connected'}
+              onClick={async () => {
+                setWaTesting(true);
+                setError('');
+                setSuccess('');
+                try {
+                  const res = await testWhatsappConfig();
+                  setSuccess(res.data?.message || 'WhatsApp connection successful.');
+                  if (res.data?.display_phone) {
+                    setWaStatus((s) => ({
+                      ...(s || {}),
+                      display_phone_e164: res.data.display_phone,
+                    }));
+                  }
+                } catch (err) {
+                  setError(err.response?.data?.error?.message || 'WhatsApp test failed.');
+                } finally {
+                  setWaTesting(false);
+                }
+              }}
+            >
+              {waTesting ? 'Testing...' : 'Test Connection'}
+            </Button>
+            <Button
+              color="warning"
+              variant="outlined"
+              disabled={waStatus?.status !== 'connected'}
+              onClick={async () => {
+                setError('');
+                setSuccess('');
+                try {
+                  const res = await disconnectWhatsappConfig();
+                  setWaStatus(res.data);
+                  setSuccess('WhatsApp disconnected for this business.');
+                } catch (err) {
+                  setError(err.response?.data?.error?.message || 'Failed to disconnect WhatsApp.');
+                }
+              }}
+            >
+              Disconnect
+            </Button>
+          </Stack>
+          {waStatus?.provider === 'mock' ? (
+            <Box
+              sx={{
+                mt: 1,
+                p: 2,
+                borderRadius: 1,
+                border: '1px dashed',
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="subtitle2" gutterBottom>
+                Mock delivery webhook simulator
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Paste a provider message id from a sent bill (visible in bill delivery history) to
+                advance status without Meta. Only available when WHATSAPP_PROVIDER=mock.
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 1.5,
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  mb: 1.5,
+                }}
+              >
+                <TextField
+                  label="Provider message id"
+                  value={waSimForm.provider_message_id}
+                  onChange={(e) =>
+                    setWaSimForm((p) => ({ ...p, provider_message_id: e.target.value }))
+                  }
+                  fullWidth
+                  sx={{ gridColumn: { sm: '1 / -1' } }}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Simulated status</InputLabel>
+                  <Select
+                    label="Simulated status"
+                    value={waSimForm.status}
+                    onChange={(e) => setWaSimForm((p) => ({ ...p, status: e.target.value }))}
+                  >
+                    <MenuItem value="sent">sent</MenuItem>
+                    <MenuItem value="delivered">delivered</MenuItem>
+                    <MenuItem value="read">read</MenuItem>
+                    <MenuItem value="failed">failed</MenuItem>
+                  </Select>
+                </FormControl>
+                {waSimForm.status === 'failed' ? (
+                  <TextField
+                    label="Error message"
+                    value={waSimForm.error_message}
+                    onChange={(e) =>
+                      setWaSimForm((p) => ({ ...p, error_message: e.target.value }))
+                    }
+                    fullWidth
+                  />
+                ) : null}
+              </Box>
+              <Button
+                variant="outlined"
+                disabled={waSimulating || !waSimForm.provider_message_id.trim()}
+                onClick={async () => {
+                  setWaSimulating(true);
+                  setError('');
+                  setSuccess('');
+                  try {
+                    const payload = {
+                      provider_message_id: waSimForm.provider_message_id.trim(),
+                      status: waSimForm.status,
+                    };
+                    if (waSimForm.status === 'failed' && waSimForm.error_message.trim()) {
+                      payload.error_message = waSimForm.error_message.trim();
+                    }
+                    const res = await simulateWhatsappDeliveryStatus(payload);
+                    setSuccess(
+                      `Simulated WhatsApp status → ${res.data?.status || waSimForm.status.toUpperCase()}.`,
+                    );
+                  } catch (err) {
+                    setError(
+                      err.response?.data?.error?.message || 'Failed to simulate delivery status.',
+                    );
+                  } finally {
+                    setWaSimulating(false);
+                  }
+                }}
+              >
+                {waSimulating ? 'Simulating...' : 'Simulate webhook status'}
+              </Button>
+            </Box>
+          ) : null}
+        </Stack>
+      </FormSection>
 
       <Box id="subscription">
-        <SettingsSection
+        <FormSection
           title="Subscription"
           description={`${SUBSCRIPTION_PLAN.priceDisplay} · informational plan details (no in-app payment).`}
         >
           <SubscriptionPlanInfo variant="owner" dense />
-        </SettingsSection>
+        </FormSection>
       </Box>
 
-      <SettingsSection
+      <FormSection
         title="Appearance"
         description="Choose light or dark mode. Your preference is saved on this device."
         actions={<ThemeModeToggle />}
@@ -384,9 +638,9 @@ export default function SettingsPage() {
         <Typography variant="body2" color="text.secondary">
           Current theme: <strong>{mode === 'dark' ? 'Dark' : 'Light'}</strong>
         </Typography>
-      </SettingsSection>
+      </FormSection>
 
-      <SettingsSection
+      <FormSection
         title="Security"
         description="Keep your account secure with a strong password."
         actions={
@@ -403,9 +657,9 @@ export default function SettingsPage() {
         <Typography variant="body2" color="text.secondary">
           You will be signed out after a successful password update.
         </Typography>
-      </SettingsSection>
+      </FormSection>
 
-      <SettingsSection
+      <FormSection
         title="Email / Account"
         description="Request a change to your login email address."
       >
@@ -428,7 +682,7 @@ export default function SettingsPage() {
             {emailLoading ? 'Sending...' : 'Request Email Change'}
           </Button>
         </Stack>
-      </SettingsSection>
+      </FormSection>
     </PageShell>
   );
 }

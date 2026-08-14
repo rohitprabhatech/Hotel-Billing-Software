@@ -17,7 +17,7 @@ class BaseConfig:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-change-me")
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-only-jwt-secret-change-me")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(
-        seconds=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "86400"))
+        seconds=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "28800"))
     )
 
     SQLALCHEMY_DATABASE_URI = os.getenv(
@@ -63,6 +63,13 @@ class BaseConfig:
         "yes",
     }
 
+    # WhatsApp Cloud API
+    WHATSAPP_PROVIDER = os.getenv("WHATSAPP_PROVIDER", "mock").lower()  # mock | meta
+    WHATSAPP_TOKEN_ENCRYPTION_KEY = os.getenv("WHATSAPP_TOKEN_ENCRYPTION_KEY", "")
+    WHATSAPP_GRAPH_API_VERSION = os.getenv("WHATSAPP_GRAPH_API_VERSION", "v21.0")
+    WHATSAPP_WEBHOOK_VERIFY_TOKEN = os.getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "")
+    WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
+
     TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() in {
         "1",
         "true",
@@ -100,6 +107,10 @@ class TestingConfig(BaseConfig):
     ALLOW_DEV_AUTH_TOKENS = True
     SEND_LOGIN_NOTIFICATIONS = False
     FRONTEND_URL = "http://localhost:5173"
+    WHATSAPP_PROVIDER = "mock"
+    WHATSAPP_TOKEN_ENCRYPTION_KEY = "test-whatsapp-encryption-key-32b!"
+    WHATSAPP_WEBHOOK_VERIFY_TOKEN = "test-verify-token"
+    WHATSAPP_APP_SECRET = "test-app-secret"
 
 
 class ProductionConfig(BaseConfig):

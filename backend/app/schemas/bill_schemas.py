@@ -32,6 +32,15 @@ class CreateBillSchema(Schema):
         load_default=DEFAULT_PAYMENT_METHOD,
         validate=validate.OneOf(sorted(ALLOWED_PAYMENT_METHODS)),
     )
+    customer_name = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=120)
+    )
+    customer_phone_country_code = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=8)
+    )
+    customer_phone = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=20)
+    )
 
 
 class CancelBillSchema(Schema):

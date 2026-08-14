@@ -10,7 +10,7 @@ export default function TableCard({ children, sx = {}, contentSx = {} }) {
             width: '100%',
             overflowX: 'auto',
             '& .MuiTableCell-root': {
-              px: 2,
+              px: { xs: 1.25, sm: 2 },
               py: 1.75,
             },
             '& .MuiTableCell-head': {

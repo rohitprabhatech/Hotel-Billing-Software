@@ -9,9 +9,11 @@ from app.routes.bill_routes import bills_bp
 from app.routes.category_routes import categories_bp
 from app.routes.health_routes import health_bp
 from app.routes.item_routes import items_bp
+from app.routes.notification_routes import notifications_bp
 from app.routes.profile_routes import profile_bp
 from app.routes.report_routes import reports_bp
 from app.routes.tenant_routes import tenants_bp
+from app.routes.whatsapp_webhook_routes import whatsapp_webhook_bp
 from app.routes.user_routes import users_bp
 
 
@@ -28,4 +30,6 @@ def register_blueprints(app):
     api_v1.register_blueprint(reports_bp)
     api_v1.register_blueprint(audit_logs_bp)
     api_v1.register_blueprint(ai_bp)
+    api_v1.register_blueprint(notifications_bp)
+    api_v1.register_blueprint(whatsapp_webhook_bp)
     app.register_blueprint(api_v1)

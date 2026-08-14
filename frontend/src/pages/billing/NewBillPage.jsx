@@ -1,5 +1,6 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import {
   Alert,
   Box,
@@ -28,7 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import PageShell from '../../components/PageShell';
 import TruncateText from '../../components/TruncateText';
-import { createBill, openBillPrint } from '../../services/billService';
+import { createBill, downloadBillPdf, openBillPrint, sendBillWhatsapp } from '../../services/billService';
 import { listCategories } from '../../services/categoryService';
 import { listItems } from '../../services/itemService';
 import {
@@ -75,10 +76,19 @@ export default function NewBillPage() {
   const [discount, setDiscount] = useState('0');
   const [reference, setReference] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
+  const [customerName, setCustomerName] = useState('');
+  const [countryCode, setCountryCode] = useState('91');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingItems, setLoadingItems] = useState(true);
   const [createdBill, setCreatedBill] = useState(null);
+  const [whatsappSending, setWhatsappSending] = useState(false);
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [whatsappError, setWhatsappError] = useState('');
+  const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
+  const [phoneDraftCc, setPhoneDraftCc] = useState('91');
+  const [phoneDraft, setPhoneDraft] = useState('');
 
   const search = async (term = q, cat = categoryId) => {
     setError('');
@@ -88,9 +98,24 @@ export default function NewBillPage() {
         q: term || undefined,
         category_id: cat || undefined,
         is_active: true,
-        per_page: 60,
+        per_page: 100,
       });
       setCatalog(res.data || []);
+      // Keep cart stock figures in sync after catalog refresh / stock adjust.
+      setCart((prev) =>
+        prev.map((line) => {
+          const fresh = (res.data || []).find((i) => i.id === line.item_id);
+          if (!fresh) return line;
+          const tracked =
+            fresh.stock_quantity !== null && fresh.stock_quantity !== undefined;
+          return {
+            ...line,
+            stock_tracked: tracked,
+            stock_quantity: tracked ? Number(fresh.stock_quantity) : null,
+            price: Number(fresh.price),
+          };
+        }),
+      );
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to load items.');
     } finally {
@@ -102,9 +127,32 @@ export default function NewBillPage() {
     listCategories()
       .then((res) => setCategories((res.data || []).filter((c) => c.is_active)))
       .catch(() => {});
-    search('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Debounce catalog search so typing stays responsive with large inventories.
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      search(q, categoryId);
+    }, 250);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, categoryId]);
+
+  // Refresh catalog when returning to the tab (e.g. after Adjust Stock on Items).
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') {
+        search(q, categoryId);
+      }
+    };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, categoryId]);
 
   const subtotalPreview = useMemo(
     () => cart.reduce((sum, line) => sum + line.price * line.quantity, 0),
@@ -117,13 +165,26 @@ export default function NewBillPage() {
   );
 
   const addItem = (item) => {
+    const tracked =
+      item.stock_quantity !== null && item.stock_quantity !== undefined;
+    const available = tracked ? Number(item.stock_quantity) : null;
+    if (tracked && available <= 0) {
+      setError(`Item is out of stock: ${item.name}`);
+      return;
+    }
+    setError('');
     setCart((prev) => {
       const existing = prev.find((line) => line.item_id === item.id);
       if (existing) {
+        const nextQty = existing.quantity + 1;
+        if (tracked && nextQty > available) {
+          setError(
+            `Insufficient stock. Available: ${available}, requested: ${nextQty}.`,
+          );
+          return prev;
+        }
         return prev.map((line) =>
-          line.item_id === item.id
-            ? { ...line, quantity: line.quantity + 1 }
-            : line,
+          line.item_id === item.id ? { ...line, quantity: nextQty } : line,
         );
       }
       return [
@@ -134,6 +195,8 @@ export default function NewBillPage() {
           price: Number(item.price),
           gst_percentage: Number(item.gst_percentage),
           quantity: 1,
+          stock_quantity: available,
+          stock_tracked: tracked,
         },
       ];
     });
@@ -143,13 +206,26 @@ export default function NewBillPage() {
     const qty = Number(quantity);
     if (!Number.isFinite(qty) || qty <= 0) {
       setCart((prev) => prev.filter((line) => line.item_id !== itemId));
+      setError('');
       return;
     }
-    setCart((prev) =>
-      prev.map((line) =>
-        line.item_id === itemId ? { ...line, quantity: qty } : line,
-      ),
-    );
+    setCart((prev) => {
+      const line = prev.find((row) => row.item_id === itemId);
+      if (
+        line?.stock_tracked &&
+        line.stock_quantity != null &&
+        qty > Number(line.stock_quantity)
+      ) {
+        setError(
+          `Insufficient stock. Available: ${line.stock_quantity}, requested: ${qty}.`,
+        );
+        return prev;
+      }
+      setError('');
+      return prev.map((row) =>
+        row.item_id === itemId ? { ...row, quantity: qty } : row,
+      );
+    });
   };
 
   const removeLine = (itemId) => {
@@ -168,6 +244,18 @@ export default function NewBillPage() {
       setError('Please select a payment method.');
       return;
     }
+    const stockIssue = cart.find(
+      (line) =>
+        line.stock_tracked &&
+        line.stock_quantity != null &&
+        line.quantity > Number(line.stock_quantity),
+    );
+    if (stockIssue) {
+      setError(
+        `Insufficient stock. Available: ${stockIssue.stock_quantity}, requested: ${stockIssue.quantity}.`,
+      );
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -175,19 +263,68 @@ export default function NewBillPage() {
         reference: reference || null,
         discount: Number(discount || 0),
         payment_method: paymentMethod,
+        customer_name: customerName || null,
+        customer_phone_country_code: customerPhone ? countryCode : null,
+        customer_phone: customerPhone || null,
         items: cart.map((line) => ({
           item_id: line.item_id,
           quantity: line.quantity,
         })),
       });
       setCreatedBill(res.data);
+      setWhatsappMessage('');
+      setWhatsappError('');
       clearCart();
+      // Refresh catalog so stock quantities reflect deduction.
+      search(q, categoryId);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to generate bill');
     } finally {
       setSaving(false);
     }
   };
+
+  const doSendWhatsapp = async (payload = {}) => {
+    if (!createdBill?.id || whatsappSending) return;
+    setWhatsappSending(true);
+    setWhatsappError('');
+    setWhatsappMessage('');
+    try {
+      const res = await sendBillWhatsapp(createdBill.id, payload);
+      setWhatsappMessage(res.data?.message || 'Bill sent successfully on WhatsApp.');
+      if (res.data?.bill) setCreatedBill(res.data.bill);
+      setPhoneDialogOpen(false);
+    } catch (err) {
+      setWhatsappError(
+        err.response?.data?.error?.message ||
+          'Unable to send the bill on WhatsApp. Please try again or use Print Bill.',
+      );
+    } finally {
+      setWhatsappSending(false);
+    }
+  };
+
+  const onSendWhatsappClick = () => {
+    if (!createdBill) return;
+    const hasPhone = Boolean(createdBill.customer_phone_national || customerPhone);
+    if (!hasPhone) {
+      setPhoneDraftCc(countryCode || '91');
+      setPhoneDraft(customerPhone || '');
+      setPhoneDialogOpen(true);
+      return;
+    }
+    doSendWhatsapp({
+      country_code: createdBill.customer_phone_country_code || countryCode,
+      phone: createdBill.customer_phone_national || customerPhone,
+      customer_name: createdBill.customer_name || customerName || null,
+    });
+  };
+  const cartStockInvalid = cart.some(
+    (line) =>
+      line.stock_tracked &&
+      line.stock_quantity != null &&
+      line.quantity > Number(line.stock_quantity),
+  );
 
   return (
     <>
@@ -272,9 +409,10 @@ export default function NewBillPage() {
                       key={item.id}
                       sx={{
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        px: 2,
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        alignItems: { xs: 'stretch', sm: 'center' },
+                        gap: { xs: 1.25, sm: 2 },
+                        px: { xs: 1.5, sm: 2 },
                         py: 1.5,
                         borderRadius: 2,
                         border: '1px solid',
@@ -288,28 +426,44 @@ export default function NewBillPage() {
                         <Typography variant="caption" color="text.secondary" noWrap display="block" sx={{ mt: 0.5 }}>
                           {item.sku ? `${item.sku} · ` : ''}
                           {item.category_name || 'Item'} · GST {Number(item.gst_percentage).toFixed(1)}%
+                          {item.stock_quantity !== null && item.stock_quantity !== undefined
+                            ? ` · Available stock: ${Number(item.stock_quantity)}`
+                            : ''}
                         </Typography>
                       </Box>
-                      <Typography
-                        fontWeight={650}
-                        sx={{
-                          minWidth: 72,
-                          textAlign: 'right',
-                          flexShrink: 0,
-                          fontVariantNumeric: 'tabular-nums',
-                        }}
-                      >
-                        ₹{Number(item.price).toFixed(2)}
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        startIcon={<AddOutlinedIcon />}
-                        onClick={() => addItem(item)}
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        spacing={1.5}
                         sx={{ flexShrink: 0 }}
                       >
-                        Add
-                      </Button>
+                        <Typography
+                          fontWeight={650}
+                          sx={{
+                            minWidth: { xs: 'auto', sm: 72 },
+                            textAlign: 'right',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          ₹{Number(item.price).toFixed(2)}
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<AddOutlinedIcon />}
+                          onClick={() => addItem(item)}
+                          disabled={
+                            item.stock_quantity !== null &&
+                            item.stock_quantity !== undefined &&
+                            Number(item.stock_quantity) <= 0
+                          }
+                          sx={{ flexShrink: 0 }}
+                          aria-label={`Add ${item.name}`}
+                        >
+                          Add
+                        </Button>
+                      </Stack>
                     </Box>
                   ))}
                   {!catalog.length ? (
@@ -348,6 +502,31 @@ export default function NewBillPage() {
                 />
               </Stack>
 
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
+                <TextField
+                  label="Customer name (optional)"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  fullWidth
+                  inputProps={{ maxLength: 120 }}
+                />
+                <TextField
+                  label="Country code"
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                  sx={{ width: { xs: '100%', sm: 120 }, flexShrink: 0 }}
+                  helperText="e.g. 91"
+                />
+                <TextField
+                  label="Customer mobile (optional)"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                  fullWidth
+                  placeholder="9876543210"
+                  helperText="Required only to send on WhatsApp"
+                />
+              </Stack>
+
               <Stack spacing={1.5} sx={{ mb: 2.5, minHeight: 120 }}>
                 {cart.map((line) => (
                   <Box
@@ -364,6 +543,14 @@ export default function NewBillPage() {
                   >
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <TruncateText value={line.name} maxWidth="100%" fontWeight={600} />
+                      {line.stock_tracked ? (
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                          Available stock: {line.stock_quantity}
+                          {line.quantity > Number(line.stock_quantity)
+                            ? ' · Insufficient for this qty'
+                            : ''}
+                        </Typography>
+                      ) : null}
                       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1 }}>
                         <TextField
                           type="number"
@@ -464,7 +651,7 @@ export default function NewBillPage() {
                 <Button
                   variant="contained"
                   onClick={finalize}
-                  disabled={!cart.length || saving}
+                  disabled={!cart.length || saving || cartStockInvalid}
                   startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
                   sx={{ flexGrow: 1 }}
                 >
@@ -476,8 +663,13 @@ export default function NewBillPage() {
         </Box>
       </PageShell>
 
-      <Dialog open={Boolean(createdBill)} onClose={() => setCreatedBill(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Bill generated</DialogTitle>
+      <Dialog
+        open={Boolean(createdBill)}
+        onClose={() => !whatsappSending && setCreatedBill(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Bill generated successfully</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 0.5 }}>
             <Typography>
@@ -489,18 +681,106 @@ export default function NewBillPage() {
             <Typography>
               Payment Method: {paymentMethodLabel(createdBill?.payment_method)}
             </Typography>
+            {createdBill?.customer_phone_masked ? (
+              <Typography variant="body2" color="text.secondary">
+                Customer WhatsApp: {createdBill.customer_phone_masked}
+              </Typography>
+            ) : null}
+            {whatsappMessage ? <Alert severity="success">{whatsappMessage}</Alert> : null}
+            {whatsappError ? <Alert severity="error">{whatsappError}</Alert> : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1, px: 3, pb: 2 }}>
+          <Button onClick={() => setCreatedBill(null)} disabled={whatsappSending}>
+            Close
+          </Button>
+          <Button
+            variant="outlined"
+            disabled={whatsappSending}
+            onClick={() => {
+              openBillPrint(createdBill.id, { auto: true });
+            }}
+          >
+            Print Bill
+          </Button>
+          <Button
+            variant="outlined"
+            disabled={whatsappSending}
+            onClick={async () => {
+              try {
+                await downloadBillPdf(createdBill.id, createdBill.bill_number);
+              } catch (err) {
+                setWhatsappError(
+                  err.response?.data?.error?.message || 'Unable to download bill PDF.',
+                );
+              }
+            }}
+          >
+            Download PDF
+          </Button>
+          {whatsappError ? (
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={whatsappSending ? <CircularProgress size={16} color="inherit" /> : <WhatsAppIcon />}
+              disabled={whatsappSending}
+              onClick={onSendWhatsappClick}
+            >
+              {whatsappSending ? 'Sending…' : 'Retry'}
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={whatsappSending ? <CircularProgress size={16} color="inherit" /> : <WhatsAppIcon />}
+              disabled={whatsappSending || Boolean(whatsappMessage)}
+              onClick={onSendWhatsappClick}
+            >
+              {whatsappSending ? 'Sending…' : 'Send on WhatsApp'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={phoneDialogOpen} onClose={() => !whatsappSending && setPhoneDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Customer WhatsApp number</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Customer WhatsApp number is required to send this bill.
+          </Typography>
+          <Stack direction="row" spacing={1.5}>
+            <TextField
+              label="Country"
+              value={phoneDraftCc}
+              onChange={(e) => setPhoneDraftCc(e.target.value.replace(/\D/g, '').slice(0, 3))}
+              sx={{ width: 100 }}
+            />
+            <TextField
+              label="Mobile number"
+              value={phoneDraft}
+              onChange={(e) => setPhoneDraft(e.target.value.replace(/\D/g, '').slice(0, 14))}
+              fullWidth
+              autoFocus
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreatedBill(null)}>Close</Button>
+          <Button onClick={() => setPhoneDialogOpen(false)} disabled={whatsappSending}>
+            Cancel
+          </Button>
           <Button
             variant="contained"
-            onClick={() => {
-              openBillPrint(createdBill.id, { auto: true });
-              setCreatedBill(null);
-            }}
+            color="success"
+            disabled={whatsappSending || !phoneDraft}
+            onClick={() =>
+              doSendWhatsapp({
+                country_code: phoneDraftCc,
+                phone: phoneDraft,
+                customer_name: customerName || null,
+              })
+            }
           >
-            Print
+            {whatsappSending ? 'Sending…' : 'Send'}
           </Button>
         </DialogActions>
       </Dialog>

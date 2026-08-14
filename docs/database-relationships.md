@@ -54,7 +54,7 @@ tenants
 | tenants | `id` | — | `status`, `business_name`, `business_type` |
 | roles | `id` | `name` | — |
 | users | `id` | `(tenant_id, email)` | tenant, tenant+role, tenant+active |
-| categories | `id` | `(tenant_id, parent_id, name)` | tenant, tenant+active, parent |
+| categories | `id` | `(tenant_id, parent_key, name)` | tenant, tenant+active, parent |
 | items | `id` | `(tenant_id, name)` | tenant, tenant+category, tenant+active, created_by |
 | bills | `id` | `(tenant_id, bill_number)`, `(tenant_id, bill_sequence)` | tenant+created_at/status/created_by/payment_method |
 | bill_items | `id` | — | tenant+bill, tenant+item |
@@ -71,7 +71,8 @@ tenants
 |-------|----------|-------|
 | `tenants.business_type` | NO (default `other`) | Controlled option codes |
 | `tenants.fssai_number` | YES | Optional; UI highlights for hotel/restaurant |
-| `categories.parent_id` | YES | NULL = root category |
+| `categories.parent_id` | YES | NULL = root / main category |
+| `categories.parent_key` | NO (generated) | `IFNULL(parent_id, '')` — enforces unique main-category names per tenant |
 | `items.created_by` | YES | Set on create when actor known |
 | `bills.table_number` | YES | Optional counter/table/reference (hotel legacy name) |
 | `bills.status` | NO (default **FINALIZED**) | SQL allows DRAFT/VOID; app uses FINALIZED/CANCELLED |
@@ -105,6 +106,8 @@ tenants
 4. `20260814_tenant_business_type`  
 5. `20260814_schema_rel_fixes`  
 6. `20260814_item_catalog_fields`  
+7. `20260814_category_parent_key`  
+8. `20260814_bill_report_index`  
 
 Or: `python scripts/apply_pending_schema.py` with `DATABASE_URL` set.
 
@@ -115,14 +118,16 @@ Or: `python scripts/apply_pending_schema.py` with `DATABASE_URL` set.
 1. **DRAFT / VOID** remain in CHECK for forward compatibility; app currently creates **FINALIZED** only.  
 2. **Email uniqueness** is per-tenant in DB; registration service currently blocks globally — product policy (Sprint 21 may revisit).  
 3. **Inactive item names** still occupy `uq_items_tenant_name` — reactivation/rename required to reuse a name.  
-4. DB name `hotel_billing` is legacy; product branding is multi-business.
+4. DB name `hotel_billing` is legacy; product branding is multi-business.  
+5. **Category root uniqueness:** MySQL treats `NULL` as distinct in multi-column UNIQUE keys. Schema uses generated `parent_key` so two main categories cannot share a name in the same tenant.
 
 ---
 
-## 8. Verification checklist (Sprint 4)
+## 8. Verification checklist (Phase 2 / P2-5)
 
 - [x] PKs/FKs/`tenant_id` reviewed  
 - [x] Cascade policy documented  
-- [x] `02_schema.sql` aligned with ORM (bill default, bill_items SET NULL, business_type)  
-- [x] Alembic + apply helper for relationship fixes  
+- [x] `02_schema.sql` aligned with ORM (`parent_key`, bill default, bill_items SET NULL, business_type)  
+- [x] Alembic + `apply_category_parent_key.py` for root uniqueness  
+- [x] `update_item` rejects inactive category (matches create)  
 - [x] Single pending-upgrade entry point documented  

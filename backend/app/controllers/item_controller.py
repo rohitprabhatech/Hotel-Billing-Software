@@ -2,7 +2,12 @@
 
 from flask import request
 
-from app.schemas.item_schemas import create_item_schema, item_status_schema, update_item_schema
+from app.schemas.item_schemas import (
+    adjust_stock_schema,
+    create_item_schema,
+    item_status_schema,
+    update_item_schema,
+)
 from app.services.item_service import ItemService
 from app.utils.exceptions import ForbiddenError
 from app.utils.responses import success_response
@@ -47,6 +52,7 @@ def create_item():
         sku=payload.get("sku"),
         cost_price=payload.get("cost_price"),
         stock_quantity=payload.get("stock_quantity"),
+        minimum_stock_level=payload.get("minimum_stock_level"),
     )
     return success_response(data=data, status_code=201)
 
@@ -67,6 +73,10 @@ def update_item(item_id: str):
         cost_price_provided="cost_price" in raw,
         stock_quantity=payload.get("stock_quantity") if "stock_quantity" in raw else None,
         stock_quantity_provided="stock_quantity" in raw,
+        minimum_stock_level=(
+            payload.get("minimum_stock_level") if "minimum_stock_level" in raw else None
+        ),
+        minimum_stock_level_provided="minimum_stock_level" in raw,
     )
     return success_response(data=data)
 
@@ -76,6 +86,16 @@ def set_item_status(item_id: str):
     data = ItemService.set_status(
         item_id,
         payload["is_active"],
+        reason=payload.get("reason"),
+    )
+    return success_response(data=data)
+
+
+def adjust_stock(item_id: str):
+    payload = adjust_stock_schema.load(request.get_json() or {})
+    data = ItemService.adjust_stock(
+        item_id,
+        delta=payload["delta"],
         reason=payload.get("reason"),
     )
     return success_response(data=data)

@@ -299,6 +299,61 @@ def test_inactive_parent_rejected(client):
     assert "active" in child.get_json()["error"]["message"].lower()
 
 
+def test_duplicate_root_category_name_rejected(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    first = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Food Root Unique", "parent_id": None},
+    )
+    assert first.status_code == 201
+    second = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Food Root Unique", "parent_id": None},
+    )
+    assert second.status_code == 409
+
+
+def test_cannot_move_item_to_inactive_category(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    active_cat = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Active Cat For Move"},
+    ).get_json()["data"]
+    inactive_cat = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Inactive Cat For Move"},
+    ).get_json()["data"]
+    assert (
+        client.patch(
+            f"/api/v1/categories/{inactive_cat['id']}/status",
+            headers=owner,
+            json={"is_active": False},
+        ).status_code
+        == 200
+    )
+    item_id = client.post(
+        "/api/v1/items",
+        headers=owner,
+        json={
+            "name": "Move Target Item",
+            "category_id": active_cat["id"],
+            "price": 10,
+            "gst_percentage": 5,
+        },
+    ).get_json()["data"]["id"]
+    moved = client.put(
+        f"/api/v1/items/{item_id}",
+        headers=owner,
+        json={"category_id": inactive_cat["id"]},
+    )
+    assert moved.status_code == 400
+    assert "inactive" in moved.get_json()["error"]["message"].lower()
+
+
 def test_item_search(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     category_id = client.post(

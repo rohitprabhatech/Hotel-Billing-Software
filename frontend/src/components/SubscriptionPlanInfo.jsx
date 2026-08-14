@@ -65,7 +65,13 @@ export default function SubscriptionPlanInfo({
       </Typography>
 
       {showPublicCtas && !isOwner ? (
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} useFlexGap flexWrap="wrap">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ '& > *': { width: { xs: '100%', sm: 'auto' } } }}
+        >
           <Button component={RouterLink} to={PATHS.register} variant="contained">
             {SUBSCRIPTION_PLAN.ctaRegister}
           </Button>
@@ -87,11 +93,15 @@ export default function SubscriptionPlanInfo({
             </Link>{' '}
             or call{' '}
             <Link href={COMPANY.phoneHref} fontWeight={600}>
-              {COMPANY.phone}
+              {COMPANY.phoneDisplay || COMPANY.phone}
             </Link>
             .
           </Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            sx={{ '& > *': { width: { xs: '100%', sm: 'auto' } } }}
+          >
             <Button
               component="a"
               href={COMPANY.emailHref}
@@ -100,7 +110,7 @@ export default function SubscriptionPlanInfo({
               Email support
             </Button>
             <Button component="a" href={COMPANY.phoneHref} variant="outlined">
-              Call {COMPANY.phone}
+              Call {COMPANY.phoneDisplay || COMPANY.phone}
             </Button>
           </Stack>
         </Stack>

@@ -319,8 +319,15 @@ export default function ReportsPage() {
                     <ResponsiveContainer>
                       <BarChart data={report.day_wise || []}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
-                        <XAxis dataKey="date" tick={{ fill: theme.palette.text.secondary, fontSize: 12 }} />
-                        <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 12 }} />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis
+                          width={48}
+                          tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                        />
                         <Tooltip />
                         <Bar dataKey="total_sales" fill={theme.palette.primary.main} name="Sales" radius={[4, 4, 0, 0]} />
                       </BarChart>

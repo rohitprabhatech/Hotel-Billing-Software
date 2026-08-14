@@ -71,6 +71,7 @@ export default function LoginPage() {
       <Button
         type="submit"
         variant="contained"
+        fullWidth
         disabled={loading}
         startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
       >

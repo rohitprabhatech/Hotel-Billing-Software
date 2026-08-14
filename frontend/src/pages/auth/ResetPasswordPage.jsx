@@ -74,6 +74,7 @@ export default function ResetPasswordPage() {
       <Button
         type="submit"
         variant="contained"
+        fullWidth
         disabled={loading || Boolean(success)}
         startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
       >

@@ -36,7 +36,10 @@ Extended historical notes: [09-api-documentation.md](./09-api-documentation.md).
 |------|--------|
 | Categories | `GET/POST /categories`, `GET/PUT /categories/:id`, `PATCH /categories/:id/status` (write mostly OWNER) |
 | Items | `GET/POST /items`, `GET/PUT /items/:id`, `PATCH /items/:id/status` (DELETE → 405; soft deactivate only) |
-| Bills | `POST/GET /bills`, `GET /bills/today-summary`, `GET /bills/:id`, `POST /bills/:id/cancel`, `POST /bills/:id/print` |
+| Bills | `POST/GET /bills`, `GET /bills/today-summary`, `GET /bills/:id`, `GET /bills/:id/pdf`, `POST /bills/:id/cancel`, `POST /bills/:id/print`, `POST /bills/:id/send-whatsapp` |
+| Items | `GET/POST /items`, `GET/PUT /items/:id`, `PATCH /items/:id/status`, `POST /items/:id/adjust-stock` |
+| Tenant WhatsApp | `GET /tenants/me/whatsapp` (status, no token), `PUT /tenants/me/whatsapp` (OWNER), `POST .../test`, `POST .../disconnect` |
+| WhatsApp webhook (public) | `GET/POST /webhooks/whatsapp` — Meta verify + signed status callbacks (`DELIVERED`/`READ`/`FAILED`) |
 
 Bill payload uses **`reference`** (legacy alias `table_number`). Payment: **`cash`** \| **`online`**.
 

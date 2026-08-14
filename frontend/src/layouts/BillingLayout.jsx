@@ -30,7 +30,9 @@ import { useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainContent from '../components/MainContent';
 import PageHeader from '../components/PageHeader';
+import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import ThemeModeToggle from '../components/ThemeModeToggle';
+import NotificationBell from '../components/NotificationBell';
 import { useAuth } from '../context/AuthContext';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
 import { DRAWER_WIDTH } from './shell';
@@ -182,9 +184,9 @@ export default function BillingLayout() {
           ml: { md: `${drawerWidth}px` },
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ px: { xs: 1, sm: 2 }, gap: 0.5, minHeight: { xs: 56, sm: 64 } }}>
           {isMobile ? (
-            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }} aria-label="Open menu">
+            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 0.5 }} aria-label="Open menu">
               <MenuIcon />
             </IconButton>
           ) : null}
@@ -205,9 +207,10 @@ export default function BillingLayout() {
             label={isOwner ? 'OWNER' : 'BILLING'}
             color={isOwner ? 'primary' : 'default'}
             variant="outlined"
-            sx={{ mr: 1 }}
+            sx={{ mr: 0.5, display: { xs: 'none', sm: 'inline-flex' } }}
           />
-          <ThemeModeToggle sx={{ mr: 0.5 }} />
+          <NotificationBell />
+          <ThemeModeToggle sx={{ mr: 0.25 }} />
           <Tooltip title="Account menu">
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu">
               <PersonOutlinedIcon />
@@ -307,6 +310,7 @@ export default function BillingLayout() {
 }
 
 function BillingMain({ meta }) {
+  const location = useLocation();
   return (
     <MainContent>
       <PageHeader
@@ -314,7 +318,9 @@ function BillingMain({ meta }) {
         subtitle={meta.subtitle}
         actions={<PageActionsSlot />}
       />
-      <Outlet />
+      <RouteErrorBoundary key={location.pathname}>
+        <Outlet />
+      </RouteErrorBoundary>
     </MainContent>
   );
 }

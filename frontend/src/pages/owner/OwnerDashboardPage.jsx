@@ -42,8 +42,11 @@ import { useAuth } from '../../context/AuthContext';
 import { PATHS } from '../../routes/paths';
 import { fetchAuditAlerts, listAuditLogs } from '../../services/auditService';
 import { listBills } from '../../services/billService';
+import { listNotifications } from '../../services/notificationService';
 import { fetchReportSummary } from '../../services/reportService';
 import { paymentMethodLabel } from '../../utils/paymentMethod';
+
+const STOCK_ALERT_TYPES = new Set(['LOW_STOCK', 'OUT_OF_STOCK']);
 
 function money(v) {
   return `₹${Number(v || 0).toLocaleString('en-IN', {
@@ -68,6 +71,7 @@ export default function OwnerDashboardPage() {
   const [period, setPeriod] = useState('today');
   const [data, setData] = useState(null);
   const [alerts, setAlerts] = useState([]);
+  const [stockAlerts, setStockAlerts] = useState([]);
   const [itemActivity, setItemActivity] = useState([]);
   const [recentBills, setRecentBills] = useState([]);
   const [error, setError] = useState('');
@@ -82,13 +86,16 @@ export default function OwnerDashboardPage() {
       fetchAuditAlerts(),
       listAuditLogs({ entity_type: 'ITEM', per_page: 6 }),
       listBills({ per_page: 8 }),
+      listNotifications({ unread_only: true, per_page: 20 }),
     ])
-      .then(([summaryRes, alertsRes, itemRes, billsRes]) => {
+      .then(([summaryRes, alertsRes, itemRes, billsRes, notifRes]) => {
         if (!active) return;
         setData(summaryRes.data);
         setAlerts((alertsRes.data?.alerts || []).filter((a) => a.severity !== 'info'));
         setItemActivity(itemRes.data || []);
         setRecentBills(billsRes.data || []);
+        const stock = (notifRes.data || []).filter((n) => STOCK_ALERT_TYPES.has(n.type));
+        setStockAlerts(stock);
       })
       .catch((err) => {
         if (!active) return;
@@ -158,7 +165,7 @@ export default function OwnerDashboardPage() {
               </Typography>
             </Box>
           </Stack>
-          <FormControl size="small" sx={{ minWidth: 180, alignSelf: { xs: 'stretch', sm: 'center' } }}>
+          <FormControl size="small" sx={{ width: { xs: '100%', sm: 180 }, alignSelf: { xs: 'stretch', sm: 'center' } }}>
             <InputLabel>Period</InputLabel>
             <Select
               label="Period"
@@ -179,6 +186,26 @@ export default function OwnerDashboardPage() {
       <Alert severity="info">
         Sales totals include finalized bills only. Cancelled bills are shown separately.
       </Alert>
+      {stockAlerts.length > 0 ? (
+        <Alert
+          severity={stockAlerts.some((n) => n.type === 'OUT_OF_STOCK') ? 'error' : 'warning'}
+          action={
+            <Button color="inherit" size="small" component={RouterLink} to={PATHS.ownerItems}>
+              View items
+            </Button>
+          }
+        >
+          <strong>Stock alerts:</strong>{' '}
+          {(() => {
+            const out = stockAlerts.filter((n) => n.type === 'OUT_OF_STOCK').length;
+            const low = stockAlerts.filter((n) => n.type === 'LOW_STOCK').length;
+            const parts = [];
+            if (out) parts.push(`${out} out of stock`);
+            if (low) parts.push(`${low} low stock`);
+            return `${parts.join(', ')}. Check the notification bell for details.`;
+          })()}
+        </Alert>
+      ) : null}
       {alerts.slice(0, 3).map((alert) => (
         <Alert
           key={`${alert.type}-${alert.message}`}
@@ -240,8 +267,15 @@ export default function OwnerDashboardPage() {
                 <ResponsiveContainer>
                   <BarChart data={data.day_wise}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
-                    <XAxis dataKey="date" tick={{ fill: theme.palette.text.secondary, fontSize: 12 }} />
-                    <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 12 }} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      width={48}
+                      tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                    />
                     <ChartTooltip />
                     <Bar dataKey="total_sales" fill={theme.palette.primary.main} name="Sales" radius={[4, 4, 0, 0]} />
                   </BarChart>

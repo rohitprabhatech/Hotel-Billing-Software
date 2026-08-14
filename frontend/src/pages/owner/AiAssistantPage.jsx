@@ -2,6 +2,8 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardContent,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -51,9 +53,17 @@ export default function AiAssistantPage() {
         params.to = toDate;
       }
       const res = await fetchAiAnalysis(params);
-      setAnalysis(res.data);
+      setAnalysis(res.data || null);
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Unable to run analysis.');
+      const status = err.response?.status;
+      const apiMessage = err.response?.data?.error?.message;
+      if (status === 401) {
+        setError('Your session expired. Please sign in again.');
+      } else if (status === 403) {
+        setError('You do not have permission to view AI insights.');
+      } else {
+        setError(apiMessage || 'Unable to load AI insights right now.');
+      }
       setAnalysis(null);
     } finally {
       setLoading(false);
@@ -62,6 +72,7 @@ export default function AiAssistantPage() {
 
   const metrics = analysis?.metrics || {};
   const mix = analysis?.payment_mix || {};
+  const canAnalyze = !(period === 'custom' && (!fromDate || !toDate));
 
   return (
     <PageShell>
@@ -70,7 +81,7 @@ export default function AiAssistantPage() {
           <Button
             variant="contained"
             onClick={runAnalysis}
-            disabled={loading || (period === 'custom' && (!fromDate || !toDate))}
+            disabled={loading || !canAnalyze}
             startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
           >
             {loading ? 'Analyzing...' : 'Analyze'}
@@ -114,9 +125,27 @@ export default function AiAssistantPage() {
         ) : null}
       </FilterBar>
 
-      {error ? <Alert severity="error">{error}</Alert> : null}
+      {loading ? (
+        <Stack alignItems="center" spacing={1.5} sx={{ py: 6 }}>
+          <CircularProgress size={36} />
+          <Typography color="text.secondary">Analyzing your business data...</Typography>
+        </Stack>
+      ) : null}
 
-      {!analysis && !loading ? (
+      {error && !loading ? (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={runAnalysis} disabled={!canAnalyze}>
+              Retry
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      ) : null}
+
+      {!analysis && !loading && !error ? (
         <EmptyState
           title="No analysis yet"
           description="Choose today, weekly, monthly, or a custom range, then click Analyze."
@@ -125,11 +154,13 @@ export default function AiAssistantPage() {
         />
       ) : null}
 
-      {analysis?.insufficient_data ? (
-        <Alert severity="warning">{analysis.message}</Alert>
+      {analysis?.insufficient_data && !loading ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {analysis.message || 'Not enough sales data available for analysis yet.'}
+        </Alert>
       ) : null}
 
-      {analysis && !analysis.insufficient_data ? (
+      {analysis && !analysis.insufficient_data && !loading ? (
         <>
           <Section
             title={analysis.label}

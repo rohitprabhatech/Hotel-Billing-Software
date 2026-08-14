@@ -13,6 +13,7 @@ class User(db.Model, TimestampMixin):
     __tablename__ = "users"
     __table_args__ = (
         UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
+        UniqueConstraint("email", name="uq_users_email"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

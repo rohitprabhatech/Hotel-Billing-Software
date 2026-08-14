@@ -1,14 +1,12 @@
 import {
   Alert,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
   Stack,
   TextField,
-  Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import FormSection from '../../components/FormSection';
 import PageShell from '../../components/PageShell';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -16,26 +14,6 @@ import {
   requestEmailChange,
   updateProfileRequest,
 } from '../../services/authService';
-
-function ProfileSection({ title, description, children }) {
-  return (
-    <Card>
-      <CardContent sx={{ p: { xs: 2.5, sm: 3 }, '&:last-child': { pb: { xs: 2.5, sm: 3 } } }}>
-        <Stack spacing={0.75} sx={{ mb: 3 }}>
-          <Typography variant="h6" component="h2">
-            {title}
-          </Typography>
-          {description ? (
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 560 }}>
-              {description}
-            </Typography>
-          ) : null}
-        </Stack>
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function ProfilePage() {
   const { user, login } = useAuth();
@@ -101,7 +79,7 @@ export default function ProfilePage() {
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
-      <ProfileSection
+      <FormSection
         title="Profile"
         description="Update your name and contact phone used across the business account."
       >
@@ -125,9 +103,9 @@ export default function ProfilePage() {
             Save Profile
           </Button>
         </Stack>
-      </ProfileSection>
+      </FormSection>
 
-      <ProfileSection
+      <FormSection
         title="Change Email"
         description="A verification link will be sent to the new email before it is updated."
       >
@@ -150,7 +128,7 @@ export default function ProfilePage() {
             Send Verification
           </Button>
         </Stack>
-      </ProfileSection>
+      </FormSection>
     </PageShell>
   );
 }

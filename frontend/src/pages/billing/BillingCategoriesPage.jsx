@@ -1,40 +1,12 @@
-import {
-  Alert,
-  Box,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-} from '@mui/material';
+import { Alert, Chip, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
+import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { listCategories } from '../../services/categoryService';
-
-function buildHierarchyRows(categories) {
-  const byParent = new Map();
-  categories.forEach((category) => {
-    const key = category.parent_id || 'root';
-    if (!byParent.has(key)) byParent.set(key, []);
-    byParent.get(key).push(category);
-  });
-  byParent.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
-
-  const rows = [];
-  const walk = (parentKey, depth) => {
-    (byParent.get(parentKey) || []).forEach((category) => {
-      rows.push({ category, depth });
-      walk(category.id, depth + 1);
-    });
-  };
-  walk('root', 0);
-  return rows;
-}
+import { buildHierarchyRows } from '../../utils/categoryHierarchy';
 
 /**
  * Read-only category list for Billing Users (needed when assigning items to categories).
@@ -62,43 +34,67 @@ export default function BillingCategoriesPage() {
 
       <TableCard>
         {loading ? (
-          <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}>
-            <CircularProgress size={28} />
-          </Box>
+          <LoadingBlock />
         ) : (
           <Table size="small" sx={{ minWidth: 640 }}>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
+                <TableCell>Category Name</TableCell>
+                <TableCell>Type</TableCell>
                 <TableCell>Description</TableCell>
                 <TableCell>Parent Category</TableCell>
                 <TableCell>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {hierarchyRows.map(({ category, depth }) => (
-                <TableRow key={category.id} hover>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{ pl: depth * 2, fontWeight: depth === 0 ? 650 : 500 }}
-                    >
-                      {depth > 0 ? '└ ' : ''}
-                      {category.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <TruncateText value={category.description || '—'} maxWidth={220} />
-                  </TableCell>
-                  <TableCell>
-                    <TruncateText
-                      value={category.parent_category_name || 'No Parent / Main Category'}
-                      maxWidth={140}
-                    />
-                  </TableCell>
-                  <TableCell>{category.is_active ? 'Active' : 'Inactive'}</TableCell>
-                </TableRow>
-              ))}
+              {hierarchyRows.map(({ category, depth }) => {
+                const isMain = !category.parent_id;
+                return (
+                  <TableRow key={category.id} hover>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          pl: depth * 2,
+                          fontWeight: isMain ? 650 : 500,
+                          color: category.is_active ? 'text.primary' : 'text.secondary',
+                        }}
+                      >
+                        {depth > 0 ? `${'· '.repeat(Math.min(depth, 3))}→ ` : ''}
+                        {category.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={isMain ? 'Main' : 'Sub'}
+                        variant={isMain ? 'filled' : 'outlined'}
+                        color={isMain ? 'primary' : 'default'}
+                        sx={{ fontWeight: 600 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TruncateText value={category.description || '—'} maxWidth={220} />
+                    </TableCell>
+                    <TableCell>
+                      <TruncateText
+                        value={category.parent_category_name || 'No Parent / Main Category'}
+                        maxWidth={140}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Chip
+                          size="small"
+                          label={category.is_active ? 'Active' : 'Inactive'}
+                          color={category.is_active ? 'success' : 'default'}
+                          variant="outlined"
+                        />
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

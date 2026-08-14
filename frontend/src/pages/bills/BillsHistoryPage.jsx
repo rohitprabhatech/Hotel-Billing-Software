@@ -1,9 +1,7 @@
 import {
   Alert,
-  Box,
   Button,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -19,21 +17,29 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
+import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import { filterControlSx } from '../../layouts/shell';
 import {
   cancelBill,
+  downloadBillPdf,
   getBill,
   listBills,
   openBillPrint,
+  sendBillWhatsapp,
 } from '../../services/billService';
 import BillPreview from '../../print/BillPreview';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { PAYMENT_CASH, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
+
+const PAGE_SIZE = 25;
 
 export default function BillsHistoryPage({ todayDefault = false }) {
   const [bills, setBills] = useState([]);
@@ -41,6 +47,8 @@ export default function BillsHistoryPage({ todayDefault = false }) {
   const [status, setStatus] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [todayOnly, setTodayOnly] = useState(todayDefault);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [selected, setSelected] = useState(null);
@@ -48,8 +56,15 @@ export default function BillsHistoryPage({ todayDefault = false }) {
   const [cancelReason, setCancelReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [waSending, setWaSending] = useState(false);
+  const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
+  const [phoneDraftCc, setPhoneDraftCc] = useState('91');
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [phoneDraftName, setPhoneDraftName] = useState('');
+  const [whatsappStatus, setWhatsappStatus] = useState('');
 
-  const load = async () => {
+
+  const load = async (nextPage = page) => {
     setError('');
     setLoading(true);
     try {
@@ -57,10 +72,14 @@ export default function BillsHistoryPage({ todayDefault = false }) {
         q: q || undefined,
         status: status || undefined,
         payment_method: paymentMethod || undefined,
+        whatsapp_status: whatsappStatus || undefined,
         today: todayOnly || undefined,
-        per_page: 100,
+        page: nextPage,
+        per_page: PAGE_SIZE,
       });
       setBills(res.data || []);
+      setMeta(res.meta || { page: nextPage, per_page: PAGE_SIZE, total: 0 });
+      setPage(res.meta?.page || nextPage);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load bills');
     } finally {
@@ -69,9 +88,9 @@ export default function BillsHistoryPage({ todayDefault = false }) {
   };
 
   useEffect(() => {
-    load();
+    load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, todayOnly, paymentMethod]);
+  }, [status, todayOnly, paymentMethod, whatsappStatus]);
 
   const openDetails = async (bill) => {
     setError('');
@@ -94,7 +113,7 @@ export default function BillsHistoryPage({ todayDefault = false }) {
       setCancelOpen(false);
       setCancelReason('');
       setSuccess(`Bill #${res.data.bill_number} cancelled`);
-      await load();
+      await load(page);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to cancel bill');
     } finally {
@@ -106,7 +125,7 @@ export default function BillsHistoryPage({ todayDefault = false }) {
     <PageShell>
       <FilterBar
         actions={
-          <Button variant="outlined" onClick={load} disabled={loading}>
+          <Button variant="outlined" onClick={() => load(1)} disabled={loading}>
             Search
           </Button>
         }
@@ -116,7 +135,7 @@ export default function BillsHistoryPage({ todayDefault = false }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') load();
+            if (e.key === 'Enter') load(1);
           }}
           sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}
         />
@@ -125,7 +144,10 @@ export default function BillsHistoryPage({ todayDefault = false }) {
           <Select
             label="Status"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
           >
             <MenuItem value="">All</MenuItem>
             <MenuItem value="FINALIZED">Finalized</MenuItem>
@@ -137,7 +159,10 @@ export default function BillsHistoryPage({ todayDefault = false }) {
           <Select
             label="Payment Method"
             value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
+            onChange={(e) => {
+              setPaymentMethod(e.target.value);
+              setPage(1);
+            }}
           >
             <MenuItem value="">All</MenuItem>
             <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
@@ -149,10 +174,31 @@ export default function BillsHistoryPage({ todayDefault = false }) {
           <Select
             label="Period"
             value={todayOnly ? 'today' : 'all'}
-            onChange={(e) => setTodayOnly(e.target.value === 'today')}
+            onChange={(e) => {
+              setTodayOnly(e.target.value === 'today');
+              setPage(1);
+            }}
           >
             <MenuItem value="all">All</MenuItem>
             <MenuItem value="today">Today</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl sx={filterControlSx}>
+          <InputLabel>WhatsApp</InputLabel>
+          <Select
+            label="WhatsApp"
+            value={whatsappStatus}
+            onChange={(e) => {
+              setWhatsappStatus(e.target.value);
+              setPage(1);
+            }}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="PENDING">Pending</MenuItem>
+            <MenuItem value="SENT">Sent</MenuItem>
+            <MenuItem value="DELIVERED">Delivered</MenuItem>
+            <MenuItem value="READ">Read</MenuItem>
+            <MenuItem value="FAILED">Failed</MenuItem>
           </Select>
         </FormControl>
       </FilterBar>
@@ -162,9 +208,7 @@ export default function BillsHistoryPage({ todayDefault = false }) {
 
       <TableCard>
         {loading ? (
-          <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}>
-            <CircularProgress size={28} />
-          </Box>
+          <LoadingBlock />
         ) : (
           <Table size="small" sx={{ minWidth: 960 }}>
             <TableHead>
@@ -175,6 +219,7 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                 <TableCell>Payment Method</TableCell>
                 <TableCell align="right">Total</TableCell>
                 <TableCell>Prints</TableCell>
+                <TableCell>WhatsApp</TableCell>
                 <TableCell>Created By</TableCell>
                 <TableCell>Time</TableCell>
                 <TableCell align="right">Actions</TableCell>
@@ -198,6 +243,21 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                   <TableCell>{paymentMethodLabel(bill.payment_method)}</TableCell>
                   <TableCell align="right">₹{Number(bill.grand_total).toFixed(2)}</TableCell>
                   <TableCell>{bill.printed_count}</TableCell>
+                  <TableCell>
+                    {bill.whatsapp_delivery_status === 'READ' ? (
+                      <Chip size="small" label="Read" color="success" variant="outlined" />
+                    ) : bill.whatsapp_delivery_status === 'DELIVERED' ? (
+                      <Chip size="small" label="Delivered" color="success" variant="outlined" />
+                    ) : bill.whatsapp_delivery_status === 'SENT' ? (
+                      <Chip size="small" label="Sent" color="success" variant="outlined" />
+                    ) : bill.whatsapp_delivery_status === 'FAILED' ? (
+                      <Chip size="small" label="Failed" color="error" variant="outlined" />
+                    ) : bill.whatsapp_delivery_status === 'PENDING' ? (
+                      <Chip size="small" label="Pending" color="warning" variant="outlined" />
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
                   <TableCell>{bill.created_by_name || '—'}</TableCell>
                   <TableCell>
                     {bill.created_at ? new Date(bill.created_at).toLocaleString() : '—'}
@@ -214,19 +274,23 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                   </TableCell>
                 </TableRow>
               ))}
-              {!bills.length ? (
-                <TableRow>
-                  <TableCell colSpan={9} sx={{ p: 0, border: 0 }}>
-                    <EmptyState
-                      title="No bills found"
-                      description="Try another search, status, payment method, or period."
-                    />
-                  </TableCell>
-                </TableRow>
-              ) : null}
             </TableBody>
           </Table>
         )}
+        {!loading && !bills.length ? (
+          <EmptyState
+            title="No bills found"
+            description="Try another search, status, payment method, or period."
+          />
+        ) : null}
+        {!loading && bills.length ? (
+          <PaginationBar
+            page={meta.page}
+            perPage={meta.per_page}
+            total={meta.total}
+            onPageChange={(next) => load(next)}
+          />
+        ) : null}
       </TableCard>
 
       <Dialog
@@ -250,6 +314,84 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                     : ''}
                 </Alert>
               ) : null}
+              {selected.whatsapp_delivery_status || selected.customer_phone_masked ? (
+                <Alert
+                  severity={
+                    selected.whatsapp_delivery_status === 'FAILED'
+                      ? 'error'
+                      : selected.whatsapp_delivery_status === 'READ' ||
+                          selected.whatsapp_delivery_status === 'DELIVERED' ||
+                          selected.whatsapp_delivery_status === 'SENT'
+                        ? 'success'
+                        : 'info'
+                  }
+                >
+                  Delivery:{' '}
+                  {selected.whatsapp_delivery_status === 'READ'
+                    ? 'WhatsApp read'
+                    : selected.whatsapp_delivery_status === 'DELIVERED'
+                      ? 'WhatsApp delivered'
+                      : selected.whatsapp_delivery_status === 'SENT'
+                        ? 'WhatsApp sent'
+                        : selected.whatsapp_delivery_status === 'FAILED'
+                          ? 'WhatsApp failed'
+                          : selected.whatsapp_delivery_status === 'PENDING'
+                            ? 'WhatsApp pending'
+                            : 'Not sent on WhatsApp'}
+                  {selected.customer_phone_masked
+                    ? ` · ${selected.customer_phone_masked}`
+                    : ''}
+                  {(() => {
+                    const latest = (selected.deliveries || []).find(
+                      (d) => d.delivery_method === 'WHATSAPP',
+                    );
+                    if (!latest) return null;
+                    if (latest.status === 'FAILED' && latest.error_message) {
+                      return (
+                        <>
+                          <br />
+                          Reason: {latest.error_message}
+                        </>
+                      );
+                    }
+                    const bits = [];
+                    if (latest.sent_at) bits.push(`Sent ${new Date(latest.sent_at).toLocaleString()}`);
+                    if (latest.delivered_at) {
+                      bits.push(`Delivered ${new Date(latest.delivered_at).toLocaleString()}`);
+                    }
+                    if (latest.read_at) bits.push(`Read ${new Date(latest.read_at).toLocaleString()}`);
+                    return bits.length ? (
+                      <>
+                        <br />
+                        {bits.join(' · ')}
+                      </>
+                    ) : null;
+                  })()}
+                </Alert>
+              ) : null}
+              {selected.deliveries?.length ? (
+                <Alert severity="info">
+                  Delivery attempts:{' '}
+                  {selected.deliveries
+                    .slice(0, 5)
+                    .map((d) => {
+                      const when =
+                        d.read_at || d.delivered_at || d.sent_at || d.created_at
+                          ? ` @ ${new Date(
+                              d.read_at || d.delivered_at || d.sent_at || d.created_at,
+                            ).toLocaleString()}`
+                          : '';
+                      const err =
+                        d.status === 'FAILED' && d.error_message
+                          ? ` — ${d.error_message}`
+                          : '';
+                      return `${d.delivery_method} ${d.status}${
+                        d.recipient_phone_masked ? ` (${d.recipient_phone_masked})` : ''
+                      }${when}${err}`;
+                    })
+                    .join(' · ')}
+                </Alert>
+              ) : null}
               <BillPreview
                 bill={selected}
                 onPrint={() => openBillPrint(selected.id, { auto: true })}
@@ -257,13 +399,141 @@ export default function BillsHistoryPage({ todayDefault = false }) {
             </Stack>
           ) : null}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           {selected?.status === 'FINALIZED' ? (
             <Button color="error" onClick={() => setCancelOpen(true)}>
               Cancel Bill
             </Button>
           ) : null}
+          {selected?.status === 'FINALIZED' ? (
+            <Button
+              color="success"
+              variant="outlined"
+              startIcon={<WhatsAppIcon />}
+              disabled={waSending}
+              onClick={() => {
+                setError('');
+                setSuccess('');
+                if (!selected.customer_phone_masked && !selected.customer_phone_national) {
+                  setPhoneDraftCc(selected.customer_phone_country_code || '91');
+                  setPhoneDraft(selected.customer_phone_national || '');
+                  setPhoneDraftName(selected.customer_name || '');
+                  setPhoneDialogOpen(true);
+                  return;
+                }
+                (async () => {
+                  setWaSending(true);
+                  try {
+                    const res = await sendBillWhatsapp(selected.id, {});
+                    setSuccess(res.data?.message || 'Bill sent on WhatsApp.');
+                    if (res.data?.bill) setSelected(res.data.bill);
+                    await load(page);
+                  } catch (err) {
+                    setError(
+                      err.response?.data?.error?.message ||
+                        'Unable to send the bill on WhatsApp.',
+                    );
+                  } finally {
+                    setWaSending(false);
+                  }
+                })();
+              }}
+            >
+              {waSending
+                ? 'Sending…'
+                : selected?.whatsapp_delivery_status === 'FAILED'
+                  ? 'Retry WhatsApp'
+                  : 'Send on WhatsApp'}
+            </Button>
+          ) : null}
+          {selected ? (
+            <Button
+              variant="outlined"
+              onClick={async () => {
+                try {
+                  await downloadBillPdf(selected.id, selected.bill_number);
+                } catch (err) {
+                  setError(err.response?.data?.error?.message || 'Unable to download bill PDF.');
+                }
+              }}
+            >
+              Download PDF
+            </Button>
+          ) : null}
           <Button onClick={() => setSelected(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={phoneDialogOpen}
+        onClose={() => !waSending && setPhoneDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Customer WhatsApp number</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Customer WhatsApp number is required to send this bill.
+          </Typography>
+          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            <TextField
+              label="Customer name (optional)"
+              value={phoneDraftName}
+              onChange={(e) => setPhoneDraftName(e.target.value)}
+              fullWidth
+            />
+            <Stack direction="row" spacing={1.5}>
+              <TextField
+                label="Country"
+                value={phoneDraftCc}
+                onChange={(e) => setPhoneDraftCc(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                sx={{ width: 100 }}
+              />
+              <TextField
+                label="Mobile number"
+                value={phoneDraft}
+                onChange={(e) => setPhoneDraft(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                fullWidth
+                autoFocus
+              />
+            </Stack>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhoneDialogOpen(false)} disabled={waSending}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            disabled={waSending || !phoneDraft}
+            onClick={async () => {
+              if (!selected) return;
+              setWaSending(true);
+              setError('');
+              setSuccess('');
+              try {
+                const res = await sendBillWhatsapp(selected.id, {
+                  country_code: phoneDraftCc,
+                  phone: phoneDraft,
+                  customer_name: phoneDraftName || null,
+                });
+                setSuccess(res.data?.message || 'Bill sent on WhatsApp.');
+                if (res.data?.bill) setSelected(res.data.bill);
+                setPhoneDialogOpen(false);
+                await load(page);
+              } catch (err) {
+                setError(
+                  err.response?.data?.error?.message ||
+                    'Unable to send the bill on WhatsApp.',
+                );
+              } finally {
+                setWaSending(false);
+              }
+            }}
+          >
+            {waSending ? 'Sending…' : 'Send'}
+          </Button>
         </DialogActions>
       </Dialog>
 

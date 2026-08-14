@@ -1,6 +1,7 @@
 import { Box, Container, Paper, Typography } from '@mui/material';
 import { Outlet, useLocation } from 'react-router-dom';
 import ThemeModeToggle from '../components/ThemeModeToggle';
+import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import { useColorMode } from '../context/ColorModeContext';
 
 const pages = {
@@ -40,7 +41,7 @@ export default function AuthLayout() {
       sx={{
         minHeight: '100vh',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: { xs: 'flex-start', sm: 'center' },
         position: 'relative',
         py: { xs: 3, sm: 4 },
         px: { xs: 2, sm: 0 },
@@ -82,7 +83,9 @@ export default function AuthLayout() {
           ) : (
             <Box sx={{ mb: 3 }} />
           )}
-          <Outlet />
+          <RouteErrorBoundary key={pathname}>
+            <Outlet />
+          </RouteErrorBoundary>
         </Paper>
       </Container>
     </Box>

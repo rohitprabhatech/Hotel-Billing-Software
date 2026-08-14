@@ -1,15 +1,13 @@
 import {
   Alert,
-  Box,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
   Stack,
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import FormSection from '../../components/FormSection';
 import PageShell from '../../components/PageShell';
 import { useAuth } from '../../context/AuthContext';
 import { PATHS } from '../../routes/paths';
@@ -53,61 +51,60 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <PageShell>
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <Card sx={{ width: '100%', maxWidth: 480 }}>
-          <CardContent sx={{ p: { xs: 2.5, sm: 3 }, '&:last-child': { pb: { xs: 2.5, sm: 3 } } }}>
-            <Stack spacing={2.5} component="form" onSubmit={onSubmit}>
-              {error ? <Alert severity="error">{error}</Alert> : null}
-              {success ? <Alert severity="success">{success}</Alert> : null}
-              <TextField
-                label="Current Password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                fullWidth
-              />
-              <TextField
-                label="New Password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                fullWidth
-                helperText="Minimum 8 characters"
-              />
-              <TextField
-                label="Confirm New Password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                fullWidth
-              />
-              <Stack direction="row" spacing={1.5} justifyContent="flex-end" sx={{ pt: 1 }}>
-                <Button
-                  type="button"
-                  variant="outlined"
-                  color="inherit"
-                  onClick={() => navigate(cancelPath)}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
-                >
-                  {loading ? 'Updating...' : 'Update Password'}
-                </Button>
-              </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
-      </Box>
+    <PageShell maxWidth={880}>
+      {error ? <Alert severity="error">{error}</Alert> : null}
+      {success ? <Alert severity="success">{success}</Alert> : null}
+      <FormSection
+        title="Change password"
+        description="Updating your password signs out other sessions for this account."
+      >
+        <Stack spacing={2.5} component="form" onSubmit={onSubmit} sx={{ maxWidth: 480 }}>
+          <TextField
+            label="Current Password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+            fullWidth
+          />
+          <TextField
+            label="New Password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            fullWidth
+            helperText="Minimum 8 characters"
+          />
+          <TextField
+            label="Confirm New Password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            fullWidth
+          />
+          <Stack direction="row" spacing={1.5} justifyContent="flex-end" sx={{ pt: 1 }}>
+            <Button
+              type="button"
+              variant="outlined"
+              color="inherit"
+              onClick={() => navigate(cancelPath)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              {loading ? 'Updating...' : 'Update Password'}
+            </Button>
+          </Stack>
+        </Stack>
+      </FormSection>
     </PageShell>
   );
 }

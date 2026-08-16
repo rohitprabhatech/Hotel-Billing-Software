@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
 import LoadingBlock from '../../components/LoadingBlock';
@@ -34,14 +35,21 @@ import {
   listBills,
   openBillPrint,
   sendBillWhatsapp,
+  sendBillEmail,
 } from '../../services/billService';
 import BillPreview from '../../print/BillPreview';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { PAYMENT_CASH, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
 
 const PAGE_SIZE = 25;
 
 export default function BillsHistoryPage({ todayDefault = false }) {
+  const [searchParams] = useSearchParams();
+  const initialWa = (searchParams.get('whatsapp_status') || '').toUpperCase();
+  const initialEmail = (searchParams.get('email_status') || '').toUpperCase();
+  const allowedWa = new Set(['PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED']);
+  const allowedEmail = new Set(['PENDING', 'SENT', 'FAILED']);
   const [bills, setBills] = useState([]);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
@@ -57,15 +65,32 @@ export default function BillsHistoryPage({ todayDefault = false }) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [waSending, setWaSending] = useState(false);
+  const [waBusyId, setWaBusyId] = useState(null);
+  const [waTarget, setWaTarget] = useState(null);
+  const [emailBusyId, setEmailBusyId] = useState(null);
+  const [emailTarget, setEmailTarget] = useState(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
+  const [emailDraftName, setEmailDraftName] = useState('');
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
   const [phoneDraftCc, setPhoneDraftCc] = useState('91');
   const [phoneDraft, setPhoneDraft] = useState('');
   const [phoneDraftName, setPhoneDraftName] = useState('');
-  const [whatsappStatus, setWhatsappStatus] = useState('');
+  const [whatsappStatus, setWhatsappStatus] = useState(
+    allowedWa.has(initialWa) ? initialWa : '',
+  );
+  const [emailStatus, setEmailStatus] = useState(
+    allowedEmail.has(initialEmail) ? initialEmail : '',
+  );
 
+  const waLabel = (status) =>
+    status === 'FAILED' ? 'Retry WhatsApp' : 'Send WhatsApp';
 
-  const load = async (nextPage = page) => {
-    setError('');
+  const emailLabel = (status) =>
+    status === 'FAILED' ? 'Retry Email' : 'Send Email';
+
+  const load = async (nextPage = page, { keepAlerts = false } = {}) => {
+    if (!keepAlerts) setError('');
     setLoading(true);
     try {
       const res = await listBills({
@@ -73,6 +98,7 @@ export default function BillsHistoryPage({ todayDefault = false }) {
         status: status || undefined,
         payment_method: paymentMethod || undefined,
         whatsapp_status: whatsappStatus || undefined,
+        email_status: emailStatus || undefined,
         today: todayOnly || undefined,
         page: nextPage,
         per_page: PAGE_SIZE,
@@ -87,10 +113,107 @@ export default function BillsHistoryPage({ todayDefault = false }) {
     }
   };
 
+  const openPhoneForBill = (bill) => {
+    setWaTarget(bill);
+    setPhoneDraftCc(bill.customer_phone_country_code || '91');
+    setPhoneDraft(bill.customer_phone_national || '');
+    setPhoneDraftName(bill.customer_name || '');
+    setPhoneDialogOpen(true);
+  };
+
+  const sendWhatsappForBill = async (bill, phonePayload = null) => {
+    setWaSending(true);
+    setWaBusyId(bill.id);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await sendBillWhatsapp(bill.id, phonePayload || {});
+      setSuccess(res.data?.message || 'Bill sent on WhatsApp.');
+      if (res.data?.bill && selected?.id === bill.id) {
+        setSelected(res.data.bill);
+      }
+      setPhoneDialogOpen(false);
+      setWaTarget(null);
+      await load(page, { keepAlerts: true });
+    } catch (err) {
+      setError(
+        err.response?.data?.error?.message || 'Unable to send the bill on WhatsApp.',
+      );
+    } finally {
+      setWaSending(false);
+      setWaBusyId(null);
+    }
+  };
+
+  const startWhatsapp = (bill) => {
+    if (!bill || bill.status !== 'FINALIZED' || waSending) return;
+    setError('');
+    setSuccess('');
+    if (!bill.customer_phone_masked && !bill.customer_phone_national) {
+      openPhoneForBill(bill);
+      return;
+    }
+    sendWhatsappForBill(bill);
+  };
+
+  const openEmailForBill = (bill) => {
+    setEmailTarget(bill);
+    setEmailDraft(bill.customer_email || '');
+    setEmailDraftName(bill.customer_name || '');
+    setEmailDialogOpen(true);
+  };
+
+  const sendEmailForBill = async (bill, emailPayload = null) => {
+    setEmailBusyId(bill.id);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await sendBillEmail(bill.id, emailPayload || {});
+      setSuccess(res.data?.message || 'Bill sent by email.');
+      if (res.data?.bill && selected?.id === bill.id) {
+        setSelected(res.data.bill);
+      }
+      setEmailDialogOpen(false);
+      setEmailTarget(null);
+      await load(page, { keepAlerts: true });
+    } catch (err) {
+      setError(
+        err.response?.data?.error?.message || 'Unable to send the bill by email.',
+      );
+    } finally {
+      setEmailBusyId(null);
+    }
+  };
+
+  const startEmail = (bill) => {
+    if (!bill || bill.status !== 'FINALIZED' || emailBusyId) return;
+    setError('');
+    setSuccess('');
+    if (!bill.customer_email && !bill.customer_email_masked) {
+      openEmailForBill(bill);
+      return;
+    }
+    sendEmailForBill(bill);
+  };
+
+  useEffect(() => {
+    const nextWa = (searchParams.get('whatsapp_status') || '').toUpperCase();
+    if (allowedWa.has(nextWa) && nextWa !== whatsappStatus) {
+      setWhatsappStatus(nextWa);
+      setPage(1);
+    }
+    const nextEmail = (searchParams.get('email_status') || '').toUpperCase();
+    if (allowedEmail.has(nextEmail) && nextEmail !== emailStatus) {
+      setEmailStatus(nextEmail);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, todayOnly, paymentMethod, whatsappStatus]);
+  }, [status, todayOnly, paymentMethod, whatsappStatus, emailStatus]);
 
   const openDetails = async (bill) => {
     setError('');
@@ -201,6 +324,22 @@ export default function BillsHistoryPage({ todayDefault = false }) {
             <MenuItem value="FAILED">Failed</MenuItem>
           </Select>
         </FormControl>
+        <FormControl sx={filterControlSx}>
+          <InputLabel>Email</InputLabel>
+          <Select
+            label="Email"
+            value={emailStatus}
+            onChange={(e) => {
+              setEmailStatus(e.target.value);
+              setPage(1);
+            }}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="PENDING">Pending</MenuItem>
+            <MenuItem value="SENT">Sent</MenuItem>
+            <MenuItem value="FAILED">Failed</MenuItem>
+          </Select>
+        </FormControl>
       </FilterBar>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -270,6 +409,31 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                       <Button size="small" onClick={() => openBillPrint(bill.id)}>
                         Print
                       </Button>
+                      {bill.status === 'FINALIZED' ? (
+                        <Button
+                          size="small"
+                          color="success"
+                          startIcon={<WhatsAppIcon fontSize="inherit" />}
+                          disabled={waSending || Boolean(emailBusyId)}
+                          onClick={() => startWhatsapp(bill)}
+                        >
+                          {waBusyId === bill.id
+                            ? 'Sending…'
+                            : waLabel(bill.whatsapp_delivery_status)}
+                        </Button>
+                      ) : null}
+                      {bill.status === 'FINALIZED' ? (
+                        <Button
+                          size="small"
+                          startIcon={<EmailOutlinedIcon fontSize="inherit" />}
+                          disabled={Boolean(emailBusyId) || waSending}
+                          onClick={() => startEmail(bill)}
+                        >
+                          {emailBusyId === bill.id
+                            ? 'Sending…'
+                            : emailLabel(bill.email_delivery_status)}
+                        </Button>
+                      ) : null}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -386,7 +550,11 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                           ? ` — ${d.error_message}`
                           : '';
                       return `${d.delivery_method} ${d.status}${
-                        d.recipient_phone_masked ? ` (${d.recipient_phone_masked})` : ''
+                        d.recipient_phone_masked
+                          ? ` (${d.recipient_phone_masked})`
+                          : d.recipient_email_masked
+                            ? ` (${d.recipient_email_masked})`
+                            : ''
                       }${when}${err}`;
                     })
                     .join(' · ')}
@@ -410,40 +578,24 @@ export default function BillsHistoryPage({ todayDefault = false }) {
               color="success"
               variant="outlined"
               startIcon={<WhatsAppIcon />}
-              disabled={waSending}
-              onClick={() => {
-                setError('');
-                setSuccess('');
-                if (!selected.customer_phone_masked && !selected.customer_phone_national) {
-                  setPhoneDraftCc(selected.customer_phone_country_code || '91');
-                  setPhoneDraft(selected.customer_phone_national || '');
-                  setPhoneDraftName(selected.customer_name || '');
-                  setPhoneDialogOpen(true);
-                  return;
-                }
-                (async () => {
-                  setWaSending(true);
-                  try {
-                    const res = await sendBillWhatsapp(selected.id, {});
-                    setSuccess(res.data?.message || 'Bill sent on WhatsApp.');
-                    if (res.data?.bill) setSelected(res.data.bill);
-                    await load(page);
-                  } catch (err) {
-                    setError(
-                      err.response?.data?.error?.message ||
-                        'Unable to send the bill on WhatsApp.',
-                    );
-                  } finally {
-                    setWaSending(false);
-                  }
-                })();
-              }}
+              disabled={waSending || Boolean(emailBusyId)}
+              onClick={() => startWhatsapp(selected)}
             >
-              {waSending
+              {waBusyId === selected?.id
                 ? 'Sending…'
-                : selected?.whatsapp_delivery_status === 'FAILED'
-                  ? 'Retry WhatsApp'
-                  : 'Send on WhatsApp'}
+                : waLabel(selected?.whatsapp_delivery_status)}
+            </Button>
+          ) : null}
+          {selected?.status === 'FINALIZED' ? (
+            <Button
+              variant="outlined"
+              startIcon={<EmailOutlinedIcon />}
+              disabled={Boolean(emailBusyId) || waSending}
+              onClick={() => startEmail(selected)}
+            >
+              {emailBusyId === selected?.id
+                ? 'Sending…'
+                : emailLabel(selected?.email_delivery_status)}
             </Button>
           ) : null}
           {selected ? (
@@ -466,14 +618,22 @@ export default function BillsHistoryPage({ todayDefault = false }) {
 
       <Dialog
         open={phoneDialogOpen}
-        onClose={() => !waSending && setPhoneDialogOpen(false)}
+        onClose={() => {
+          if (waSending) return;
+          setPhoneDialogOpen(false);
+          setWaTarget(null);
+        }}
         fullWidth
         maxWidth="xs"
       >
         <DialogTitle>Customer WhatsApp number</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Customer WhatsApp number is required to send this bill.
+            Customer WhatsApp number is required to send this bill
+            {(waTarget || selected)?.bill_number
+              ? ` (#${(waTarget || selected).bill_number})`
+              : ''}
+            .
           </Typography>
           <Stack spacing={1.5} sx={{ pt: 0.5 }}>
             <TextField
@@ -500,39 +660,93 @@ export default function BillsHistoryPage({ todayDefault = false }) {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPhoneDialogOpen(false)} disabled={waSending}>
+          <Button
+            onClick={() => {
+              setPhoneDialogOpen(false);
+              setWaTarget(null);
+            }}
+            disabled={waSending}
+          >
             Cancel
           </Button>
           <Button
             variant="contained"
             color="success"
-            disabled={waSending || !phoneDraft}
-            onClick={async () => {
-              if (!selected) return;
-              setWaSending(true);
-              setError('');
-              setSuccess('');
-              try {
-                const res = await sendBillWhatsapp(selected.id, {
-                  country_code: phoneDraftCc,
-                  phone: phoneDraft,
-                  customer_name: phoneDraftName || null,
-                });
-                setSuccess(res.data?.message || 'Bill sent on WhatsApp.');
-                if (res.data?.bill) setSelected(res.data.bill);
-                setPhoneDialogOpen(false);
-                await load(page);
-              } catch (err) {
-                setError(
-                  err.response?.data?.error?.message ||
-                    'Unable to send the bill on WhatsApp.',
-                );
-              } finally {
-                setWaSending(false);
-              }
+            disabled={waSending || !phoneDraft || !(waTarget || selected)}
+            onClick={() => {
+              const bill = waTarget || selected;
+              if (!bill) return;
+              sendWhatsappForBill(bill, {
+                country_code: phoneDraftCc,
+                phone: phoneDraft,
+                customer_name: phoneDraftName || null,
+              });
             }}
           >
             {waSending ? 'Sending…' : 'Send'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={emailDialogOpen}
+        onClose={() => {
+          if (emailBusyId) return;
+          setEmailDialogOpen(false);
+          setEmailTarget(null);
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Customer email</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Customer email is required to send this bill
+            {(emailTarget || selected)?.bill_number
+              ? ` (#${(emailTarget || selected).bill_number})`
+              : ''}
+            .
+          </Typography>
+          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            <TextField
+              label="Customer name (optional)"
+              value={emailDraftName}
+              onChange={(e) => setEmailDraftName(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={emailDraft}
+              onChange={(e) => setEmailDraft(e.target.value)}
+              fullWidth
+              autoFocus
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setEmailDialogOpen(false);
+              setEmailTarget(null);
+            }}
+            disabled={Boolean(emailBusyId)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={Boolean(emailBusyId) || !emailDraft.trim() || !(emailTarget || selected)}
+            onClick={() => {
+              const bill = emailTarget || selected;
+              if (!bill) return;
+              sendEmailForBill(bill, {
+                email: emailDraft.trim(),
+                customer_name: emailDraftName || null,
+              });
+            }}
+          >
+            {emailBusyId ? 'Sending…' : 'Send'}
           </Button>
         </DialogActions>
       </Dialog>

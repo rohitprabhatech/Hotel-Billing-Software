@@ -61,12 +61,28 @@ class NotificationRepository:
         tenant_id: str, *, notification_type: str, entity_id: str
     ) -> bool:
         """Duplicate control: unread alert of same type for the item still open."""
+        return NotificationRepository.has_open_alert(
+            tenant_id,
+            notification_type=notification_type,
+            entity_type="ITEM",
+            entity_id=entity_id,
+        )
+
+    @staticmethod
+    def has_open_alert(
+        tenant_id: str,
+        *,
+        notification_type: str,
+        entity_type: str,
+        entity_id: str,
+    ) -> bool:
+        """Duplicate control: unread alert of same type/entity still open."""
         return (
             db.session.query(Notification.id)
             .filter(
                 Notification.tenant_id == tenant_id,
                 Notification.type == notification_type,
-                Notification.entity_type == "ITEM",
+                Notification.entity_type == entity_type,
                 Notification.entity_id == entity_id,
                 Notification.is_read.is_(False),
             )

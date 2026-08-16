@@ -8,6 +8,7 @@ from app.models.category import Category
 from app.models.item import Item
 from app.models.notification import Notification
 from app.models.role import ROLE_BILLING_USER, ROLE_OWNER, Role
+from app.models.stock_movement import StockMovement
 from app.models.tenant import Tenant
 from app.models.tenant_whatsapp_config import TenantWhatsappConfig
 from app.models.user import User
@@ -26,6 +27,7 @@ __all__ = [
     "Role",
     "ROLE_OWNER",
     "ROLE_BILLING_USER",
+    "StockMovement",
     "Tenant",
     "TenantWhatsappConfig",
     "User",

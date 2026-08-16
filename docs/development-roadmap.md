@@ -99,14 +99,61 @@ Order adjusted to **actual codebase**: landing + contact first (visible commerci
 
 ---
 
-## Phase 4 — Delivery intelligence (IN PROGRESS)
+## Phase 4 — Delivery intelligence (COMPLETE)
 
 **Program goal:** Improve outbound bill delivery visibility (WhatsApp status, future channels) without rebuilding billing.
+
+**Gate:** [`phase4-final-qa-report.md`](./phase4-final-qa-report.md) (148 pytest green at gate; FE build OK)
 
 | Sprint | Title | Status |
 |--------|-------|--------|
 | **P4-1** | Meta WhatsApp delivery status webhooks | **COMPLETED** — [`phase4-p4-1-whatsapp-webhooks.md`](./phase4-p4-1-whatsapp-webhooks.md) |
 | **P4-2** | Failure & webhook ops polish | **COMPLETED** — [`phase4-p4-2-whatsapp-ops-polish.md`](./phase4-p4-2-whatsapp-ops-polish.md) |
+| **P4-3** | Failed delivery ops visibility | **COMPLETED** — [`phase4-p4-3-failed-delivery-visibility.md`](./phase4-p4-3-failed-delivery-visibility.md) |
+| **P4-4** | WhatsApp delivery analytics KPIs | **COMPLETED** — [`phase4-p4-4-delivery-analytics.md`](./phase4-p4-4-delivery-analytics.md) |
+| **P4-5** | Phase 4 production gate + close | **COMPLETED** — [`phase4-p4-5-phase4-gate.md`](./phase4-p4-5-phase4-gate.md) |
+
+---
+
+## Phase 5 — Multi-channel bill reach (COMPLETE)
+
+**Program goal:** Get finalized bills to customers reliably across channels — finish WhatsApp ops UX, then email bill delivery — without inventory/PO or in-app SaaS checkout.
+
+**Gate:** [`phase5-final-qa-report.md`](./phase5-final-qa-report.md) (152 pytest green at gate; FE build OK)
+
+| Sprint | Title | Status |
+|--------|-------|--------|
+| **P5-1** | List-level WhatsApp retry | **COMPLETED** — [`phase5-p5-1-list-whatsapp-retry.md`](./phase5-p5-1-list-whatsapp-retry.md) |
+| **P5-2** | Email PDF bill delivery | **COMPLETED** — [`phase5-p5-2-email-bill-delivery.md`](./phase5-p5-2-email-bill-delivery.md) |
+| **P5-3** | Email delivery ops parity | **COMPLETED** — [`phase5-p5-3-email-ops-parity.md`](./phase5-p5-3-email-ops-parity.md) |
+| **P5-4** | Phase 5 production gate + close | **COMPLETED** — [`phase5-p5-4-phase5-gate.md`](./phase5-p5-4-phase5-gate.md) |
+
+---
+
+## Phase 6 — Inventory operations (COMPLETE)
+
+**Program goal:** Turn existing stock enforcement into owner-ready inventory ops (movement history, low-stock visibility, receive/adjust) without full PO or multi-warehouse.
+
+**Gate:** [`phase6-final-qa-report.md`](./phase6-final-qa-report.md) (160 pytest green at gate; FE build OK)
+
+| Sprint | Title | Status |
+|--------|-------|--------|
+| **P6-1** | Stock movement ledger + owner low-stock ops | **COMPLETED** — [`phase6-p6-1-stock-movements.md`](./phase6-p6-1-stock-movements.md) |
+| **P6-2** | Receive stock + low-stock ops polish | **COMPLETED** — [`phase6-p6-2-receive-stock.md`](./phase6-p6-2-receive-stock.md) |
+| **P6-3** | Inventory health + Phase 6 gate | **COMPLETED** — [`phase6-p6-3-inventory-health-gate.md`](./phase6-p6-3-inventory-health-gate.md) |
+
+---
+
+## Phase 7 — Landing commercial redesign (COMPLETE)
+
+**Program goal:** Premium multi-business Billing SaaS public landing (layout inspired by commercial SaaS references; original Business Billing design — no CRM copy/assets).
+
+**Gate:** [`phase7-final-qa-report.md`](./phase7-final-qa-report.md) (FE build OK at gate)
+
+| Sprint | Title | Status |
+|--------|-------|--------|
+| **P7-1** | Landing page redesign | **COMPLETED** — [`phase7-p7-1-landing-redesign.md`](./phase7-p7-1-landing-redesign.md) |
+| **P7-2** | Landing polish + legal pages + Phase 7 gate | **COMPLETED** — [`phase7-p7-2-landing-polish-gate.md`](./phase7-p7-2-landing-polish-gate.md) |
 
 ---
 

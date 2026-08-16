@@ -6,6 +6,7 @@ from app.schemas.item_schemas import (
     adjust_stock_schema,
     create_item_schema,
     item_status_schema,
+    receive_stock_schema,
     update_item_schema,
 )
 from app.services.item_service import ItemService
@@ -25,12 +26,14 @@ def list_items():
     q = request.args.get("q")
     category_id = request.args.get("category_id")
     is_active = _parse_bool(request.args.get("is_active"))
+    stock_status = request.args.get("stock_status")
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 50))
     data, meta = ItemService.list_items(
         q=q,
         category_id=category_id,
         is_active=is_active,
+        stock_status=stock_status,
         page=page,
         per_page=per_page,
     )
@@ -96,6 +99,16 @@ def adjust_stock(item_id: str):
     data = ItemService.adjust_stock(
         item_id,
         delta=payload["delta"],
+        reason=payload.get("reason"),
+    )
+    return success_response(data=data)
+
+
+def receive_stock(item_id: str):
+    payload = receive_stock_schema.load(request.get_json() or {})
+    data = ItemService.receive_stock(
+        item_id,
+        quantity=payload["quantity"],
         reason=payload.get("reason"),
     )
     return success_response(data=data)

@@ -2,7 +2,11 @@
 
 from flask import request
 
-from app.schemas.bill_schemas import cancel_bill_schema, create_bill_schema
+from app.schemas.bill_schemas import (
+    cancel_bill_schema,
+    create_bill_schema,
+    send_email_bill_schema,
+)
 from app.services.bill_service import BillService
 from app.utils.responses import success_response
 
@@ -20,6 +24,7 @@ def create_bill():
         customer_name=payload.get("customer_name"),
         customer_phone_country_code=payload.get("customer_phone_country_code"),
         customer_phone=payload.get("customer_phone"),
+        customer_email=payload.get("customer_email"),
     )
     return success_response(data=data, status_code=201)
 
@@ -29,6 +34,7 @@ def list_bills():
     q = request.args.get("q")
     payment_method = request.args.get("payment_method")
     whatsapp_status = request.args.get("whatsapp_status")
+    email_status = request.args.get("email_status")
     today_only = str(request.args.get("today", "")).lower() in {"1", "true", "yes"}
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 50))
@@ -40,6 +46,7 @@ def list_bills():
         q=q,
         payment_method=payment_method,
         whatsapp_status=whatsapp_status,
+        email_status=email_status,
     )
     return success_response(data=data, meta=meta)
 
@@ -82,3 +89,15 @@ def download_bill_pdf(bill_id: str):
         mimetype="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+def send_bill_email(bill_id: str):
+    from app.services.email_bill_service import EmailBillService
+
+    payload = send_email_bill_schema.load(request.get_json() or {})
+    data = EmailBillService.send_bill(
+        bill_id,
+        email=payload.get("email"),
+        customer_name=payload.get("customer_name"),
+    )
+    return success_response(data=data)

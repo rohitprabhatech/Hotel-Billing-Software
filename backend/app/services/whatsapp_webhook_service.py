@@ -119,6 +119,18 @@ class WhatsappWebhookService:
                     "provider_message_id": row.provider_message_id,
                 },
             )
+            from app.repositories.bill_repository import BillRepository
+            from app.services.notification_service import NotificationService
+
+            bill = BillRepository.get_by_id_and_tenant(row.bill_id, row.tenant_id)
+            NotificationService.notify_whatsapp_delivery_failed(
+                tenant_id=row.tenant_id,
+                bill_id=row.bill_id,
+                delivery_id=row.id,
+                bill_number=bill.bill_number if bill else None,
+                error_message=row.error_message,
+                recipient_masked=row.recipient_phone_masked,
+            )
 
         db.session.commit()
         return {

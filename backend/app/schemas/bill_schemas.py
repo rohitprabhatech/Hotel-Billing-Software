@@ -41,6 +41,9 @@ class CreateBillSchema(Schema):
     customer_phone = fields.String(
         load_default=None, allow_none=True, validate=validate.Length(max=20)
     )
+    customer_email = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=255)
+    )
 
 
 class CancelBillSchema(Schema):
@@ -50,5 +53,18 @@ class CancelBillSchema(Schema):
     reason = fields.String(required=True, validate=validate.Length(min=1, max=1000))
 
 
+class SendEmailBillSchema(Schema):
+    class Meta:
+        unknown = EXCLUDE
+
+    email = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=255)
+    )
+    customer_name = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=120)
+    )
+
+
 create_bill_schema = CreateBillSchema()
 cancel_bill_schema = CancelBillSchema()
+send_email_bill_schema = SendEmailBillSchema()

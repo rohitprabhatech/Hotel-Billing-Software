@@ -2,6 +2,8 @@ import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
+import SwapVertOutlinedIcon from '@mui/icons-material/SwapVertOutlined';
 import {
   Alert,
   Button,
@@ -26,7 +28,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import CategoryHierarchyAutocomplete from '../../components/CategoryHierarchyAutocomplete';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
@@ -43,6 +45,7 @@ import {
   adjustItemStock,
   createItem,
   listItems,
+  receiveItemStock,
   setItemStatus,
   updateItem,
 } from '../../services/itemService';
@@ -68,11 +71,16 @@ function money(value) {
 }
 
 export default function ItemsPage() {
+  const [searchParams] = useSearchParams();
+  const initialStock = ['low', 'out', 'tracked'].includes(searchParams.get('stock_status') || '')
+    ? searchParams.get('stock_status')
+    : '';
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [q, setQ] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState(initialStock);
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [error, setError] = useState('');
@@ -88,6 +96,10 @@ export default function ItemsPage() {
   const [adjustDelta, setAdjustDelta] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
   const [adjusting, setAdjusting] = useState(false);
+  const [receiveTarget, setReceiveTarget] = useState(null);
+  const [receiveQty, setReceiveQty] = useState('');
+  const [receiveReason, setReceiveReason] = useState('');
+  const [receiving, setReceiving] = useState(false);
 
   const load = async (nextPage = page) => {
     setError('');
@@ -101,6 +113,7 @@ export default function ItemsPage() {
       };
       if (statusFilter === 'active') params.is_active = true;
       if (statusFilter === 'inactive') params.is_active = false;
+      if (stockFilter) params.stock_status = stockFilter;
 
       const [catRes, itemRes] = await Promise.all([
         listCategories(),
@@ -120,7 +133,7 @@ export default function ItemsPage() {
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryFilter, statusFilter]);
+  }, [categoryFilter, statusFilter, stockFilter]);
 
   const openCreate = () => {
     setEditing(null);
@@ -270,6 +283,22 @@ export default function ItemsPage() {
               <MenuItem value="inactive">Inactive</MenuItem>
             </Select>
           </FormControl>
+          <FormControl sx={filterControlSx}>
+            <InputLabel>Stock</InputLabel>
+            <Select
+              label="Stock"
+              value={stockFilter}
+              onChange={(e) => {
+                setStockFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <MenuItem value="">All stock</MenuItem>
+              <MenuItem value="tracked">Tracked</MenuItem>
+              <MenuItem value="low">Low</MenuItem>
+              <MenuItem value="out">Out</MenuItem>
+            </Select>
+          </FormControl>
         </FilterBar>
 
         {error ? <Alert severity="error">{error}</Alert> : null}
@@ -342,6 +371,21 @@ export default function ItemsPage() {
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="Receive stock">
+                          <IconButton
+                            size="small"
+                            aria-label={`Receive stock for ${item.name}`}
+                            onClick={() => {
+                              setReceiveTarget(item);
+                              setReceiveQty('');
+                              setReceiveReason('');
+                              setError('');
+                              setSuccess('');
+                            }}
+                          >
+                            <MoveToInboxOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         {item.stock_quantity !== null && item.stock_quantity !== undefined ? (
                           <Tooltip title="Adjust stock">
                             <IconButton
@@ -366,6 +410,16 @@ export default function ItemsPage() {
                             onClick={() => openEdit(item)}
                           >
                             <EditOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="View stock movements">
+                          <IconButton
+                            size="small"
+                            component={RouterLink}
+                            to={`${PATHS.ownerStockMovements}?item_id=${encodeURIComponent(item.id)}`}
+                            aria-label={`View stock movements for ${item.name}`}
+                          >
+                            <SwapVertOutlinedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="View activity">
@@ -596,6 +650,76 @@ export default function ItemsPage() {
             }}
           >
             {adjusting ? 'Saving...' : 'Apply'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(receiveTarget)}
+        onClose={() => !receiving && setReceiveTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Receive stock — {receiveTarget?.name}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              {receiveTarget?.stock_quantity === null || receiveTarget?.stock_quantity === undefined
+                ? 'This item is not tracking stock yet. Receiving will start tracking at the quantity you enter.'
+                : `Current stock: ${Number(receiveTarget.stock_quantity)}`}
+              {receiveTarget?.minimum_stock_level != null
+                ? ` · Min ${Number(receiveTarget.minimum_stock_level)}`
+                : ''}
+            </Typography>
+            <TextField
+              label="Quantity received"
+              type="number"
+              value={receiveQty}
+              onChange={(e) => setReceiveQty(e.target.value)}
+              fullWidth
+              helperText="Must be greater than zero"
+              inputProps={{ min: 0.001, step: '1' }}
+              autoFocus
+            />
+            <TextField
+              label="Reason (optional)"
+              value={receiveReason}
+              onChange={(e) => setReceiveReason(e.target.value)}
+              fullWidth
+              placeholder="e.g. Supplier delivery"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReceiveTarget(null)} disabled={receiving}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={receiving || !receiveQty || Number(receiveQty) <= 0}
+            onClick={async () => {
+              if (!receiveTarget) return;
+              setReceiving(true);
+              setError('');
+              setSuccess('');
+              try {
+                const res = await receiveItemStock(receiveTarget.id, {
+                  quantity: Number(receiveQty),
+                  reason: receiveReason || null,
+                });
+                setSuccess(
+                  `Received stock for ${res.data?.name || receiveTarget.name}. Now ${res.data?.stock_quantity}.`,
+                );
+                setReceiveTarget(null);
+                await load(page);
+              } catch (err) {
+                setError(err.response?.data?.error?.message || 'Receive stock failed.');
+              } finally {
+                setReceiving(false);
+              }
+            }}
+          >
+            {receiving ? 'Saving...' : 'Receive'}
           </Button>
         </DialogActions>
       </Dialog>

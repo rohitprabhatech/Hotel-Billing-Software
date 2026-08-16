@@ -26,3 +26,8 @@ export async function adjustItemStock(id, payload) {
   const { data } = await apiClient.post(`/items/${id}/adjust-stock`, payload);
   return data;
 }
+
+export async function receiveItemStock(id, payload) {
+  const { data } = await apiClient.post(`/items/${id}/receive-stock`, payload);
+  return data;
+}

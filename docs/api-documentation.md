@@ -37,7 +37,8 @@ Extended historical notes: [09-api-documentation.md](./09-api-documentation.md).
 | Categories | `GET/POST /categories`, `GET/PUT /categories/:id`, `PATCH /categories/:id/status` (write mostly OWNER) |
 | Items | `GET/POST /items`, `GET/PUT /items/:id`, `PATCH /items/:id/status` (DELETE → 405; soft deactivate only) |
 | Bills | `POST/GET /bills`, `GET /bills/today-summary`, `GET /bills/:id`, `GET /bills/:id/pdf`, `POST /bills/:id/cancel`, `POST /bills/:id/print`, `POST /bills/:id/send-whatsapp` |
-| Items | `GET/POST /items`, `GET/PUT /items/:id`, `PATCH /items/:id/status`, `POST /items/:id/adjust-stock` |
+| Items | `GET/POST /items`, `GET/PUT /items/:id`, `PATCH /items/:id/status`, `POST /items/:id/adjust-stock`, `POST /items/:id/receive-stock` |
+| Stock movements | `GET /stock-movements` (owner) |
 | Tenant WhatsApp | `GET /tenants/me/whatsapp` (status, no token), `PUT /tenants/me/whatsapp` (OWNER), `POST .../test`, `POST .../disconnect` |
 | WhatsApp webhook (public) | `GET/POST /webhooks/whatsapp` — Meta verify + signed status callbacks (`DELIVERED`/`READ`/`FAILED`) |
 

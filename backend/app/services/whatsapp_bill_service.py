@@ -111,6 +111,16 @@ class WhatsappBillService:
                     "error": exc.message,
                 },
             )
+            from app.services.notification_service import NotificationService
+
+            NotificationService.notify_whatsapp_delivery_failed(
+                tenant_id=ctx.tenant_id,
+                bill_id=bill.id,
+                delivery_id=delivery.id,
+                bill_number=bill.bill_number,
+                error_message=exc.message,
+                recipient_masked=parsed["masked"],
+            )
             db.session.commit()
             raise ValidationError(
                 "Unable to send the bill on WhatsApp. Please try again or use Print Bill."
@@ -130,6 +140,16 @@ class WhatsappBillService:
                     "delivery_id": delivery.id,
                     "error": delivery.error_message,
                 },
+            )
+            from app.services.notification_service import NotificationService
+
+            NotificationService.notify_whatsapp_delivery_failed(
+                tenant_id=ctx.tenant_id,
+                bill_id=bill.id,
+                delivery_id=delivery.id,
+                bill_number=bill.bill_number,
+                error_message=delivery.error_message,
+                recipient_masked=parsed["masked"],
             )
             db.session.commit()
             raise ValidationError(
@@ -170,6 +190,7 @@ class WhatsappBillService:
             "bill_id": row.bill_id,
             "delivery_method": row.delivery_method,
             "recipient_phone_masked": row.recipient_phone_masked,
+            "recipient_email_masked": getattr(row, "recipient_email_masked", None),
             "status": row.status,
             "provider_message_id": row.provider_message_id,
             "error_message": row.error_message,

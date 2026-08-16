@@ -13,6 +13,9 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { PATHS } from '../routes/paths';
 import {
   fetchUnreadNotificationCount,
   listNotifications,
@@ -29,7 +32,13 @@ function formatWhen(iso) {
   }
 }
 
+function billsPathForRole(role) {
+  return role === 'OWNER' ? PATHS.ownerBills : PATHS.billingBills;
+}
+
 export default function NotificationBell() {
+  const navigate = useNavigate();
+  const { role } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
   const [rows, setRows] = useState([]);
   const [unread, setUnread] = useState(0);
@@ -94,6 +103,27 @@ export default function NotificationBell() {
     }
   };
 
+  const handleRowClick = async (row) => {
+    if (!row.is_read) await handleRead(row.id);
+    if (row.type === 'WHATSAPP_DELIVERY_FAILED') {
+      handleClose();
+      navigate(`${billsPathForRole(role)}?whatsapp_status=FAILED`);
+      return;
+    }
+    if (row.type === 'EMAIL_DELIVERY_FAILED') {
+      handleClose();
+      navigate(`${billsPathForRole(role)}?email_status=FAILED`);
+      return;
+    }
+    if (row.type === 'LOW_STOCK' || row.type === 'OUT_OF_STOCK') {
+      handleClose();
+      if (role === 'OWNER') {
+        const status = row.type === 'OUT_OF_STOCK' ? 'out' : 'low';
+        navigate(`${PATHS.ownerItems}?stock_status=${status}`);
+      }
+    }
+  };
+
   return (
     <>
       <IconButton color="inherit" aria-label="Notifications" onClick={handleOpen}>
@@ -143,11 +173,9 @@ export default function NotificationBell() {
                 alignItems="flex-start"
                 sx={{
                   bgcolor: row.is_read ? 'transparent' : 'action.hover',
-                  cursor: row.is_read ? 'default' : 'pointer',
+                  cursor: 'pointer',
                 }}
-                onClick={() => {
-                  if (!row.is_read) handleRead(row.id);
-                }}
+                onClick={() => handleRowClick(row)}
               >
                 <ListItemText
                   primary={

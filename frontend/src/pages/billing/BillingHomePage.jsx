@@ -29,6 +29,8 @@ export default function BillingHomePage() {
   const navigate = useNavigate();
   const [summary, setSummary] = useState({ total_sales: 0, bill_count: 0 });
   const [recent, setRecent] = useState([]);
+  const [waFailedCount, setWaFailedCount] = useState(0);
+  const [emailFailedCount, setEmailFailedCount] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -37,10 +39,14 @@ export default function BillingHomePage() {
     Promise.all([
       fetchTodaySummary(),
       listBills({ today: true, per_page: 5 }),
+      listBills({ whatsapp_status: 'FAILED', per_page: 1 }),
+      listBills({ email_status: 'FAILED', per_page: 1 }),
     ])
-      .then(([summaryRes, billsRes]) => {
+      .then(([summaryRes, billsRes, failedRes, emailFailedRes]) => {
         setSummary(summaryRes.data || { total_sales: 0, bill_count: 0 });
         setRecent(billsRes.data || []);
+        setWaFailedCount(failedRes.meta?.total || 0);
+        setEmailFailedCount(emailFailedRes.meta?.total || 0);
       })
       .catch((err) => {
         setError(err.response?.data?.error?.message || 'Failed to load billing dashboard');
@@ -69,6 +75,42 @@ export default function BillingHomePage() {
           </Alert>
         ) : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {waFailedCount > 0 ? (
+          <Alert
+            severity="warning"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                component={RouterLink}
+                to={`${PATHS.billingBills}?whatsapp_status=FAILED`}
+              >
+                View bills
+              </Button>
+            }
+          >
+            {waFailedCount} WhatsApp bill{waFailedCount === 1 ? '' : 's'} failed to deliver — retry
+            from Bills.
+          </Alert>
+        ) : null}
+        {emailFailedCount > 0 ? (
+          <Alert
+            severity="warning"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                component={RouterLink}
+                to={`${PATHS.billingBills}?email_status=FAILED`}
+              >
+                View bills
+              </Button>
+            }
+          >
+            {emailFailedCount} email bill{emailFailedCount === 1 ? '' : 's'} failed to send — retry
+            from Bills.
+          </Alert>
+        ) : null}
 
         <Box
           sx={{

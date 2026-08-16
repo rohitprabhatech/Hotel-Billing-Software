@@ -6,10 +6,11 @@ For users with role **OWNER**.
 
 | Menu | Purpose |
 |------|---------|
-| Dashboard | Business name/type, period KPIs, recent activity |
+| Dashboard | Business name/type, period KPIs, delivery chips, inventory health, recent activity |
 | Billing | Opens the counter workspace (same tools as Billing Users) |
-| Bills | Searchable bill history, view, print, WhatsApp send/retry, cancel |
-| Items | Catalog: price, GST, SKU, cost, stock; soft deactivate |
+| Bills | Searchable bill history, view, print, WhatsApp/email send/retry from the list or bill detail, cancel |
+| Items | Catalog: price, GST, SKU, cost, stock; receive/adjust stock; soft deactivate |
+| Stock Movements | Inventory ledger (bills, cancels, receive, adjust) |
 | Item Activity | Who created/edited/deactivated items |
 | Categories | Main + subcategories (parent picker); soft deactivate |
 | Sales Reports | Daily / weekly / monthly / custom + export |
@@ -28,9 +29,11 @@ For users with role **OWNER**.
 
    **Webhooks (delivery status):** in Meta App → WhatsApp → Configuration, set Callback URL to `https://<your-api-host>/api/v1/webhooks/whatsapp`, use the same Verify Token as `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, and set `WHATSAPP_APP_SECRET` to the Meta App Secret. Subscribe to **messages** field so status updates (`delivered` / `read` / `failed`) update bill delivery chips in Bills history.
 
-   In **mock** mode, Settings shows a **Mock delivery webhook simulator** so you can paste a provider message id from a sent bill and advance status (including failed with a reason) without Meta. Bills history can filter by WhatsApp status and shows failure reasons / delivery timestamps.  
+   In **mock** mode, Settings shows a **Mock delivery webhook simulator** so you can paste a provider message id from a sent bill and advance status (including failed with a reason) without Meta. Bills history can filter by WhatsApp status and shows failure reasons / delivery timestamps.
+
+   Failed deliveries also raise an in-app notification and an Owner Dashboard strip with a link to Bills filtered to **Failed**. The Owner Dashboard also shows period WhatsApp delivery counts (sent / delivered / read / failed) with links into Bills.  
 3. Add **Categories** — leave Parent as **No Parent / Main Category** for mains, then add subcategories.  
-4. Add **Items** with price + GST (SKU/stock optional).  
+4. Add **Items** with price + GST (SKU/stock optional). Use **Receive stock** to start tracking or restock; filter Items by Low / Out when alerts appear.  
 5. Create a **Billing User** under Users.  
 6. Run a test bill (Cash and Online); try **Print** and **Send on WhatsApp** if configured.  
 7. Open **Reports** and export a sample CSV/PDF.  

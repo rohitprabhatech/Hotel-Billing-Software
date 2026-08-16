@@ -12,6 +12,8 @@ from app.utils.request_context import require_request_context
 TYPE_LOW_STOCK = "LOW_STOCK"
 TYPE_OUT_OF_STOCK = "OUT_OF_STOCK"
 TYPE_INSUFFICIENT_STOCK_ATTEMPT = "INSUFFICIENT_STOCK_ATTEMPT"
+TYPE_WHATSAPP_DELIVERY_FAILED = "WHATSAPP_DELIVERY_FAILED"
+TYPE_EMAIL_DELIVERY_FAILED = "EMAIL_DELIVERY_FAILED"
 
 
 class NotificationService:
@@ -179,6 +181,66 @@ class NotificationService:
             entity_type="ITEM" if item_id else None,
             entity_id=item_id,
             user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_whatsapp_delivery_failed(
+        *,
+        tenant_id: str,
+        bill_id: str,
+        delivery_id: str,
+        bill_number: str | None = None,
+        error_message: str | None = None,
+        recipient_masked: str | None = None,
+    ):
+        """One unread alert per failed delivery attempt (entity = delivery id)."""
+        if NotificationRepository.has_open_alert(
+            tenant_id,
+            notification_type=TYPE_WHATSAPP_DELIVERY_FAILED,
+            entity_type="BILL_DELIVERY",
+            entity_id=delivery_id,
+        ):
+            return None
+        label = bill_number or bill_id
+        reason = (error_message or "WhatsApp delivery failed").strip()[:200]
+        phone = f" to {recipient_masked}" if recipient_masked else ""
+        return NotificationService.create_tenant_notification(
+            tenant_id=tenant_id,
+            notification_type=TYPE_WHATSAPP_DELIVERY_FAILED,
+            title="WhatsApp delivery failed",
+            message=f"Bill #{label}{phone}: {reason}",
+            entity_type="BILL_DELIVERY",
+            entity_id=delivery_id,
+        )
+
+    @staticmethod
+    def notify_email_delivery_failed(
+        *,
+        tenant_id: str,
+        bill_id: str,
+        delivery_id: str,
+        bill_number: str | None = None,
+        error_message: str | None = None,
+        recipient_masked: str | None = None,
+    ):
+        """One unread alert per failed email delivery attempt (entity = delivery id)."""
+        if NotificationRepository.has_open_alert(
+            tenant_id,
+            notification_type=TYPE_EMAIL_DELIVERY_FAILED,
+            entity_type="BILL_DELIVERY",
+            entity_id=delivery_id,
+        ):
+            return None
+        label = bill_number or bill_id
+        reason = (error_message or "Email delivery failed").strip()[:200]
+        to = f" to {recipient_masked}" if recipient_masked else ""
+        return NotificationService.create_tenant_notification(
+            tenant_id=tenant_id,
+            notification_type=TYPE_EMAIL_DELIVERY_FAILED,
+            title="Email delivery failed",
+            message=f"Bill #{label}{to}: {reason}",
+            entity_type="BILL_DELIVERY",
+            entity_id=delivery_id,
         )
 
     @staticmethod

@@ -15,13 +15,21 @@ from app.utils.request_context import require_request_context
 
 class ItemService:
     @staticmethod
-    def list_items(*, q=None, category_id=None, is_active=None, page=1, per_page=50):
+    def list_items(
+        *, q=None, category_id=None, is_active=None, stock_status=None, page=1, per_page=50
+    ):
         ctx = require_request_context()
+        status = None
+        if stock_status:
+            status = str(stock_status).strip().lower()
+            if status not in {"low", "out", "tracked"}:
+                raise ValidationError("Invalid stock_status filter")
         items, total = ItemRepository.list_by_tenant(
             ctx.tenant_id,
             q=q,
             category_id=category_id,
             is_active=is_active,
+            stock_status=status,
             page=page,
             per_page=per_page,
         )
@@ -229,7 +237,20 @@ class ItemService:
                 Decimal(item.stock_quantity) if item.stock_quantity is not None else None
             )
             from app.services.notification_service import NotificationService
+            from app.services.stock_movement_service import StockMovementService
 
+            if new_stock is not None and previous_stock != new_stock:
+                delta = new_stock if previous_stock is None else (new_stock - previous_stock)
+                if delta != 0:
+                    StockMovementService.record(
+                        tenant_id=ctx.tenant_id,
+                        item_id=item.id,
+                        delta=delta,
+                        quantity_after=new_stock,
+                        source="ITEM_UPDATE",
+                        reason="Item stock updated",
+                        created_by=ctx.user_id,
+                    )
             if previous_stock is not None and new_stock is not None:
                 NotificationService.notify_stock_transition(
                     tenant_id=ctx.tenant_id,
@@ -312,13 +333,83 @@ class ItemService:
             },
         )
         from app.services.notification_service import NotificationService
+        from app.services.stock_movement_service import StockMovementService
 
+        StockMovementService.record(
+            tenant_id=ctx.tenant_id,
+            item_id=item.id,
+            delta=change,
+            quantity_after=new_stock,
+            source="ADJUST",
+            reason=reason_text,
+            created_by=ctx.user_id,
+        )
         NotificationService.notify_stock_transition(
             tenant_id=ctx.tenant_id,
             item=item,
             previous=previous,
             new_stock=new_stock,
         )
+        db.session.commit()
+        return ItemService.serialize(item)
+
+    @staticmethod
+    def receive_stock(item_id: str, *, quantity, reason: str | None = None):
+        """Add positive stock (or start tracking). Records source RECEIVE."""
+        ctx = require_request_context()
+        item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
+        if item is None:
+            raise NotFoundError("Item not found")
+
+        try:
+            qty = Decimal(str(quantity))
+        except Exception as exc:
+            raise ValidationError("Invalid receive quantity.") from exc
+        if qty <= 0:
+            raise ValidationError("Receive quantity must be greater than zero.")
+
+        previous = (
+            Decimal(item.stock_quantity) if item.stock_quantity is not None else None
+        )
+        new_stock = qty if previous is None else (previous + qty)
+        item.stock_quantity = new_stock
+        reason_text = (reason or "").strip() or None
+
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="STOCK_RECEIVED",
+            entity_type="ITEM",
+            entity_id=item.id,
+            old_data={
+                "name": item.name,
+                "stock_quantity": float(previous) if previous is not None else None,
+            },
+            new_data={
+                "name": item.name,
+                "stock_quantity": float(new_stock),
+                "quantity": float(qty),
+                "reason": reason_text,
+            },
+        )
+        from app.services.notification_service import NotificationService
+        from app.services.stock_movement_service import StockMovementService
+
+        StockMovementService.record(
+            tenant_id=ctx.tenant_id,
+            item_id=item.id,
+            delta=qty,
+            quantity_after=new_stock,
+            source="RECEIVE",
+            reason=reason_text or "Stock received",
+            created_by=ctx.user_id,
+        )
+        if previous is not None:
+            NotificationService.notify_stock_transition(
+                tenant_id=ctx.tenant_id,
+                item=item,
+                previous=previous,
+                new_stock=new_stock,
+            )
         db.session.commit()
         return ItemService.serialize(item)
 

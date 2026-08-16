@@ -49,7 +49,16 @@ class AdjustStockSchema(Schema):
     reason = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=500))
 
 
+class ReceiveStockSchema(Schema):
+    class Meta:
+        unknown = EXCLUDE
+
+    quantity = fields.Decimal(required=True, as_string=False)
+    reason = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=500))
+
+
 create_item_schema = CreateItemSchema()
 update_item_schema = UpdateItemSchema()
 item_status_schema = ItemStatusSchema()
 adjust_stock_schema = AdjustStockSchema()
+receive_stock_schema = ReceiveStockSchema()

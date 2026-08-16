@@ -45,6 +45,12 @@ def adjust_stock(item_id):
     return item_controller.adjust_stock(item_id)
 
 
+@items_bp.post("/<item_id>/receive-stock")
+@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
+def receive_stock(item_id):
+    return item_controller.receive_stock(item_id)
+
+
 @items_bp.delete("/<item_id>")
 @roles_required(ROLE_OWNER, ROLE_BILLING_USER)
 def delete_item(item_id):

@@ -136,6 +136,17 @@ class ReportService:
         previous = ReportRepository.period_metrics(ctx.tenant_id, prev_start, prev_end)
         item_wise = ReportRepository.item_wise(ctx.tenant_id, start, end)
         top_items, low_items = ReportService._rank_items(item_wise)
+        from app.repositories.bill_delivery_repository import BillDeliveryRepository
+
+        whatsapp_delivery = BillDeliveryRepository.whatsapp_status_counts(
+            ctx.tenant_id, date_from=start, date_to=end
+        )
+        email_delivery = BillDeliveryRepository.email_status_counts(
+            ctx.tenant_id, date_from=start, date_to=end
+        )
+        from app.repositories.item_repository import ItemRepository
+
+        inventory_health = ItemRepository.inventory_health_counts(ctx.tenant_id)
         return {
             "period": period,
             "label": label,
@@ -147,6 +158,9 @@ class ReportService:
             "low_items": low_items,
             "category_wise": ReportRepository.category_wise(ctx.tenant_id, start, end),
             "day_wise": ReportRepository.day_wise(ctx.tenant_id, start, end),
+            "whatsapp_delivery": whatsapp_delivery,
+            "email_delivery": email_delivery,
+            "inventory_health": inventory_health,
         }
 
     @staticmethod

@@ -30,6 +30,10 @@ SCRIPTS = [
     "apply_whatsapp_bill_delivery.py",
     "apply_users_email_unique.py",
     "apply_whatsapp_webhook_statuses.py",
+    "apply_email_bill_delivery.py",
+    "apply_stock_movements.py",
+    "apply_stock_receive.py",
+    "apply_perf_indexes.py",
 ]
 
 

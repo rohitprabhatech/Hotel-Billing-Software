@@ -11,6 +11,7 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import SwapVertOutlinedIcon from '@mui/icons-material/SwapVertOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import {
   AppBar,
@@ -51,6 +52,7 @@ const navItems = [
   { to: PATHS.billingHome, label: 'Billing', icon: <PointOfSaleOutlinedIcon /> },
   { to: PATHS.ownerBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
   { to: PATHS.ownerItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
+  { to: PATHS.ownerStockMovements, label: 'Stock Movements', icon: <SwapVertOutlinedIcon /> },
   { to: PATHS.ownerItemActivity, label: 'Item Activity', icon: <HistoryOutlinedIcon /> },
   { to: PATHS.ownerCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
   { to: PATHS.ownerReports, label: 'Sales Reports', icon: <AssessmentOutlinedIcon /> },
@@ -73,6 +75,10 @@ const titles = {
   [PATHS.ownerItems]: {
     title: 'Items',
     subtitle: 'Manage catalog items, pricing, GST, SKU, and stock.',
+  },
+  [PATHS.ownerStockMovements]: {
+    title: 'Stock Movements',
+    subtitle: 'Track every inventory change from bills, cancels, and adjustments.',
   },
   [PATHS.ownerItemActivity]: {
     title: 'Item Activity',

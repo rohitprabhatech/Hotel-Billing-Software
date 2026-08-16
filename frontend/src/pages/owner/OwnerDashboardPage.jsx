@@ -47,6 +47,8 @@ import { fetchReportSummary } from '../../services/reportService';
 import { paymentMethodLabel } from '../../utils/paymentMethod';
 
 const STOCK_ALERT_TYPES = new Set(['LOW_STOCK', 'OUT_OF_STOCK']);
+const WA_FAILED_TYPE = 'WHATSAPP_DELIVERY_FAILED';
+const EMAIL_FAILED_TYPE = 'EMAIL_DELIVERY_FAILED';
 
 function money(v) {
   return `₹${Number(v || 0).toLocaleString('en-IN', {
@@ -72,6 +74,8 @@ export default function OwnerDashboardPage() {
   const [data, setData] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [stockAlerts, setStockAlerts] = useState([]);
+  const [waFailedAlerts, setWaFailedAlerts] = useState([]);
+  const [emailFailedAlerts, setEmailFailedAlerts] = useState([]);
   const [itemActivity, setItemActivity] = useState([]);
   const [recentBills, setRecentBills] = useState([]);
   const [error, setError] = useState('');
@@ -96,6 +100,12 @@ export default function OwnerDashboardPage() {
         setRecentBills(billsRes.data || []);
         const stock = (notifRes.data || []).filter((n) => STOCK_ALERT_TYPES.has(n.type));
         setStockAlerts(stock);
+        setWaFailedAlerts(
+          (notifRes.data || []).filter((n) => n.type === WA_FAILED_TYPE),
+        );
+        setEmailFailedAlerts(
+          (notifRes.data || []).filter((n) => n.type === EMAIL_FAILED_TYPE),
+        );
       })
       .catch((err) => {
         if (!active) return;
@@ -190,7 +200,14 @@ export default function OwnerDashboardPage() {
         <Alert
           severity={stockAlerts.some((n) => n.type === 'OUT_OF_STOCK') ? 'error' : 'warning'}
           action={
-            <Button color="inherit" size="small" component={RouterLink} to={PATHS.ownerItems}>
+            <Button
+              color="inherit"
+              size="small"
+              component={RouterLink}
+              to={`${PATHS.ownerItems}?stock_status=${
+                stockAlerts.some((n) => n.type === 'OUT_OF_STOCK') ? 'out' : 'low'
+              }`}
+            >
               View items
             </Button>
           }
@@ -204,6 +221,42 @@ export default function OwnerDashboardPage() {
             if (low) parts.push(`${low} low stock`);
             return `${parts.join(', ')}. Check the notification bell for details.`;
           })()}
+        </Alert>
+      ) : null}
+      {waFailedAlerts.length > 0 ? (
+        <Alert
+          severity="error"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              component={RouterLink}
+              to={`${PATHS.ownerBills}?whatsapp_status=FAILED`}
+            >
+              View failed
+            </Button>
+          }
+        >
+          <strong>WhatsApp delivery:</strong> {waFailedAlerts.length} failed delivery
+          {waFailedAlerts.length === 1 ? '' : 's'} need attention. Open Bills to retry.
+        </Alert>
+      ) : null}
+      {emailFailedAlerts.length > 0 ? (
+        <Alert
+          severity="error"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              component={RouterLink}
+              to={`${PATHS.ownerBills}?email_status=FAILED`}
+            >
+              View failed
+            </Button>
+          }
+        >
+          <strong>Email delivery:</strong> {emailFailedAlerts.length} failed email
+          {emailFailedAlerts.length === 1 ? '' : 's'} need attention. Open Bills to retry.
         </Alert>
       ) : null}
       {alerts.slice(0, 3).map((alert) => (
@@ -258,6 +311,116 @@ export default function OwnerDashboardPage() {
           />
         </Box>
       </Section>
+
+      {data?.whatsapp_delivery ? (
+        <Section title="WhatsApp Delivery">
+          <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ mb: 1.5 }}>
+            {[
+              { key: 'sent', label: 'Sent', status: 'SENT' },
+              { key: 'delivered', label: 'Delivered', status: 'DELIVERED' },
+              { key: 'read', label: 'Read', status: 'READ' },
+              { key: 'failed', label: 'Failed', status: 'FAILED', color: 'error' },
+              { key: 'pending', label: 'Pending', status: 'PENDING' },
+            ].map((item) => (
+              <Chip
+                key={item.key}
+                component={RouterLink}
+                to={`${PATHS.ownerBills}?whatsapp_status=${item.status}`}
+                clickable
+                color={item.color || 'default'}
+                variant={item.color ? 'filled' : 'outlined'}
+                label={`${item.label}: ${data.whatsapp_delivery[item.key] ?? 0}`}
+              />
+            ))}
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            {data.whatsapp_delivery.total
+              ? `Success rate (delivered + read): ${
+                  data.whatsapp_delivery.success_rate ?? 0
+                }% of ${data.whatsapp_delivery.total} bill${
+                  data.whatsapp_delivery.total === 1 ? '' : 's'
+                } with WhatsApp in this period.`
+              : 'No WhatsApp bill deliveries in this period.'}
+          </Typography>
+        </Section>
+      ) : null}
+
+      {data?.email_delivery ? (
+        <Section title="Email Delivery">
+          <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ mb: 1.5 }}>
+            {[
+              { key: 'sent', label: 'Sent', status: 'SENT' },
+              { key: 'failed', label: 'Failed', status: 'FAILED', color: 'error' },
+              { key: 'pending', label: 'Pending', status: 'PENDING' },
+            ].map((item) => (
+              <Chip
+                key={item.key}
+                component={RouterLink}
+                to={`${PATHS.ownerBills}?email_status=${item.status}`}
+                clickable
+                color={item.color || 'default'}
+                variant={item.color ? 'filled' : 'outlined'}
+                label={`${item.label}: ${data.email_delivery[item.key] ?? 0}`}
+              />
+            ))}
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            {data.email_delivery.total
+              ? `Success rate (sent): ${data.email_delivery.success_rate ?? 0}% of ${
+                  data.email_delivery.total
+                } bill${data.email_delivery.total === 1 ? '' : 's'} emailed in this period.`
+              : 'No email bill deliveries in this period.'}
+          </Typography>
+        </Section>
+      ) : null}
+
+      {data?.inventory_health ? (
+        <Section
+          title="Inventory Health"
+          actions={
+            <Button component={RouterLink} to={PATHS.ownerStockMovements} size="small">
+              Stock movements
+            </Button>
+          }
+        >
+          <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ mb: 1.5 }}>
+            <Chip
+              component={RouterLink}
+              to={`${PATHS.ownerItems}?stock_status=tracked`}
+              clickable
+              variant="outlined"
+              label={`Tracked: ${data.inventory_health.tracked ?? 0}`}
+            />
+            <Chip
+              component={RouterLink}
+              to={`${PATHS.ownerItems}?stock_status=low`}
+              clickable
+              color="warning"
+              variant={data.inventory_health.low ? 'filled' : 'outlined'}
+              label={`Low: ${data.inventory_health.low ?? 0}`}
+            />
+            <Chip
+              component={RouterLink}
+              to={`${PATHS.ownerItems}?stock_status=out`}
+              clickable
+              color="error"
+              variant={data.inventory_health.out ? 'filled' : 'outlined'}
+              label={`Out: ${data.inventory_health.out ?? 0}`}
+            />
+            <Chip
+              component={RouterLink}
+              to={PATHS.ownerItems}
+              clickable
+              variant="outlined"
+              label={`Untracked: ${data.inventory_health.untracked ?? 0}`}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Point-in-time catalog stock status ({data.inventory_health.total_items ?? 0} items).
+            Use Receive stock on Items to restock or start tracking.
+          </Typography>
+        </Section>
+      ) : null}
 
       <Section title="Sales Overview">
         <Card>

@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import and_, case, func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, noload
 
 from app.extensions import db
 from app.models.bill import Bill, BillItem, BillNumberCounter
@@ -31,6 +31,7 @@ class BillRepository:
         q: str | None = None,
         payment_method: str | None = None,
         whatsapp_status: str | None = None,
+        email_status: str | None = None,
         page: int = 1,
         per_page: int = 50,
     ) -> tuple[list[Bill], int]:
@@ -51,7 +52,10 @@ class BillRepository:
                 (Bill.bill_number.ilike(like)) | (Bill.table_number.ilike(like))
             )
         if whatsapp_status:
-            latest = (
+            from sqlalchemy.orm import aliased
+
+            WaDelivery = aliased(BillDelivery)
+            wa_latest = (
                 db.session.query(
                     BillDelivery.bill_id.label("bill_id"),
                     func.max(BillDelivery.created_at).label("max_created"),
@@ -64,24 +68,60 @@ class BillRepository:
                 .subquery()
             )
             query = (
-                query.join(latest, Bill.id == latest.c.bill_id)
+                query.join(wa_latest, Bill.id == wa_latest.c.bill_id)
                 .join(
-                    BillDelivery,
+                    WaDelivery,
                     and_(
-                        BillDelivery.bill_id == Bill.id,
-                        BillDelivery.tenant_id == tenant_id,
-                        BillDelivery.delivery_method == "WHATSAPP",
-                        BillDelivery.created_at == latest.c.max_created,
+                        WaDelivery.bill_id == Bill.id,
+                        WaDelivery.tenant_id == tenant_id,
+                        WaDelivery.delivery_method == "WHATSAPP",
+                        WaDelivery.created_at == wa_latest.c.max_created,
                     ),
                 )
-                .filter(BillDelivery.status == whatsapp_status)
+                .filter(WaDelivery.status == whatsapp_status)
+            )
+        if email_status:
+            from sqlalchemy.orm import aliased
+
+            EmailDelivery = aliased(BillDelivery)
+            email_latest = (
+                db.session.query(
+                    BillDelivery.bill_id.label("bill_id"),
+                    func.max(BillDelivery.created_at).label("max_created"),
+                )
+                .filter(
+                    BillDelivery.tenant_id == tenant_id,
+                    BillDelivery.delivery_method == "EMAIL",
+                )
+                .group_by(BillDelivery.bill_id)
+                .subquery()
+            )
+            query = (
+                query.join(email_latest, Bill.id == email_latest.c.bill_id)
+                .join(
+                    EmailDelivery,
+                    and_(
+                        EmailDelivery.bill_id == Bill.id,
+                        EmailDelivery.tenant_id == tenant_id,
+                        EmailDelivery.delivery_method == "EMAIL",
+                        EmailDelivery.created_at == email_latest.c.max_created,
+                    ),
+                )
+                .filter(EmailDelivery.status == email_status)
             )
 
-        total = query.count()
+        # Distinct count avoids inflated totals when delivery joins are present;
+        # avoids wrapping a full ORM SELECT (with joined columns) in a subquery.
+        total = (
+            query.order_by(None)
+            .with_entities(func.count(func.distinct(Bill.id)))
+            .scalar()
+            or 0
+        )
         page = max(page, 1)
         per_page = min(max(per_page, 1), 100)
         bills = (
-            query.options(joinedload(Bill.creator))
+            query.options(noload(Bill.items), joinedload(Bill.creator))
             .order_by(Bill.created_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)

@@ -4,11 +4,13 @@ import { Box, CircularProgress } from '@mui/material';
 import AuthLayout from '../layouts/AuthLayout';
 import BillingLayout from '../layouts/BillingLayout';
 import OwnerLayout from '../layouts/OwnerLayout';
-import HomePage from '../pages/HomePage';
 import LoginPage from '../pages/auth/LoginPage';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import ProtectedRoute from './ProtectedRoute';
 
+const HomePage = lazy(() => import('../pages/HomePage'));
+const PrivacyPolicyPage = lazy(() => import('../pages/legal/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('../pages/legal/TermsOfServicePage'));
 const RegisterBusinessPage = lazy(() => import('../pages/auth/RegisterBusinessPage'));
 const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage'));
@@ -25,6 +27,7 @@ const AiAssistantPage = lazy(() => import('../pages/owner/AiAssistantPage'));
 const CategoriesPage = lazy(() => import('../pages/owner/CategoriesPage'));
 const ItemActivityPage = lazy(() => import('../pages/owner/ItemActivityPage'));
 const ItemsPage = lazy(() => import('../pages/owner/ItemsPage'));
+const StockMovementsPage = lazy(() => import('../pages/owner/StockMovementsPage'));
 const OwnerBillsPage = lazy(() => import('../pages/owner/OwnerBillsPage'));
 const OwnerDashboardPage = lazy(() => import('../pages/owner/OwnerDashboardPage'));
 const SettingsPage = lazy(() => import('../pages/owner/SettingsPage'));
@@ -44,6 +47,8 @@ export default function AppRoutes() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsOfServicePage />} />
 
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
@@ -60,6 +65,7 @@ export default function AppRoutes() {
             <Route path="categories" element={<CategoriesPage />} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="item-activity" element={<ItemActivityPage />} />
+            <Route path="stock-movements" element={<StockMovementsPage />} />
             <Route path="bills" element={<OwnerBillsPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="ai" element={<AiAssistantPage />} />

@@ -59,3 +59,10 @@ def send_bill_whatsapp(bill_id):
     from app.controllers import whatsapp_controller
 
     return whatsapp_controller.send_bill_whatsapp(bill_id)
+
+
+@bills_bp.post("/<bill_id>/send-email")
+@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
+@limiter.limit("20 per minute")
+def send_bill_email(bill_id):
+    return bill_controller.send_bill_email(bill_id)

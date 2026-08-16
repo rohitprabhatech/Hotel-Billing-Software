@@ -59,6 +59,7 @@ class ItemRepository:
         q: str | None = None,
         category_id: str | None = None,
         is_active: bool | None = None,
+        stock_status: str | None = None,
         page: int = 1,
         per_page: int = 50,
     ) -> tuple[list[Item], int]:
@@ -70,6 +71,20 @@ class ItemRepository:
             query = query.filter(Item.category_id == category_id)
         if is_active is not None:
             query = query.filter(Item.is_active.is_(is_active))
+        if stock_status == "tracked":
+            query = query.filter(Item.stock_quantity.is_not(None))
+        elif stock_status == "out":
+            query = query.filter(
+                Item.stock_quantity.is_not(None),
+                Item.stock_quantity <= 0,
+            )
+        elif stock_status == "low":
+            query = query.filter(
+                Item.stock_quantity.is_not(None),
+                Item.minimum_stock_level.is_not(None),
+                Item.stock_quantity > 0,
+                Item.stock_quantity <= Item.minimum_stock_level,
+            )
 
         total = query.count()
         page = max(page, 1)
@@ -82,6 +97,31 @@ class ItemRepository:
             .all()
         )
         return items, total
+
+    @staticmethod
+    def inventory_health_counts(tenant_id: str) -> dict:
+        """Point-in-time stock health for a tenant (active + inactive catalog)."""
+        base = db.session.query(Item).filter(Item.tenant_id == tenant_id)
+        total = base.count()
+        tracked = base.filter(Item.stock_quantity.is_not(None)).count()
+        untracked = total - tracked
+        out = base.filter(
+            Item.stock_quantity.is_not(None),
+            Item.stock_quantity <= 0,
+        ).count()
+        low = base.filter(
+            Item.stock_quantity.is_not(None),
+            Item.minimum_stock_level.is_not(None),
+            Item.stock_quantity > 0,
+            Item.stock_quantity <= Item.minimum_stock_level,
+        ).count()
+        return {
+            "total_items": total,
+            "tracked": tracked,
+            "untracked": untracked,
+            "low": low,
+            "out": out,
+        }
 
     @staticmethod
     def add(item: Item) -> Item:

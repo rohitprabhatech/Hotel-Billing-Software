@@ -23,7 +23,11 @@ tenants
    │      └── items (created_by → users SET NULL)
    ├── bill_number_counters (PK = tenant_id)
    ├── bills (created_by / cancelled_by → users RESTRICT)
-   │      └── bill_items (item_id → items SET NULL; snapshots keep name/price/GST)
+   │      ├── bill_items (item_id → items SET NULL; snapshots keep name/price/GST)
+   │      └── bill_deliveries (WHATSAPP / EMAIL / PRINT attempts)
+   ├── tenant_whatsapp_configs (PK = tenant_id)
+   ├── notifications
+   ├── stock_movements (item_id → items RESTRICT; inventory ledger)
    └── audit_logs (user_id → users RESTRICT, nullable)
 ```
 
@@ -41,6 +45,10 @@ tenants
 | `bills.created_by / cancelled_by → users` | **RESTRICT** | Financial attribution must remain |
 | `bill_items.bill_id → bills` | **RESTRICT** | Soft-cancel only; no hard-delete of bills |
 | `bill_items.item_id → items` | **SET NULL** | Historical line keeps name/price/GST even if catalog row disappears |
+| `bill_deliveries.bill_id → bills` | **RESTRICT** | Delivery history stays with the bill |
+| `bill_deliveries.attempted_by → users` | **SET NULL** | Keep attempt if user removed |
+| `stock_movements.item_id → items` | **RESTRICT** | Ledger requires catalog row |
+| `stock_movements.created_by → users` | **SET NULL** | Keep movement if user removed |
 | Auth token tables → users | **CASCADE** | Tokens are ephemeral |
 
 **Application rule:** Soft-deactivate items/categories; cancel bills. Do not hard-delete financial rows via API.
@@ -56,8 +64,11 @@ tenants
 | users | `id` | `(tenant_id, email)` | tenant, tenant+role, tenant+active |
 | categories | `id` | `(tenant_id, parent_key, name)` | tenant, tenant+active, parent |
 | items | `id` | `(tenant_id, name)` | tenant, tenant+category, tenant+active, created_by |
-| bills | `id` | `(tenant_id, bill_number)`, `(tenant_id, bill_sequence)` | tenant+created_at/status/created_by/payment_method |
+| bills | `id` | `(tenant_id, bill_number)`, `(tenant_id, bill_sequence)` | tenant+created_at/status/created_by/payment_method; composite status+created_at |
 | bill_items | `id` | — | tenant+bill, tenant+item |
+| bill_deliveries | `id` | — | tenant+bill, tenant+created, **tenant+method+bill+created**, provider_message_id |
+| stock_movements | `id` | — | tenant+created, tenant+item, **tenant+item+created** |
+| notifications | `id` | — | tenant+created, tenant+unread, tenant+entity |
 | audit_logs | `id` | — | tenant+created_at/user/action/entity |
 | bill_number_counters | `tenant_id` | — | — |
 | password_reset_tokens | `id` | `token_hash` | `user_id` |
@@ -74,6 +85,7 @@ tenants
 | `categories.parent_id` | YES | NULL = root / main category |
 | `categories.parent_key` | NO (generated) | `IFNULL(parent_id, '')` — enforces unique main-category names per tenant |
 | `items.created_by` | YES | Set on create when actor known |
+| `bills.customer_email` | YES | Optional; used for email bill delivery |
 | `bills.table_number` | YES | Optional counter/table/reference (hotel legacy name) |
 | `bills.status` | NO (default **FINALIZED**) | SQL allows DRAFT/VOID; app uses FINALIZED/CANCELLED |
 | `bill_items.item_id` | YES | Snapshot is source of truth for money/name |
@@ -109,7 +121,14 @@ tenants
 7. `20260814_category_parent_key`  
 8. `20260814_bill_report_index`  
 
-Or: `python scripts/apply_pending_schema.py` with `DATABASE_URL` set.
+Or: `python scripts/apply_pending_schema.py` with `DATABASE_URL` set (includes email delivery, stock ledger, and `apply_perf_indexes.py`).
+
+### ORM load notes (speed)
+
+- `Bill.items` uses **`lazy="selectin"`** (not `joined`) so bill **list** endpoints do not JOIN every line item.
+- List queries also use `noload(Bill.items)` + `joinedload(Bill.creator)`.
+- Detail/`get_by_id` still `joinedload(Bill.items)`.
+- WhatsApp + email latest status for a page of bills loads in **one** delivery query.
 
 ---
 

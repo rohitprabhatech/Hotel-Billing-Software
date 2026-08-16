@@ -51,6 +51,8 @@ const ACTIONS = [
   'REPRINT_BILL',
   'BILL_SENT_WHATSAPP',
   'BILL_WHATSAPP_FAILED',
+  'BILL_SENT_EMAIL',
+  'BILL_EMAIL_FAILED',
   'STOCK_ADJUSTED',
   'STOCK_UPDATED',
   'ITEM_CREATED',
@@ -89,6 +91,12 @@ function describeLog(row) {
   }
   if (row.action === 'BILL_WHATSAPP_FAILED') {
     return `WhatsApp failed${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
+  }
+  if (row.action === 'BILL_SENT_EMAIL') {
+    return `Email sent${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
+  }
+  if (row.action === 'BILL_EMAIL_FAILED') {
+    return `Email failed${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
   }
   if (row.action === 'STOCK_ADJUSTED') {
     const d = row.new_data?.delta;

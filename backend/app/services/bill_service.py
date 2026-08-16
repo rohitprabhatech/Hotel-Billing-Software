@@ -37,6 +37,7 @@ class BillService:
         customer_name: str | None = None,
         customer_phone_country_code: str | None = None,
         customer_phone: str | None = None,
+        customer_email: str | None = None,
     ):
         ctx = require_request_context()
         if not items:
@@ -65,6 +66,15 @@ class BillService:
             phone_cc_store = parsed["country_code"]
             phone_national_store = parsed["national"]
             phone_e164 = parsed["e164"]
+
+        customer_email_store = None
+        if customer_email is not None and str(customer_email).strip():
+            from app.utils.email_address import normalize_email
+
+            try:
+                customer_email_store = normalize_email(customer_email)
+            except ValueError as exc:
+                raise ValidationError(str(exc)) from exc
 
         # Merge duplicate item_ids from cart
         merged: dict[str, Decimal] = {}
@@ -174,6 +184,7 @@ class BillService:
             customer_phone_country_code=phone_cc_store,
             customer_phone_national=phone_national_store,
             customer_phone_e164=phone_e164,
+            customer_email=customer_email_store,
             subtotal=calculated["subtotal"],
             discount=calculated["discount"],
             taxable_amount=calculated["taxable_amount"],
@@ -223,6 +234,8 @@ class BillService:
             },
         )
 
+        from app.services.stock_movement_service import StockMovementService
+
         for item, previous, new_stock, quantity in stock_moves:
             AuditService.log(
                 tenant_id=ctx.tenant_id,
@@ -240,6 +253,17 @@ class BillService:
                     "bill_id": bill.id,
                     "bill_number": bill.bill_number,
                 },
+            )
+            StockMovementService.record(
+                tenant_id=ctx.tenant_id,
+                item_id=item.id,
+                delta=-quantity,
+                quantity_after=new_stock,
+                source="BILL",
+                reason=f"Bill {bill.bill_number}",
+                reference_type="BILL",
+                reference_id=bill.id,
+                created_by=ctx.user_id,
             )
             NotificationService.notify_stock_transition(
                 tenant_id=ctx.tenant_id,
@@ -265,11 +289,13 @@ class BillService:
         from app.services.whatsapp_bill_service import WhatsappBillService
 
         status_map = BillDeliveryRepository.latest_whatsapp_status_map(ctx.tenant_id, [bill.id])
+        email_map = BillDeliveryRepository.latest_email_status_map(ctx.tenant_id, [bill.id])
         data = BillService.serialize(
             bill,
             include_items=True,
             include_tenant=True,
             whatsapp_delivery_status=status_map.get(bill.id),
+            email_delivery_status=email_map.get(bill.id),
         )
         deliveries = BillDeliveryRepository.list_for_bill(ctx.tenant_id, bill.id)
         data["deliveries"] = [
@@ -287,6 +313,7 @@ class BillService:
         q=None,
         payment_method=None,
         whatsapp_status=None,
+        email_status=None,
     ):
         ctx = require_request_context()
         date_from = date_to = None
@@ -306,6 +333,12 @@ class BillService:
             if wa_status not in {"PENDING", "SENT", "DELIVERED", "READ", "FAILED"}:
                 raise ValidationError("Invalid WhatsApp delivery status filter")
 
+        em_status = None
+        if email_status:
+            em_status = str(email_status).strip().upper()
+            if em_status not in {"PENDING", "SENT", "FAILED"}:
+                raise ValidationError("Invalid email delivery status filter")
+
         bills, total = BillRepository.list_by_tenant(
             ctx.tenant_id,
             status=status,
@@ -314,12 +347,13 @@ class BillService:
             q=q,
             payment_method=method,
             whatsapp_status=wa_status,
+            email_status=em_status,
             page=page,
             per_page=per_page,
         )
         from app.repositories.bill_delivery_repository import BillDeliveryRepository
 
-        status_map = BillDeliveryRepository.latest_whatsapp_status_map(
+        status_map, email_map = BillDeliveryRepository.latest_delivery_status_maps(
             ctx.tenant_id, [b.id for b in bills]
         )
         return (
@@ -328,6 +362,7 @@ class BillService:
                     b,
                     include_items=False,
                     whatsapp_delivery_status=status_map.get(b.id),
+                    email_delivery_status=email_map.get(b.id),
                 )
                 for b in bills
             ],
@@ -363,6 +398,7 @@ class BillService:
                 locked[item_id] = item
 
         from app.services.notification_service import NotificationService
+        from app.services.stock_movement_service import StockMovementService
 
         for line in line_items:
             item = locked.get(line.item_id)
@@ -388,6 +424,17 @@ class BillService:
                     "bill_id": bill.id,
                     "bill_number": bill.bill_number,
                 },
+            )
+            StockMovementService.record(
+                tenant_id=ctx.tenant_id,
+                item_id=item.id,
+                delta=restored_qty,
+                quantity_after=new_stock,
+                source="CANCEL",
+                reason=f"Cancel bill {bill.bill_number}",
+                reference_type="BILL",
+                reference_id=bill.id,
+                created_by=ctx.user_id,
             )
             NotificationService.notify_stock_transition(
                 tenant_id=ctx.tenant_id,
@@ -481,7 +528,9 @@ class BillService:
         include_items=False,
         include_tenant=False,
         whatsapp_delivery_status=None,
+        email_delivery_status=None,
     ):
+        from app.utils.email_address import mask_email
         from app.utils.phone import mask_e164
 
         data = {
@@ -494,6 +543,8 @@ class BillService:
             "customer_phone_country_code": bill.customer_phone_country_code,
             "customer_phone_national": bill.customer_phone_national,
             "customer_phone_masked": mask_e164(bill.customer_phone_e164),
+            "customer_email": bill.customer_email,
+            "customer_email_masked": mask_email(bill.customer_email),
             "subtotal": float(bill.subtotal),
             "discount": float(bill.discount),
             "taxable_amount": float(bill.taxable_amount),
@@ -510,6 +561,7 @@ class BillService:
             "created_at": bill.created_at.isoformat() if bill.created_at else None,
             "printed_count": bill.printed_count,
             "whatsapp_delivery_status": whatsapp_delivery_status,
+            "email_delivery_status": email_delivery_status,
             "cancellation_reason": bill.cancellation_reason,
             "cancelled_by": bill.cancelled_by,
             "cancelled_at": bill.cancelled_at.isoformat() if bill.cancelled_at else None,

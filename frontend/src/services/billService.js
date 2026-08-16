@@ -40,6 +40,11 @@ export async function sendBillWhatsapp(billId, payload = {}) {
   return data;
 }
 
+export async function sendBillEmail(billId, payload = {}) {
+  const { data } = await apiClient.post(`/bills/${billId}/send-email`, payload);
+  return data;
+}
+
 export async function downloadBillPdf(billId, billNumber = 'bill') {
   const response = await apiClient.get(`/bills/${billId}/pdf`, { responseType: 'blob' });
   const blob = new Blob([response.data], { type: 'application/pdf' });

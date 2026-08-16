@@ -242,6 +242,7 @@ CREATE TABLE bills (
     customer_phone_country_code VARCHAR(8) NULL,
     customer_phone_national VARCHAR(20)  NULL,
     customer_phone_e164   VARCHAR(20)    NULL,
+    customer_email        VARCHAR(255)   NULL,
     subtotal              DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     discount              DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
     taxable_amount        DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
@@ -384,6 +385,8 @@ CREATE TABLE bill_deliveries (
     delivery_method           VARCHAR(20)  NOT NULL,
     recipient_phone_e164      VARCHAR(20)  NULL,
     recipient_phone_masked    VARCHAR(32)  NULL,
+    recipient_email           VARCHAR(255) NULL,
+    recipient_email_masked    VARCHAR(64)  NULL,
     status                    VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
     provider_message_id       VARCHAR(120) NULL,
     error_message             TEXT         NULL,
@@ -397,6 +400,8 @@ CREATE TABLE bill_deliveries (
     PRIMARY KEY (id),
     INDEX ix_bill_deliveries_tenant_bill (tenant_id, bill_id),
     INDEX ix_bill_deliveries_tenant_created (tenant_id, created_at),
+    INDEX ix_bill_deliveries_tenant_method_bill_created
+        (tenant_id, delivery_method, bill_id, created_at),
     INDEX ix_bill_deliveries_provider_message (provider_message_id),
     CONSTRAINT fk_bill_deliveries_tenant
         FOREIGN KEY (tenant_id) REFERENCES tenants (id)
@@ -408,7 +413,7 @@ CREATE TABLE bill_deliveries (
         FOREIGN KEY (attempted_by) REFERENCES users (id)
         ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT chk_bill_deliveries_method
-        CHECK (delivery_method IN ('WHATSAPP', 'PRINT')),
+        CHECK (delivery_method IN ('WHATSAPP', 'PRINT', 'EMAIL')),
     CONSTRAINT chk_bill_deliveries_status
         CHECK (status IN ('PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -440,6 +445,40 @@ CREATE TABLE audit_logs (
     CONSTRAINT fk_audit_logs_user
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- stock_movements (inventory quantity ledger)
+-- -----------------------------------------------------------------------------
+CREATE TABLE stock_movements (
+    id              CHAR(36)       NOT NULL,
+    tenant_id       CHAR(36)       NOT NULL,
+    item_id         CHAR(36)       NOT NULL,
+    delta           DECIMAL(12,3)  NOT NULL,
+    quantity_after  DECIMAL(12,3)  NOT NULL,
+    source          VARCHAR(20)    NOT NULL,
+    reason          TEXT           NULL,
+    reference_type  VARCHAR(20)    NULL,
+    reference_id    CHAR(36)       NULL,
+    created_by      CHAR(36)       NULL,
+    created_at      DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at      DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                     ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_stock_movements_tenant_created (tenant_id, created_at),
+    INDEX ix_stock_movements_tenant_item (tenant_id, item_id),
+    INDEX ix_stock_movements_tenant_item_created (tenant_id, item_id, created_at),
+    CONSTRAINT fk_stock_movements_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_stock_movements_item
+        FOREIGN KEY (item_id) REFERENCES items (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_stock_movements_user
+        FOREIGN KEY (created_by) REFERENCES users (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_stock_movements_source
+        CHECK (source IN ('BILL', 'CANCEL', 'ADJUST', 'ITEM_UPDATE', 'RECEIVE'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------

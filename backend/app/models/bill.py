@@ -50,6 +50,7 @@ class Bill(db.Model, TimestampMixin):
     customer_phone_country_code: Mapped[str | None] = mapped_column(String(8))
     customer_phone_national: Mapped[str | None] = mapped_column(String(20))
     customer_phone_e164: Mapped[str | None] = mapped_column(String(20))
+    customer_email: Mapped[str | None] = mapped_column(String(255))
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     discount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     taxable_amount: Mapped[Decimal] = mapped_column(
@@ -84,7 +85,8 @@ class Bill(db.Model, TimestampMixin):
     cancellation_reason: Mapped[str | None] = mapped_column(Text)
     printed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    items = relationship("BillItem", back_populates="bill", lazy="joined")
+    # selectin (not joined): list endpoints must not pull every line item.
+    items = relationship("BillItem", back_populates="bill", lazy="selectin")
     creator = relationship("User", foreign_keys=[created_by])
 
 

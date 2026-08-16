@@ -1,5 +1,6 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import {
   Alert,
@@ -29,7 +30,13 @@ import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import PageShell from '../../components/PageShell';
 import TruncateText from '../../components/TruncateText';
-import { createBill, downloadBillPdf, openBillPrint, sendBillWhatsapp } from '../../services/billService';
+import {
+  createBill,
+  downloadBillPdf,
+  openBillPrint,
+  sendBillEmail,
+  sendBillWhatsapp,
+} from '../../services/billService';
 import { listCategories } from '../../services/categoryService';
 import { listItems } from '../../services/itemService';
 import {
@@ -79,6 +86,7 @@ export default function NewBillPage() {
   const [customerName, setCustomerName] = useState('');
   const [countryCode, setCountryCode] = useState('91');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -86,6 +94,11 @@ export default function NewBillPage() {
   const [whatsappSending, setWhatsappSending] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState('');
   const [whatsappError, setWhatsappError] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
   const [phoneDraftCc, setPhoneDraftCc] = useState('91');
   const [phoneDraft, setPhoneDraft] = useState('');
@@ -266,6 +279,7 @@ export default function NewBillPage() {
         customer_name: customerName || null,
         customer_phone_country_code: customerPhone ? countryCode : null,
         customer_phone: customerPhone || null,
+        customer_email: customerEmail.trim() || null,
         items: cart.map((line) => ({
           item_id: line.item_id,
           quantity: line.quantity,
@@ -274,6 +288,8 @@ export default function NewBillPage() {
       setCreatedBill(res.data);
       setWhatsappMessage('');
       setWhatsappError('');
+      setEmailMessage('');
+      setEmailError('');
       clearCart();
       // Refresh catalog so stock quantities reflect deduction.
       search(q, categoryId);
@@ -316,6 +332,40 @@ export default function NewBillPage() {
     doSendWhatsapp({
       country_code: createdBill.customer_phone_country_code || countryCode,
       phone: createdBill.customer_phone_national || customerPhone,
+      customer_name: createdBill.customer_name || customerName || null,
+    });
+  };
+
+  const doSendEmail = async (payload = {}) => {
+    if (!createdBill?.id || emailSending) return;
+    setEmailSending(true);
+    setEmailError('');
+    setEmailMessage('');
+    try {
+      const res = await sendBillEmail(createdBill.id, payload);
+      setEmailMessage(res.data?.message || 'Bill sent successfully by email.');
+      if (res.data?.bill) setCreatedBill(res.data.bill);
+      setEmailDialogOpen(false);
+    } catch (err) {
+      setEmailError(
+        err.response?.data?.error?.message ||
+          'Unable to send the bill by email. Please try again or use Print Bill.',
+      );
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const onSendEmailClick = () => {
+    if (!createdBill) return;
+    const hasEmail = Boolean(createdBill.customer_email || customerEmail.trim());
+    if (!hasEmail) {
+      setEmailDraft(customerEmail || '');
+      setEmailDialogOpen(true);
+      return;
+    }
+    doSendEmail({
+      email: createdBill.customer_email || customerEmail.trim(),
       customer_name: createdBill.customer_name || customerName || null,
     });
   };
@@ -523,9 +573,18 @@ export default function NewBillPage() {
                   onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 14))}
                   fullWidth
                   placeholder="9876543210"
-                  helperText="Required only to send on WhatsApp"
+                  helperText="For WhatsApp"
                 />
               </Stack>
+              <TextField
+                label="Customer email (optional)"
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                fullWidth
+                sx={{ mb: 2.5 }}
+                helperText="For email PDF bill"
+              />
 
               <Stack spacing={1.5} sx={{ mb: 2.5, minHeight: 120 }}>
                 {cart.map((line) => (
@@ -665,7 +724,7 @@ export default function NewBillPage() {
 
       <Dialog
         open={Boolean(createdBill)}
-        onClose={() => !whatsappSending && setCreatedBill(null)}
+        onClose={() => !whatsappSending && !emailSending && setCreatedBill(null)}
         fullWidth
         maxWidth="xs"
       >
@@ -686,17 +745,24 @@ export default function NewBillPage() {
                 Customer WhatsApp: {createdBill.customer_phone_masked}
               </Typography>
             ) : null}
+            {createdBill?.customer_email_masked ? (
+              <Typography variant="body2" color="text.secondary">
+                Customer email: {createdBill.customer_email_masked}
+              </Typography>
+            ) : null}
             {whatsappMessage ? <Alert severity="success">{whatsappMessage}</Alert> : null}
             {whatsappError ? <Alert severity="error">{whatsappError}</Alert> : null}
+            {emailMessage ? <Alert severity="success">{emailMessage}</Alert> : null}
+            {emailError ? <Alert severity="error">{emailError}</Alert> : null}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ flexWrap: 'wrap', gap: 1, px: 3, pb: 2 }}>
-          <Button onClick={() => setCreatedBill(null)} disabled={whatsappSending}>
+          <Button onClick={() => setCreatedBill(null)} disabled={whatsappSending || emailSending}>
             Close
           </Button>
           <Button
             variant="outlined"
-            disabled={whatsappSending}
+            disabled={whatsappSending || emailSending}
             onClick={() => {
               openBillPrint(createdBill.id, { auto: true });
             }}
@@ -705,7 +771,7 @@ export default function NewBillPage() {
           </Button>
           <Button
             variant="outlined"
-            disabled={whatsappSending}
+            disabled={whatsappSending || emailSending}
             onClick={async () => {
               try {
                 await downloadBillPdf(createdBill.id, createdBill.bill_number);
@@ -718,27 +784,35 @@ export default function NewBillPage() {
           >
             Download PDF
           </Button>
-          {whatsappError ? (
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={whatsappSending ? <CircularProgress size={16} color="inherit" /> : <WhatsAppIcon />}
-              disabled={whatsappSending}
-              onClick={onSendWhatsappClick}
-            >
-              {whatsappSending ? 'Sending…' : 'Retry'}
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={whatsappSending ? <CircularProgress size={16} color="inherit" /> : <WhatsAppIcon />}
-              disabled={whatsappSending || Boolean(whatsappMessage)}
-              onClick={onSendWhatsappClick}
-            >
-              {whatsappSending ? 'Sending…' : 'Send on WhatsApp'}
-            </Button>
-          )}
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={
+              whatsappSending ? <CircularProgress size={16} color="inherit" /> : <WhatsAppIcon />
+            }
+            disabled={whatsappSending || emailSending || Boolean(whatsappMessage)}
+            onClick={onSendWhatsappClick}
+          >
+            {whatsappSending
+              ? 'Sending…'
+              : whatsappError
+                ? 'Retry WhatsApp'
+                : 'Send on WhatsApp'}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={
+              emailSending ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <EmailOutlinedIcon />
+              )
+            }
+            disabled={emailSending || whatsappSending || Boolean(emailMessage)}
+            onClick={onSendEmailClick}
+          >
+            {emailSending ? 'Sending…' : emailError ? 'Retry Email' : 'Send Email'}
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -781,6 +855,45 @@ export default function NewBillPage() {
             }
           >
             {whatsappSending ? 'Sending…' : 'Send'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={emailDialogOpen}
+        onClose={() => !emailSending && setEmailDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Customer email</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Customer email is required to send this bill.
+          </Typography>
+          <TextField
+            label="Email"
+            type="email"
+            value={emailDraft}
+            onChange={(e) => setEmailDraft(e.target.value)}
+            fullWidth
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEmailDialogOpen(false)} disabled={emailSending}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={emailSending || !emailDraft.trim()}
+            onClick={() =>
+              doSendEmail({
+                email: emailDraft.trim(),
+                customer_name: customerName || null,
+              })
+            }
+          >
+            {emailSending ? 'Sending…' : 'Send'}
           </Button>
         </DialogActions>
       </Dialog>

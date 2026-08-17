@@ -1,10 +1,34 @@
-"""ORM models package.
+"""ORM models package."""
 
-Domain models are added in Sprint 3+. This package exists so Flask-Migrate
-has a stable import path from Sprint 2 onward.
-"""
+from app.models.audit_log import AuditLog
+from app.models.auth_token import EmailVerificationToken, PasswordResetToken
+from app.models.bill import Bill, BillItem, BillNumberCounter
+from app.models.bill_delivery import BillDelivery
+from app.models.category import Category
+from app.models.item import Item
+from app.models.notification import Notification
+from app.models.role import ROLE_BILLING_USER, ROLE_OWNER, Role
+from app.models.stock_movement import StockMovement
+from app.models.tenant import Tenant
+from app.models.tenant_whatsapp_config import TenantWhatsappConfig
+from app.models.user import User
 
-# Import models here as they are implemented, e.g.:
-# from app.models.tenant import Tenant
-
-__all__: list[str] = []
+__all__ = [
+    "AuditLog",
+    "Bill",
+    "BillDelivery",
+    "BillItem",
+    "BillNumberCounter",
+    "Category",
+    "EmailVerificationToken",
+    "Item",
+    "Notification",
+    "PasswordResetToken",
+    "Role",
+    "ROLE_OWNER",
+    "ROLE_BILLING_USER",
+    "StockMovement",
+    "Tenant",
+    "TenantWhatsappConfig",
+    "User",
+]

@@ -29,10 +29,18 @@
 ## Frontend Deploy Steps
 
 ```text
-1. Set REACT_APP_API_BASE_URL
+1. Set VITE_API_BASE_URL (e.g. https://api.example.com/api/v1)
 2. npm ci && npm run build
-3. Serve build/ over HTTPS
+3. Serve dist/ over HTTPS
 ```
+
+## Windows Production Process (optional)
+
+```text
+waitress-serve --listen=0.0.0.0:5000 wsgi:app
+```
+
+Linux/macOS typically use gunicorn with `wsgi:app`.
 
 ## Environment Variables (Backend)
 
@@ -66,9 +74,10 @@ REPORT_TIMEZONE=Asia/Kolkata
 
 ## Multi-Tenant Ops Notes
 
-- New hotel = new `tenants` row + OWNER user (controlled onboarding)
+- New hotel = controlled onboarding via `backend/scripts/onboard_tenant.py`
 - Suspend via `tenants.status`
 - Never share credentials across hotels
+- Do not use `seed_demo_data.py` in production
 
 ## Printing in Production
 

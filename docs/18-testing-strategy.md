@@ -84,3 +84,12 @@ Implement → Automated/manual tests → Fix → Verify acceptance criteria → 
 ## Sprint 9 Focus
 
 Full regression of the lists above plus security and error-envelope checks.
+
+### Regression command
+
+```bash
+cd backend
+python -m pytest
+```
+
+Additional readiness tests live in `tests/test_production_readiness.py` (inactive login, mixed GST, no hard-delete bill endpoint, password hash non-exposure).

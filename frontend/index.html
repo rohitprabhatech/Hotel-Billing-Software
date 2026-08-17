@@ -4,13 +4,36 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hotel Billing Software</title>
+    <title>Business Billing — Prabha Technology</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (function () {
+        try {
+          var mode = localStorage.getItem('bbs-color-mode');
+          if (mode !== 'dark' && mode !== 'light') mode = 'light';
+          document.documentElement.setAttribute('data-color-mode', mode);
+          document.documentElement.style.colorScheme = mode;
+        } catch (e) {
+          document.documentElement.setAttribute('data-color-mode', 'light');
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
+    <style>
+      html[data-color-mode='dark'] body {
+        background: #0f161c;
+        color: #e8eef2;
+      }
+      html[data-color-mode='light'] body {
+        background: #f3f5f7;
+        color: #1a2330;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

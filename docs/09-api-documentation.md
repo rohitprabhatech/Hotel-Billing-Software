@@ -1,5 +1,7 @@
 # 09 — API Documentation
 
+> **Sprint 19 summary:** Prefer [api-documentation.md](./api-documentation.md) for current Business Billing naming and endpoint map. This file retains extended notes; some examples may still use hotel-era wording.
+
 ## Base URL
 
 ```text

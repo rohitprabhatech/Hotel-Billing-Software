@@ -1,21 +1,41 @@
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CircularProgress,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Alert, Box } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useColorMode } from '../context/ColorModeContext';
 import { fetchHealth } from '../services/healthService';
+import { homePathForRole, isValidRole } from '../utils/authRouting';
+import CapabilityStrip from './landing/CapabilityStrip';
+import {
+  AiSection,
+  AnalyticsSection,
+  BillPreviewSection,
+  FeaturesSection,
+  MultiBusinessSection,
+  RolesSection,
+  SecuritySection,
+  StockSection,
+  WhatsAppSection,
+  WorkflowSection,
+} from './landing/ContentSections';
+import { NAV_LINKS } from './landing/constants';
+import HeroSection from './landing/HeroSection';
+import LandingNav from './landing/LandingNav';
+import {
+  ContactSection,
+  FinalCtaSection,
+  LandingFooter,
+  PricingSection,
+} from './landing/PricingFooter';
 
 export default function HomePage() {
+  const { isAuthenticated, role } = useAuth();
+  const { isDark } = useColorMode();
   const [health, setHealth] = useState(null);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [activeHash, setActiveHash] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -24,65 +44,105 @@ export default function HomePage() {
         if (active) setHealth(payload);
       })
       .catch(() => {
-        if (active) {
-          setError('API health check failed. Start the Flask backend on port 5000.');
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+        if (active) setError('API offline — start the backend to connect live data.');
       });
     return () => {
       active = false;
     };
   }, []);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const ids = NAV_LINKS.map((l) => l.href.slice(1));
+    const elements = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    if (!elements.length) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]?.target?.id) {
+          setActiveHash(`#${visible[0].target.id}`);
+        }
+      },
+      { rootMargin: '-20% 0px -55% 0px', threshold: [0.1, 0.35, 0.6] },
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  if (isAuthenticated && isValidRole(role)) {
+    return <Navigate to={homePathForRole(role)} replace />;
+  }
+
+  const scrollToHash = (href) => {
+    const id = href.replace('#', '');
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveHash(href);
+    window.history.replaceState(null, '', href);
+  };
+
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        px: 2,
-        background:
-          'linear-gradient(160deg, #E8EEF2 0%, #F3F5F7 45%, #E4EBE7 100%)',
+        bgcolor: 'background.default',
+        color: 'text.primary',
+        scrollPaddingTop: '80px',
+        '@keyframes landingFadeUp': {
+          from: { opacity: 0, transform: 'translateY(14px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
+        },
+        '@media (prefers-reduced-motion: reduce)': {
+          '& *': { animation: 'none !important' },
+        },
+        '& section[id]': { scrollMarginTop: '80px' },
+        backgroundImage: (t) =>
+          t.palette.mode === 'dark'
+            ? 'none'
+            : 'linear-gradient(180deg, #F7FAFB 0%, #F3F5F7 28%, #F3F5F7 100%)',
       }}
     >
-      <Card sx={{ width: '100%', maxWidth: 640 }}>
-        <CardContent>
-          <Typography variant="h4" gutterBottom>
-            Hotel Billing Software
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Multi-tenant billing foundation (Sprint 2). Choose a shell to preview
-            layouts, or open login.
-          </Typography>
+      <LandingNav
+        isDark={isDark}
+        scrolled={scrolled}
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        activeHash={activeHash}
+        scrollToHash={scrollToHash}
+      />
 
-          {loading ? <CircularProgress size={28} /> : null}
-          {health?.success ? (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              API connected: {health.data.service} ({health.data.status})
-            </Alert>
-          ) : null}
-          {error ? (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          ) : null}
+      {error ? (
+        <Alert severity="warning" sx={{ borderRadius: 0 }}>
+          {error}
+        </Alert>
+      ) : null}
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <Button component={RouterLink} to="/login" variant="contained">
-              Login
-            </Button>
-            <Button component={RouterLink} to="/owner/dashboard" variant="outlined">
-              Owner Shell
-            </Button>
-            <Button component={RouterLink} to="/billing" variant="outlined">
-              Billing Shell
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
+      <HeroSection isDark={isDark} scrollToHash={scrollToHash} />
+      <CapabilityStrip />
+      <FeaturesSection />
+      <WorkflowSection />
+      <BillPreviewSection />
+      <StockSection />
+      <AnalyticsSection />
+      <AiSection />
+      <WhatsAppSection />
+      <MultiBusinessSection />
+      <SecuritySection />
+      <RolesSection />
+      <PricingSection />
+      <FinalCtaSection />
+      <ContactSection />
+      <LandingFooter health={health} error={error} />
     </Box>
   );
 }

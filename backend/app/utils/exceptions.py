@@ -34,3 +34,8 @@ class NotFoundError(AppError):
 class ConflictError(AppError):
     status_code = 409
     code = "CONFLICT"
+
+
+class InsufficientStockError(AppError):
+    status_code = 400
+    code = "INSUFFICIENT_STOCK"

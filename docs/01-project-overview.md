@@ -89,6 +89,7 @@ Only these two roles exist in this version. No Manager, Admin, Accountant, or Su
 | 18 | Testing strategy |
 | 19 | Deployment |
 | 20 | Development sprints |
+| 21 | Production readiness |
 
 ## Development Approach
 

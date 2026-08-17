@@ -10,7 +10,7 @@ def get_health():
     return success_response(
         data={
             "status": "ok",
-            "service": "hotel-billing-api",
+            "service": "business-billing-api",
             "version": "v1",
         }
     )

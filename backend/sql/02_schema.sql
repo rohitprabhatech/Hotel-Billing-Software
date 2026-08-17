@@ -14,7 +14,10 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- Drop in dependency order (safe re-run for local/dev)
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS bill_deliveries;
 DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS stock_movements;
+DROP TABLE IF EXISTS tenant_whatsapp_configs;
 DROP TABLE IF EXISTS bill_items;
 DROP TABLE IF EXISTS bills;
 DROP TABLE IF EXISTS bill_number_counters;

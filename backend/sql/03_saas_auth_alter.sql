@@ -1,6 +1,9 @@
--- Incremental alter for existing hotel_billing databases (MySQL).
--- Prefer: flask --app run:app db upgrade
--- Use this only if you apply SQL manually.
+-- Historical incremental alter for the SaaS-auth release (MySQL).
+--
+-- This file intentionally covers only the authentication changes introduced in
+-- that release. It is NOT a complete upgrade for the current application.
+-- For an existing database, use backend/scripts/apply_pending_schema.py.
+-- For a fresh database, use 01_create_database.sql followed by 02_schema.sql.
 
 USE hotel_billing;
 

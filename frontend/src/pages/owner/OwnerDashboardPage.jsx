@@ -124,6 +124,22 @@ export default function OwnerDashboardPage() {
 
   return (
     <PageShell>
+      {user?.tenant?.subscription?.status === 'TRIAL' ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Free trial: {user.tenant.subscription.remaining_days ?? '—'} day
+          {user.tenant.subscription.remaining_days === 1 ? '' : 's'} remaining
+          {user.tenant.subscription.trial_ends_at
+            ? ` (until ${new Date(user.tenant.subscription.trial_ends_at).toLocaleDateString()}).`
+            : '.'}
+        </Alert>
+      ) : null}
+      {user?.tenant?.subscription?.is_expiring && user?.tenant?.subscription?.status !== 'TRIAL' ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Subscription expiring: {user.tenant.subscription.remaining_days ?? '—'} day
+          {user.tenant.subscription.remaining_days === 1 ? '' : 's'} remaining. Contact Prabha
+          Technology to renew.
+        </Alert>
+      ) : null}
       <Card>
         <CardContent
           sx={{

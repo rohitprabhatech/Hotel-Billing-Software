@@ -626,6 +626,15 @@ export default function SettingsPage() {
           title="Subscription"
           description={`${SUBSCRIPTION_PLAN.priceDisplay} · informational plan details (no in-app payment).`}
         >
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Current status:{' '}
+            <strong>{user?.tenant?.subscription?.status || 'None'}</strong>
+            {user?.tenant?.subscription?.remaining_days != null
+              ? ` · ${user.tenant.subscription.remaining_days} days remaining`
+              : user?.tenant?.subscription?.is_complimentary
+                ? ' · complimentary (no expiry)'
+                : ''}
+          </Typography>
           <SubscriptionPlanInfo variant="owner" dense />
         </FormSection>
       </Box>

@@ -3,6 +3,7 @@
 from app.extensions import db
 from app.models.role import ROLE_BILLING_USER, ROLE_OWNER
 from app.models.user import User
+from app.repositories.master_admin_repository import MasterAdminRepository
 from app.repositories.role_repository import RoleRepository
 from app.repositories.user_repository import UserRepository
 from app.services.audit_service import AuditService
@@ -34,7 +35,9 @@ class UserService:
         ctx = require_request_context()
         UserService._validate_user_payload(name, email, password, require_password=True)
 
-        if UserRepository.find_by_email(email.strip().lower()):
+        if UserRepository.find_by_email(email.strip().lower()) or MasterAdminRepository.find_by_email(
+            email.strip().lower()
+        ):
             raise ConflictError("An account with this email already exists")
 
         role = RoleRepository.get_by_name(ROLE_BILLING_USER)
@@ -92,6 +95,8 @@ class UserService:
                 raise ValidationError("A valid email is required")
             existing = UserRepository.find_by_email(email_norm)
             if any(u.id != user.id for u in existing):
+                raise ConflictError("An account with this email already exists")
+            if MasterAdminRepository.find_by_email(email_norm):
                 raise ConflictError("An account with this email already exists")
             user.email = email_norm
 

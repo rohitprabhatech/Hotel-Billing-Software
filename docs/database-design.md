@@ -25,7 +25,14 @@
 | `bill_items` | Line snapshots; `item_id` may become NULL if item removed from catalog |
 | `bill_number_counters` | Per-tenant sequence |
 | `audit_logs` | Append-only activity |
-| `password_reset_tokens` / `email_verification_tokens` | Hashed tokens + expiry |
+| `password_reset_tokens` / `email_verification_tokens` | Hashed tokens + expiry (email-change / reset; signup no longer auto-verifies) |
+| `master_admins` | Platform operators — **no** `tenant_id` |
+| `registration_requests` | Public signup queue (`PENDING` / `APPROVED` / `REJECTED`); tenant+owner created on approve |
+| `platform_settings` | Singleton: `trial_enabled`, `trial_days` (default 15), `expiry_warning_days` |
+| `subscription_plans` | Master-managed catalog (price, cycle, features, public/active flags); landing prices consume this in P8-8 |
+| `subscriptions` | Tenant trial/paid entitlement; `plan_id` FK (nullable); `price_at_purchase` snapshot never rewritten on plan price change; complimentary rows use `payment_status=COMPLIMENTARY` and `ends_at` NULL |
+| `subscription_notices` | Idempotency log for expiry notices; unique `(subscription_id, notice_type, period_key)` prevents duplicate EXPIRING/EXPIRED alerts per entitlement period |
+| `platform_notifications` | Master Admin in-app alerts (no `tenant_id`); expiry/expired business alerts with read/unread tracking |
 
 ## Business types
 

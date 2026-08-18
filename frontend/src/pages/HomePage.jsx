@@ -27,11 +27,13 @@ import {
   LandingFooter,
   PricingSection,
 } from './landing/PricingFooter';
+import { listPublicPlans } from '../services/publicService';
 
 export default function HomePage() {
   const { isAuthenticated, role } = useAuth();
   const { isDark } = useColorMode();
   const [health, setHealth] = useState(null);
+  const [publicPlans, setPublicPlans] = useState([]);
   const [error, setError] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -45,6 +47,20 @@ export default function HomePage() {
       })
       .catch(() => {
         if (active) setError('API offline — start the backend to connect live data.');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    listPublicPlans()
+      .then((payload) => {
+        if (active) setPublicPlans(payload.data || []);
+      })
+      .catch(() => {
+        if (active) setPublicPlans([]);
       });
     return () => {
       active = false;
@@ -127,7 +143,7 @@ export default function HomePage() {
         </Alert>
       ) : null}
 
-      <HeroSection isDark={isDark} scrollToHash={scrollToHash} />
+      <HeroSection isDark={isDark} scrollToHash={scrollToHash} plans={publicPlans} />
       <CapabilityStrip />
       <FeaturesSection />
       <WorkflowSection />
@@ -139,7 +155,7 @@ export default function HomePage() {
       <MultiBusinessSection />
       <SecuritySection />
       <RolesSection />
-      <PricingSection />
+      <PricingSection plans={publicPlans} />
       <FinalCtaSection />
       <ContactSection />
       <LandingFooter health={health} error={error} />

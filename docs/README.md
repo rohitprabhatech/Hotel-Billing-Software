@@ -31,6 +31,17 @@ Product language prefers **Business** (not Hotel). Hotel remains a supported *bu
 | [phase2-p2-13-security-isolation.md](./phase2-p2-13-security-isolation.md) | Phase 2 Sprint P2-13 security + tenant isolation retest |
 | [phase2-final-qa-report.md](./phase2-final-qa-report.md) | Phase 2 Sprint P2-14 final QA / release gate |
 | [development-roadmap.md](./development-roadmap.md) | Active sprint plan & status |
+| [phase8-p8-1-architecture-audit.md](./phase8-p8-1-architecture-audit.md) | Phase 8 P8-1 Master Admin / subscription architecture audit |
+| [phase8-p8-2-master-auth.md](./phase8-p8-2-master-auth.md) | Phase 8 P8-2 Master Admin auth + `/master` shell |
+| [phase8-p8-3-registration-approval.md](./phase8-p8-3-registration-approval.md) | Phase 8 P8-3 Business registration approval |
+| [phase8-p8-4-trial-management.md](./phase8-p8-4-trial-management.md) | Phase 8 P8-4 Trial management |
+| [phase8-p8-5-plan-management.md](./phase8-p8-5-plan-management.md) | Phase 8 P8-5 Plan management |
+| [phase8-p8-6-subscription-lifecycle.md](./phase8-p8-6-subscription-lifecycle.md) | Phase 8 P8-6 Subscription lifecycle + access gate |
+| [phase8-p8-7-expiry-notifications.md](./phase8-p8-7-expiry-notifications.md) | Phase 8 P8-7 Expiry notifications + scheduled job |
+| [phase8-p8-8-dynamic-landing-pricing.md](./phase8-p8-8-dynamic-landing-pricing.md) | Phase 8 P8-8 Dynamic landing pricing |
+| [phase8-p8-9-security-isolation.md](./phase8-p8-9-security-isolation.md) | Phase 8 P8-9 Security + tenant isolation |
+| [phase8-p8-10-testing-docs-gate.md](./phase8-p8-10-testing-docs-gate.md) | Phase 8 P8-10 Testing + documentation gate |
+| [sprint-p8-1-architecture-audit-plan.md](./sprint-p8-1-architecture-audit-plan.md) | P8-1 sprint plan (completed) |
 
 ---
 
@@ -64,4 +75,4 @@ Older numbered docs (`01`–`22`, `test-hotel-billing-guide.md`) describe the ho
 - **Legal:** Prabha Technology Pvt. Ltd.
 - **Address:** B-05, First Floor, Shreya Business Hub, Pari Chowk, Mokarwadi, Pune, Maharashtra – 411041
 - **Support:** prabha.technology.01@gmail.com · 8767865572
-- **Plan (info only):** ₹550 / month — no in-app payment gateway
+- **Plan (info only):** ₹550 / month — no in-app payment gateway; plans are now DB-managed via Master Admin (Phase 8)

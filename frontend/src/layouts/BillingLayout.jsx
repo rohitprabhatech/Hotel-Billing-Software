@@ -26,18 +26,20 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainContent from '../components/MainContent';
 import PageHeader from '../components/PageHeader';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import ThemeModeToggle from '../components/ThemeModeToggle';
 import NotificationBell from '../components/NotificationBell';
+import SubscriptionLockout from '../components/SubscriptionLockout';
 import { useAuth } from '../context/AuthContext';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
 import { DRAWER_WIDTH } from './shell';
-import { logoutRequest } from '../services/authService';
+import { fetchMe, logoutRequest } from '../services/authService';
 import { PATHS } from '../routes/paths';
+import { isAccountPath, subscriptionAllowsAccess } from '../utils/subscriptionAccess';
 
 const drawerWidth = DRAWER_WIDTH;
 
@@ -97,7 +99,7 @@ function pageMeta(pathname) {
 }
 
 export default function BillingLayout() {
-  const { user, role, logout } = useAuth();
+  const { user, role, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -105,6 +107,20 @@ export default function BillingLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const isOwner = role === 'OWNER';
+  const entitled = subscriptionAllowsAccess(user?.tenant?.subscription);
+
+  useEffect(() => {
+    let active = true;
+    fetchMe()
+      .then((payload) => {
+        if (active && payload.data) updateUser(payload.data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh once per layout mount
+  }, []);
 
   const navItems = useMemo(() => {
     if (!isOwner) {
@@ -209,7 +225,7 @@ export default function BillingLayout() {
             variant="outlined"
             sx={{ mr: 0.5, display: { xs: 'none', sm: 'inline-flex' } }}
           />
-          <NotificationBell />
+          {entitled ? <NotificationBell /> : null}
           <ThemeModeToggle sx={{ mr: 0.25 }} />
           <Tooltip title="Account menu">
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu">
@@ -311,6 +327,9 @@ export default function BillingLayout() {
 
 function BillingMain({ meta }) {
   const location = useLocation();
+  const { user } = useAuth();
+  const entitled = subscriptionAllowsAccess(user?.tenant?.subscription);
+  const showApp = entitled || isAccountPath(location.pathname);
   return (
     <MainContent>
       <PageHeader
@@ -318,9 +337,12 @@ function BillingMain({ meta }) {
         subtitle={meta.subtitle}
         actions={<PageActionsSlot />}
       />
-      <RouteErrorBoundary key={location.pathname}>
-        <Outlet />
-      </RouteErrorBoundary>
+      {!entitled ? <SubscriptionLockout user={user} accountPath={PATHS.billingProfile} /> : null}
+      {showApp ? (
+        <RouteErrorBoundary key={location.pathname}>
+          <Outlet />
+        </RouteErrorBoundary>
+      ) : null}
     </MainContent>
   );
 }

@@ -1,5 +1,5 @@
 import { Link } from '@mui/material';
-import { COMPANY, SUBSCRIPTION_PLAN } from '../../constants/company';
+import { COMPANY } from '../../constants/company';
 import LegalPageShell, { LegalHeading, LegalParagraph } from './LegalPageShell';
 
 export default function TermsOfServicePage() {
@@ -33,10 +33,10 @@ export default function TermsOfServicePage() {
 
       <LegalHeading>4. Subscription & pricing</LegalHeading>
       <LegalParagraph>
-        Published pricing (currently {SUBSCRIPTION_PLAN.priceDisplay}) is informational. Online
-        checkout may not be enabled in the application. Activation, renewal, and invoicing are
-        handled by contacting {COMPANY.legalName}. Fees and commercial terms agreed separately with
-        us control if they differ from marketing copy.
+        Published pricing on the public landing page is informational. Online checkout may not be
+        enabled in the application. Activation, renewal, and invoicing are handled by contacting{' '}
+        {COMPANY.legalName}. Fees and commercial terms agreed separately with us control if they
+        differ from marketing copy.
       </LegalParagraph>
 
       <LegalHeading>5. Data & backups</LegalHeading>

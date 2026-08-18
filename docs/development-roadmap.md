@@ -157,6 +157,31 @@ Order adjusted to **actual codebase**: landing + contact first (visible commerci
 
 ---
 
+## Phase 8 — Master Admin + SaaS subscription management (COMPLETE)
+
+**Program goal:** Prabha Technology operates the SaaS: Master Admin dashboard, registration approval, configurable trial, DB-backed plans, subscription lifecycle, expiry notifications, and landing pricing from the API — **without rebuilding** Owner/Billing.
+
+**Execution rule:** After each sprint → test → report → **STOP** → wait for approval.
+
+**Non-goals:** Payment-gateway checkout; mixing Master into Owner dashboard; DB reset / hard-delete of financial data.
+
+**Audit:** [`phase8-p8-1-architecture-audit.md`](./phase8-p8-1-architecture-audit.md)
+
+| Sprint | Title | Status |
+|--------|-------|--------|
+| **P8-1** | Existing architecture audit | **COMPLETED** — [`phase8-p8-1-architecture-audit.md`](./phase8-p8-1-architecture-audit.md) |
+| **P8-2** | Master Admin authentication + dashboard foundation | **COMPLETED** — [`phase8-p8-2-master-auth.md`](./phase8-p8-2-master-auth.md) |
+| **P8-3** | Business registration approval | **COMPLETED** — [`phase8-p8-3-registration-approval.md`](./phase8-p8-3-registration-approval.md) |
+| **P8-4** | Trial management | **COMPLETED** — [`phase8-p8-4-trial-management.md`](./phase8-p8-4-trial-management.md) |
+| **P8-5** | Plan management | **COMPLETED** — [`phase8-p8-5-plan-management.md`](./phase8-p8-5-plan-management.md) |
+| **P8-6** | Subscription lifecycle + access gate | **COMPLETED** — [`phase8-p8-6-subscription-lifecycle.md`](./phase8-p8-6-subscription-lifecycle.md) |
+| **P8-7** | Notifications, email, scheduled expiry checks | **COMPLETED** — [`phase8-p8-7-expiry-notifications.md`](./phase8-p8-7-expiry-notifications.md) |
+| **P8-8** | Dynamic landing page pricing | **COMPLETED** — [`phase8-p8-8-dynamic-landing-pricing.md`](./phase8-p8-8-dynamic-landing-pricing.md) |
+| **P8-9** | Security + tenant isolation | **COMPLETED** — [`phase8-p8-9-security-isolation.md`](./phase8-p8-9-security-isolation.md) |
+| **P8-10** | Testing + documentation gate | **COMPLETED** — [`phase8-p8-10-testing-docs-gate.md`](./phase8-p8-10-testing-docs-gate.md) |
+
+---
+
 ## Phase 2 sprint details
 
 ### Sprint P2-1 — Audit report + DB checklist

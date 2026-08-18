@@ -3,16 +3,17 @@
 from flask import current_app
 from flask_jwt_extended import create_access_token
 
-from app.constants.business_types import business_type_label, normalize_business_type
+from app.constants.business_types import business_type_label
 from app.extensions import db
 from app.models.auth_token import EmailVerificationToken, PasswordResetToken
-from app.models.role import ROLE_OWNER
-from app.models.tenant import Tenant
+from app.models.master_admin import ROLE_MASTER_ADMIN, MasterAdmin
 from app.models.user import User
-from app.repositories.role_repository import RoleRepository
+from app.repositories.master_admin_repository import MasterAdminRepository
+from app.repositories.registration_request_repository import RegistrationRequestRepository
 from app.repositories.user_repository import UserRepository
 from app.services.audit_service import AuditService
 from app.services.email_service import EmailService
+from app.services.subscription_service import SubscriptionService
 from app.utils.exceptions import ConflictError, UnauthorizedError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.security import hash_password, verify_password
@@ -26,62 +27,91 @@ class AuthService:
             raise ValidationError("Email and password are required")
 
         candidates = UserRepository.find_by_email(email)
-        matched = None
-        for user in candidates:
-            if not user.is_active:
-                continue
-            if not user.tenant or not user.tenant.is_active():
-                continue
-            if verify_password(user.password_hash, password):
-                matched = user
-                break
+        if candidates:
+            matched = None
+            for user in candidates:
+                if not user.is_active:
+                    continue
+                if not user.tenant or not user.tenant.is_active():
+                    continue
+                if verify_password(user.password_hash, password):
+                    matched = user
+                    break
 
-        if matched is None:
-            raise UnauthorizedError("Invalid email or password")
+            if matched is None:
+                raise UnauthorizedError("Invalid email or password")
 
-        if current_app.config.get("EMAIL_VERIFICATION_REQUIRED") and not matched.email_verified:
-            raise UnauthorizedError(
-                "Email not verified. Please verify your email before signing in."
+            if current_app.config.get("EMAIL_VERIFICATION_REQUIRED") and not matched.email_verified:
+                raise UnauthorizedError(
+                    "Email not verified. Please verify your email before signing in."
+                )
+
+            matched.last_login_at = utc_now_naive()
+            access_token = create_access_token(
+                identity=matched.id,
+                additional_claims={
+                    "tenant_id": matched.tenant_id,
+                    "role": matched.role_name,
+                    "tv": matched.token_version or 0,
+                },
             )
 
-        matched.last_login_at = utc_now_naive()
-        access_token = create_access_token(
-            identity=matched.id,
-            additional_claims={
-                "tenant_id": matched.tenant_id,
-                "role": matched.role_name,
-                "tv": matched.token_version or 0,
-            },
-        )
+            AuditService.log(
+                tenant_id=matched.tenant_id,
+                action="LOGIN",
+                entity_type="AUTH",
+                entity_id=matched.id,
+                user_id=matched.id,
+                user_name=matched.name,
+                new_data={"email": matched.email, "role": matched.role_name},
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            db.session.commit()
 
-        AuditService.log(
-            tenant_id=matched.tenant_id,
-            action="LOGIN",
-            entity_type="AUTH",
-            entity_id=matched.id,
-            user_id=matched.id,
-            user_name=matched.name,
-            new_data={"email": matched.email, "role": matched.role_name},
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-        db.session.commit()
+            if current_app.config.get("SEND_LOGIN_NOTIFICATIONS"):
+                try:
+                    EmailService.send_login_notification(
+                        to=matched.email, name=matched.name, ip_address=ip_address
+                    )
+                except Exception:  # noqa: BLE001 — login must not fail on mail
+                    current_app.logger.exception("Failed to send login notification")
 
-        if current_app.config.get("SEND_LOGIN_NOTIFICATIONS"):
-            try:
-                EmailService.send_login_notification(
-                    to=matched.email, name=matched.name, ip_address=ip_address
-                )
-            except Exception:  # noqa: BLE001 — login must not fail on mail
-                current_app.logger.exception("Failed to send login notification")
+            expires = current_app.config["JWT_ACCESS_TOKEN_EXPIRES"]
+            return {
+                "access_token": access_token,
+                "token_type": "Bearer",
+                "expires_in": int(expires.total_seconds()),
+                "user": AuthService.serialize_user(matched),
+            }
 
-        expires = current_app.config["JWT_ACCESS_TOKEN_EXPIRES"]
-        return {
-            "access_token": access_token,
-            "token_type": "Bearer",
-            "expires_in": int(expires.total_seconds()),
-            "user": AuthService.serialize_user(matched),
-        }
+        admin = MasterAdminRepository.find_by_email(email)
+        if admin is not None and admin.is_active and verify_password(admin.password_hash, password):
+            admin.last_login_at = utc_now_naive()
+            access_token = create_access_token(
+                identity=admin.id,
+                additional_claims={
+                    "role": ROLE_MASTER_ADMIN,
+                    "tv": admin.token_version or 0,
+                },
+            )
+            db.session.commit()
+
+            expires = current_app.config["JWT_ACCESS_TOKEN_EXPIRES"]
+            return {
+                "access_token": access_token,
+                "token_type": "Bearer",
+                "expires_in": int(expires.total_seconds()),
+                "user": AuthService.serialize_master_admin(admin),
+            }
+
+        pending = RegistrationRequestRepository.find_pending_by_email(email)
+        if pending is not None and verify_password(pending.password_hash, password):
+            raise UnauthorizedError(
+                "Your registration request is pending approval by Prabha Technology."
+            )
+
+        raise UnauthorizedError("Invalid email or password")
 
     @staticmethod
     def logout(user, ip_address: str | None, user_agent: str | None):
@@ -101,118 +131,20 @@ class AuthService:
         return {"message": "Logged out successfully"}
 
     @staticmethod
+    def logout_master(admin: MasterAdmin):
+        admin.token_version = int(admin.token_version or 0) + 1
+        db.session.commit()
+        return {"message": "Logged out successfully"}
+
+    @staticmethod
     def me(user):
         return AuthService.serialize_user(user)
 
     @staticmethod
     def register_business(payload: dict):
-        business_name = (payload.get("business_name") or "").strip()
-        display_name = (
-            payload.get("name") or payload.get("hotel_name") or business_name or ""
-        ).strip()
-        if not business_name:
-            business_name = display_name
-        if not display_name:
-            display_name = business_name
+        from app.services.registration_request_service import RegistrationRequestService
 
-        owner_name = (payload.get("owner_name") or "").strip()
-        owner_email = (payload.get("owner_email") or "").strip().lower()
-        password = payload.get("password") or ""
-        confirm = payload.get("confirm_password") or ""
-
-        if not business_name:
-            raise ValidationError("Business name is required")
-        if not display_name:
-            raise ValidationError("Business display name is required")
-        if not owner_name:
-            raise ValidationError("Owner name is required")
-        if not owner_email or "@" not in owner_email:
-            raise ValidationError("A valid owner email is required")
-        if password != confirm:
-            raise ValidationError("Password and confirm password do not match")
-        if len(password) < 8:
-            raise ValidationError("Password must be at least 8 characters")
-
-        try:
-            business_type = normalize_business_type(payload.get("business_type"))
-        except ValueError as exc:
-            raise ValidationError(str(exc)) from exc
-
-        if UserRepository.find_by_email(owner_email):
-            raise ConflictError("An account with this email already exists")
-
-        owner_role = RoleRepository.get_by_name(ROLE_OWNER)
-        if owner_role is None:
-            raise ValidationError("Owner role is not configured")
-
-        business_email = (payload.get("email") or owner_email).strip().lower()
-        tenant = Tenant(
-            id=new_uuid(),
-            name=display_name,
-            business_name=business_name,
-            business_type=business_type,
-            address=(payload.get("address") or "").strip() or None,
-            city=(payload.get("city") or "").strip() or None,
-            state=(payload.get("state") or "").strip() or None,
-            pincode=(payload.get("pincode") or "").strip() or None,
-            phone=(payload.get("mobile") or payload.get("phone") or "").strip() or None,
-            email=business_email,
-            gst_number=(payload.get("gst_number") or "").strip() or None,
-            fssai_number=(payload.get("fssai_number") or "").strip() or None,
-            status="ACTIVE",
-        )
-        db.session.add(tenant)
-        db.session.flush()
-
-        owner = User(
-            id=new_uuid(),
-            tenant_id=tenant.id,
-            role_id=owner_role.id,
-            name=owner_name,
-            email=owner_email,
-            password_hash=hash_password(password),
-            is_active=True,
-            email_verified=False,
-            token_version=0,
-        )
-        db.session.add(owner)
-        db.session.flush()
-
-        raw_token = AuthService._issue_email_verification(owner, purpose="signup")
-
-        AuditService.log(
-            tenant_id=tenant.id,
-            action="REGISTER_BUSINESS",
-            entity_type="TENANT",
-            entity_id=tenant.id,
-            user_id=owner.id,
-            user_name=owner.name,
-            new_data={
-                "name": tenant.name,
-                "business_name": tenant.business_name,
-                "business_type": tenant.business_type,
-                "owner_email": owner.email,
-            },
-        )
-        db.session.commit()
-
-        verify_url = f"{current_app.config['FRONTEND_URL']}/verify-email?token={raw_token}"
-        EmailService.send_verification_email(
-            to=owner.email, name=owner.name, verify_url=verify_url
-        )
-
-        result = {
-            "message": "Business registered successfully. Please verify your email to sign in.",
-            "tenant_id": tenant.id,
-            "owner_email": owner.email,
-            "business_type": tenant.business_type,
-            "email_verification_required": bool(
-                current_app.config.get("EMAIL_VERIFICATION_REQUIRED")
-            ),
-        }
-        if current_app.config.get("ALLOW_DEV_AUTH_TOKENS"):
-            result["verification_token"] = raw_token
-        return result
+        return RegistrationRequestService.submit(payload)
 
     @staticmethod
     def register_hotel(payload: dict):
@@ -429,6 +361,27 @@ class AuthService:
         }
 
     @staticmethod
+    def change_master_password(
+        admin: MasterAdmin, current_password: str, new_password: str, confirm_password: str
+    ):
+        if new_password != confirm_password:
+            raise ValidationError("Password and confirm password do not match")
+        if len(new_password) < 8:
+            raise ValidationError("Password must be at least 8 characters")
+        if not verify_password(admin.password_hash, current_password):
+            raise ValidationError("Current password is incorrect")
+        if current_password == new_password:
+            raise ValidationError("New password must be different from the current password")
+
+        admin.password_hash = hash_password(new_password)
+        admin.token_version = int(admin.token_version or 0) + 1
+        db.session.commit()
+        return {
+            "message": "Password updated successfully. Please sign in again.",
+            "require_relogin": True,
+        }
+
+    @staticmethod
     def _set_password(user: User, password: str):
         user.password_hash = hash_password(password)
         user.password_changed_at = utc_now_naive()
@@ -498,5 +451,20 @@ class AuthService:
                 "business_type": user.tenant.business_type or "other",
                 "business_type_label": business_type_label(user.tenant.business_type),
                 "status": user.tenant.status,
+                "subscription": SubscriptionService.serialize_for_tenant(user.tenant_id),
             },
+        }
+
+    @staticmethod
+    def serialize_master_admin(admin: MasterAdmin):
+        return {
+            "id": admin.id,
+            "name": admin.name,
+            "email": admin.email,
+            "role": ROLE_MASTER_ADMIN,
+            "is_active": admin.is_active,
+            "email_verified": True,
+            "pending_email": None,
+            "last_login_at": admin.last_login_at.isoformat() if admin.last_login_at else None,
+            "tenant": None,
         }

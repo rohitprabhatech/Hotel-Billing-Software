@@ -121,6 +121,11 @@ export default function NotificationBell() {
         const status = row.type === 'OUT_OF_STOCK' ? 'out' : 'low';
         navigate(`${PATHS.ownerItems}?stock_status=${status}`);
       }
+      return;
+    }
+    if (row.type === 'SUBSCRIPTION_EXPIRING' || row.type === 'SUBSCRIPTION_EXPIRED') {
+      handleClose();
+      if (role === 'OWNER') navigate(`${PATHS.ownerSettings}#subscription`);
     }
   };
 

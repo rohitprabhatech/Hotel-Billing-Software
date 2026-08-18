@@ -6,30 +6,76 @@ import { PATHS } from '../../routes/paths';
 import { CONTENT_MAX, DISPLAY_FONT, NAV_LINKS } from './constants';
 import { LandingSection } from './LandingSection';
 
-export function PricingSection() {
+function toDisplayPlan(plan) {
+  const periodLabel = plan.billing_cycle === 'YEARLY' ? 'per year' : 'per month';
+  return {
+    ...plan,
+    priceLabel: `₹${Number(plan.price).toLocaleString('en-IN')}`,
+    periodLabel,
+    billingNote:
+      'Informational pricing only. Online checkout is not enabled in the app yet — contact Prabha Technology to activate or renew your plan.',
+    includes: plan.features || [],
+  };
+}
+
+export function PricingSection({ plans = [] }) {
+  const rows = plans.map(toDisplayPlan);
   return (
     <LandingSection
       id="pricing"
       eyebrow="Pricing"
-      title="Simple monthly plan for your business"
+      title={rows.length > 1 ? 'Simple plans for your business' : 'Simple plan for your business'}
       body="Informational pricing — online checkout is not enabled in the app yet. Contact Prabha Technology to activate or renew."
     >
       <Box
         sx={{
-          maxWidth: 520,
-          mx: { xs: 0, md: 'auto' },
-          p: { xs: 3, md: 4 },
-          borderRadius: 3,
-          border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-          boxShadow: (t) =>
-            t.palette.mode === 'dark'
-              ? '0 16px 40px rgba(0,0,0,0.35)'
-              : '0 20px 50px rgba(15,36,44,0.1)',
+          display: 'grid',
+          gap: 3,
+          gridTemplateColumns: rows.length > 1 ? { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } : '1fr',
         }}
       >
-        <SubscriptionPlanInfo showPublicCtas />
+        {rows.length ? (
+          rows.map((plan) => (
+            <Box
+              key={plan.id}
+              sx={{
+                maxWidth: rows.length === 1 ? 520 : 'none',
+                mx: rows.length === 1 ? { xs: 0, md: 'auto' } : 0,
+                p: { xs: 3, md: 4 },
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+                boxShadow: (t) =>
+                  t.palette.mode === 'dark'
+                    ? '0 16px 40px rgba(0,0,0,0.35)'
+                    : '0 20px 50px rgba(15,36,44,0.1)',
+              }}
+            >
+              <SubscriptionPlanInfo plan={plan} showPublicCtas />
+            </Box>
+          ))
+        ) : (
+          <Box
+            sx={{
+              maxWidth: 520,
+              mx: { xs: 0, md: 'auto' },
+              p: { xs: 3, md: 4 },
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ mb: 1 }}>
+              Pricing is available on request
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              No public plans are published right now. Contact {COMPANY.legalName} for current
+              commercial terms.
+            </Typography>
+          </Box>
+        )}
       </Box>
     </LandingSection>
   );

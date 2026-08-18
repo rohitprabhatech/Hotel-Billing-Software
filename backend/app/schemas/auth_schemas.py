@@ -30,6 +30,7 @@ class RegisterBusinessSchema(Schema):
     city = fields.String(load_default=None, validate=validate.Length(max=100))
     state = fields.String(load_default=None, validate=validate.Length(max=100))
     pincode = fields.String(load_default=None, validate=validate.Length(max=20))
+    country = fields.String(load_default="India", validate=validate.Length(max=80))
     mobile = fields.String(load_default=None, validate=validate.Length(max=30))
     phone = fields.String(load_default=None, validate=validate.Length(max=30))
     email = fields.Email(load_default=None)
@@ -39,9 +40,15 @@ class RegisterBusinessSchema(Schema):
     owner_email = fields.Email(required=True)
     password = fields.String(required=True, validate=validate.Length(min=8, max=128))
     confirm_password = fields.String(required=True, validate=validate.Length(min=8, max=128))
+    terms_accepted = fields.Boolean(required=True)
 
     @validates_schema
     def validate_register(self, data, **kwargs):
+        if not data.get("terms_accepted"):
+            raise ValidationError(
+                "You must agree to the Terms of Service and Privacy Policy",
+                "terms_accepted",
+            )
         if data.get("password") != data.get("confirm_password"):
             raise ValidationError(
                 "Password and confirm password do not match", "confirm_password"

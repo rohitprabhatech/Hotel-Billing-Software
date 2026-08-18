@@ -1,9 +1,11 @@
 import {
   Alert,
   Button,
+  Checkbox,
   CircularProgress,
   Divider,
   FormControl,
+  FormControlLabel,
   Grid,
   InputLabel,
   Link,
@@ -14,8 +16,9 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Link as RouterLink, Navigate, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { PATHS } from '../../routes/paths';
 import { registerBusinessRequest } from '../../services/authService';
 import { fetchBusinessTypes } from '../../services/tenantService';
 import { homePathForRole, isValidRole } from '../../utils/authRouting';
@@ -34,11 +37,11 @@ const initial = {
   owner_email: '',
   password: '',
   confirm_password: '',
+  terms_accepted: false,
 };
 
 export default function RegisterBusinessPage() {
   const { isAuthenticated, role } = useAuth();
-  const navigate = useNavigate();
   const [form, setForm] = useState(initial);
   const [businessTypes, setBusinessTypes] = useState([]);
   const [error, setError] = useState('');
@@ -56,7 +59,8 @@ export default function RegisterBusinessPage() {
   }
 
   const onChange = (field) => (event) => {
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const selectedType = businessTypes.find((row) => row.code === form.business_type);
@@ -72,6 +76,10 @@ export default function RegisterBusinessPage() {
     }
     if (form.password !== form.confirm_password) {
       setError('Password and confirm password do not match');
+      return;
+    }
+    if (!form.terms_accepted) {
+      setError('You must agree to the Terms of Service and Privacy Policy');
       return;
     }
     setLoading(true);
@@ -92,30 +100,16 @@ export default function RegisterBusinessPage() {
         email: form.owner_email,
         fssai_number: showFssai ? form.fssai_number || '' : '',
         gst_number: form.gst_number || '',
+        terms_accepted: true,
       };
       const response = await registerBusinessRequest(payload);
       if (!response.success) {
         throw new Error(response.error?.message || 'Registration failed');
       }
-      const msg =
+      setSuccess(
         response.data?.message ||
-        'Business registered. Please verify your email, then sign in.';
-      if (response.data?.verification_token) {
-        setSuccess(
-          `${msg} Dev verify link ready — open Verify Email with the issued token.`
-        );
-        setTimeout(
-          () =>
-            navigate(
-              `/verify-email?token=${encodeURIComponent(response.data.verification_token)}`,
-              { replace: true }
-            ),
-          900
-        );
-      } else {
-        setSuccess(msg);
-        setTimeout(() => navigate('/login', { replace: true }), 1800);
-      }
+          'Your registration request has been submitted successfully. Your account will be activated after approval by Prabha Technology.'
+      );
     } catch (err) {
       setError(
         err.response?.data?.error?.message ||
@@ -130,7 +124,14 @@ export default function RegisterBusinessPage() {
   return (
     <Stack spacing={2.5} component="form" onSubmit={onSubmit}>
       {error ? <Alert severity="error">{error}</Alert> : null}
-      {success ? <Alert severity="success">{success}</Alert> : null}
+      {success ? (
+        <>
+          <Alert severity="success">Your registration request has been submitted successfully.</Alert>
+          <Alert severity="info">
+            Your account will be activated after approval by Prabha Technology.
+          </Alert>
+        </>
+      ) : null}
 
       <Typography variant="subtitle2" color="text.secondary">
         Business Details
@@ -251,6 +252,28 @@ export default function RegisterBusinessPage() {
         </Grid>
       </Grid>
 
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={form.terms_accepted}
+            onChange={onChange('terms_accepted')}
+            name="terms_accepted"
+          />
+        }
+        label={
+          <Typography variant="body2">
+            I agree to the{' '}
+            <Link component={RouterLink} to={PATHS.terms} target="_blank" rel="noreferrer">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link component={RouterLink} to={PATHS.privacy} target="_blank" rel="noreferrer">
+              Privacy Policy
+            </Link>
+          </Typography>
+        }
+      />
+
       <Button
         type="submit"
         variant="contained"
@@ -264,7 +287,7 @@ export default function RegisterBusinessPage() {
 
       <Typography variant="body2" color="text.secondary">
         Already have an account?{' '}
-        <Link component={RouterLink} to="/login">
+        <Link component={RouterLink} to={PATHS.login}>
           Login
         </Link>
       </Typography>

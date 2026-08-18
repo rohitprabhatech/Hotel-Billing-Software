@@ -1,10 +1,10 @@
-"""Business registration, email verify, password reset/change tests."""
+"""Business registration, Master approval, password reset/change tests."""
 
 from app.services.email_service import EmailService
-from tests.conftest import login
+from tests.conftest import login, login_master
 
 
-def test_register_verify_login_flow(client, app):
+def test_register_approve_login_flow(client, app):
     EmailService.clear_outbox()
     response = client.post(
         "/api/v1/auth/register-business",
@@ -18,16 +18,18 @@ def test_register_verify_login_flow(client, app):
             "owner_email": "owner@sunrise.test",
             "password": "Sunrise@12345",
             "confirm_password": "Sunrise@12345",
+            "terms_accepted": True,
         },
     )
     assert response.status_code == 201, response.get_json()
     body = response.get_json()["data"]
-    assert body["tenant_id"]
+    assert body["status"] == "PENDING"
+    assert "tenant_id" not in body
+    assert "verification_token" not in body
     assert body["business_type"] == "hotel"
-    token = body["verification_token"]
     outbox = EmailService.get_outbox()
     assert outbox
-    assert outbox[0]["subject"] == "Verify your business account"
+    assert "registration" in outbox[0]["subject"].lower() or "received" in outbox[0]["subject"].lower()
 
     blocked = client.post(
         "/api/v1/auth/login",
@@ -35,8 +37,12 @@ def test_register_verify_login_flow(client, app):
     )
     assert blocked.status_code == 401
 
-    verified = client.post("/api/v1/auth/verify-email", json={"token": token})
-    assert verified.status_code == 200
+    master = login_master(client, app)
+    approved = client.post(
+        f"/api/v1/master/registration-requests/{body['request_id']}/approve",
+        headers=master,
+    )
+    assert approved.status_code == 200, approved.get_json()
 
     ok = client.post(
         "/api/v1/auth/login",
@@ -60,6 +66,7 @@ def test_legacy_register_hotel_alias_still_works(client):
             "owner_email": "legacy@cafe.test",
             "password": "Legacy@12345",
             "confirm_password": "Legacy@12345",
+            "terms_accepted": True,
         },
     )
     assert response.status_code == 201, response.get_json()
@@ -73,6 +80,7 @@ def test_register_duplicate_email_rejected(client):
         "owner_email": "owner@hotela.com",
         "password": "DupPass@123",
         "confirm_password": "DupPass@123",
+        "terms_accepted": True,
     }
     response = client.post("/api/v1/auth/register-business", json=payload)
     assert response.status_code == 409
@@ -134,7 +142,7 @@ def test_forgot_and_reset_password(client):
     )
 
 
-def test_registered_tenants_are_isolated(client):
+def test_registered_tenants_are_isolated(client, app):
     r1 = client.post(
         "/api/v1/auth/register-business",
         json={
@@ -145,6 +153,7 @@ def test_registered_tenants_are_isolated(client):
             "owner_email": "iso-a@test.com",
             "password": "IsoPass@123",
             "confirm_password": "IsoPass@123",
+            "terms_accepted": True,
         },
     )
     r2 = client.post(
@@ -157,16 +166,24 @@ def test_registered_tenants_are_isolated(client):
             "owner_email": "iso-b@test.com",
             "password": "IsoPass@123",
             "confirm_password": "IsoPass@123",
+            "terms_accepted": True,
         },
     )
     assert r1.status_code == 201 and r2.status_code == 201, (r1.get_json(), r2.get_json())
-    client.post(
-        "/api/v1/auth/verify-email",
-        json={"token": r1.get_json()["data"]["verification_token"]},
+    master = login_master(client, app)
+    assert (
+        client.post(
+            f"/api/v1/master/registration-requests/{r1.get_json()['data']['request_id']}/approve",
+            headers=master,
+        ).status_code
+        == 200
     )
-    client.post(
-        "/api/v1/auth/verify-email",
-        json={"token": r2.get_json()["data"]["verification_token"]},
+    assert (
+        client.post(
+            f"/api/v1/master/registration-requests/{r2.get_json()['data']['request_id']}/approve",
+            headers=master,
+        ).status_code
+        == 200
     )
 
     headers_a = login(client, "iso-a@test.com", "IsoPass@123")

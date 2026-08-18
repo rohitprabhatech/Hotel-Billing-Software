@@ -10,8 +10,14 @@ export default function SubscriptionPlanInfo({
   variant = 'public',
   showPublicCtas = true,
   dense = false,
+  plan = null,
 }) {
   const isOwner = variant === 'owner';
+  const currentPlan = plan || SUBSCRIPTION_PLAN;
+  const priceLabel = currentPlan.priceLabel || SUBSCRIPTION_PLAN.priceLabel;
+  const periodLabel = currentPlan.periodLabel || SUBSCRIPTION_PLAN.periodLabel;
+  const billingNote = currentPlan.billingNote || SUBSCRIPTION_PLAN.billingNote;
+  const includes = currentPlan.includes || SUBSCRIPTION_PLAN.includes;
 
   return (
     <Box>
@@ -30,18 +36,18 @@ export default function SubscriptionPlanInfo({
             lineHeight: 1,
           }}
         >
-          {SUBSCRIPTION_PLAN.priceLabel}
+          {priceLabel}
         </Typography>
         <Typography color="text.secondary" fontWeight={600}>
-          {SUBSCRIPTION_PLAN.periodLabel}
+          {periodLabel}
         </Typography>
       </Stack>
 
       <Typography variant="subtitle1" sx={{ mb: 0.5 }}>
-        {SUBSCRIPTION_PLAN.name}
+        {currentPlan.name}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, maxWidth: 560 }}>
-        {SUBSCRIPTION_PLAN.billingNote}
+        {billingNote}
       </Typography>
 
       <Box
@@ -53,7 +59,7 @@ export default function SubscriptionPlanInfo({
           '& li': { mb: 0.75, color: 'text.secondary' },
         }}
       >
-        {SUBSCRIPTION_PLAN.includes.map((item) => (
+        {includes.map((item) => (
           <Typography component="li" variant="body2" key={item}>
             {item}
           </Typography>
@@ -73,13 +79,13 @@ export default function SubscriptionPlanInfo({
           sx={{ '& > *': { width: { xs: '100%', sm: 'auto' } } }}
         >
           <Button component={RouterLink} to={PATHS.register} variant="contained">
-            {SUBSCRIPTION_PLAN.ctaRegister}
+            {currentPlan.ctaRegister || SUBSCRIPTION_PLAN.ctaRegister}
           </Button>
           <Button component={RouterLink} to={PATHS.login} variant="outlined">
-            {SUBSCRIPTION_PLAN.ctaLogin}
+            {currentPlan.ctaLogin || SUBSCRIPTION_PLAN.ctaLogin}
           </Button>
           <Button href="#contact" variant="text">
-            {SUBSCRIPTION_PLAN.ctaContact}
+            {currentPlan.ctaContact || SUBSCRIPTION_PLAN.ctaContact}
           </Button>
         </Stack>
       ) : null}

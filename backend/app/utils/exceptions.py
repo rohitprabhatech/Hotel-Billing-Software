@@ -39,3 +39,8 @@ class ConflictError(AppError):
 class InsufficientStockError(AppError):
     status_code = 400
     code = "INSUFFICIENT_STOCK"
+
+
+class SubscriptionInactiveError(AppError):
+    status_code = 402
+    code = "SUBSCRIPTION_INACTIVE"

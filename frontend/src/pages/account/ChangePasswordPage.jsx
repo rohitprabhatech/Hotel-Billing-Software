@@ -23,7 +23,12 @@ export default function ChangePasswordPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const cancelPath = role === 'OWNER' ? PATHS.ownerDashboard : PATHS.billingHome;
+  const cancelPath =
+    role === 'MASTER_ADMIN'
+      ? PATHS.masterDashboard
+      : role === 'OWNER'
+        ? PATHS.ownerDashboard
+        : PATHS.billingHome;
 
   const onSubmit = async (event) => {
     event.preventDefault();

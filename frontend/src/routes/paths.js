@@ -10,6 +10,14 @@ export const PATHS = {
   privacy: '/privacy',
   terms: '/terms',
 
+  masterDashboard: '/master/dashboard',
+  masterRegistrationRequests: '/master/registration-requests',
+  masterTrials: '/master/trials',
+  masterPlans: '/master/plans',
+  masterBusinesses: '/master/businesses',
+  masterTrialSettings: '/master/settings/trial',
+  masterChangePassword: '/master/change-password',
+
   ownerDashboard: '/owner/dashboard',
   ownerBills: '/owner/bills',
   ownerItems: '/owner/items',

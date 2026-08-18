@@ -4,7 +4,7 @@ from flask import Blueprint
 
 from app.controllers import auth_controller
 from app.extensions import limiter
-from app.middleware.auth import auth_required
+from app.middleware.auth import auth_required, session_required
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -16,13 +16,13 @@ def login():
 
 
 @auth_bp.post("/logout")
-@auth_required
+@session_required
 def logout():
     return auth_controller.logout()
 
 
 @auth_bp.get("/me")
-@auth_required
+@session_required
 def me():
     return auth_controller.me()
 
@@ -65,6 +65,6 @@ def reset_password():
 
 
 @auth_bp.post("/change-password")
-@auth_required
+@session_required
 def change_password():
     return auth_controller.change_password()

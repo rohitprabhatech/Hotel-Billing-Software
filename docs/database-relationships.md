@@ -29,6 +29,17 @@ tenants
    ├── notifications
    ├── stock_movements (item_id → items RESTRICT; inventory ledger)
    └── audit_logs (user_id → users RESTRICT, nullable)
+
+master_admins (platform — no tenant_id)
+platform_settings (singleton trial config)
+registration_requests ──► master_admins (approved_by / rejected_by SET NULL)
+                       └──► tenants (tenant_id SET NULL, set on approve)
+subscription_plans (platform catalog)
+subscriptions ──► tenants (tenant_id RESTRICT)
+               └──► subscription_plans (plan_id SET NULL)
+subscription_notices ──► subscriptions (subscription_id RESTRICT)
+                      └──► tenants (tenant_id RESTRICT)
+platform_notifications (Master Admin — no tenant_id)
 ```
 
 ---
@@ -50,6 +61,9 @@ tenants
 | `stock_movements.item_id → items` | **RESTRICT** | Ledger requires catalog row |
 | `stock_movements.created_by → users` | **SET NULL** | Keep movement if user removed |
 | Auth token tables → users | **CASCADE** | Tokens are ephemeral |
+| `subscriptions.plan_id → subscription_plans` | **SET NULL** | Keep entitlement if a plan row is removed; billed price stays on the subscription |
+| `subscription_notices.subscription_id → subscriptions` | **RESTRICT** | Idempotency log must stay with subscription |
+| `subscription_notices.tenant_id → tenants` | **RESTRICT** | Consistent with other tenant-scoped tables |
 
 **Application rule:** Soft-deactivate items/categories; cancel bills. Do not hard-delete financial rows via API.
 
@@ -73,6 +87,10 @@ tenants
 | bill_number_counters | `tenant_id` | — | — |
 | password_reset_tokens | `id` | `token_hash` | `user_id` |
 | email_verification_tokens | `id` | `token_hash` | `user_id` |
+| subscription_plans | `id` | — | `is_active`+`is_public`+`display_order` |
+| subscriptions | `id` | — | tenant, status, trial_ends, plan_id |
+| subscription_notices | `id` | `(subscription_id, notice_type, period_key)` | subscription_id, tenant_id |
+| platform_notifications | `id` | — | created_at, is_read |
 
 ---
 

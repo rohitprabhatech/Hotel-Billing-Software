@@ -121,6 +121,7 @@ def test_register_other_and_invalid_business_type(client):
             "owner_email": "owner@generic.shop",
             "password": "Generic@12345",
             "confirm_password": "Generic@12345",
+            "terms_accepted": True,
         },
     )
     assert ok.status_code == 201, ok.get_json()
@@ -135,6 +136,7 @@ def test_register_other_and_invalid_business_type(client):
             "owner_email": "owner@spaceship.shop",
             "password": "Alien@12345",
             "confirm_password": "Alien@12345",
+            "terms_accepted": True,
         },
     )
     assert bad.status_code == 400
@@ -149,6 +151,7 @@ def test_register_defaults_business_type_to_other(client):
             "owner_email": "owner@defaulttype.shop",
             "password": "Default@12345",
             "confirm_password": "Default@12345",
+            "terms_accepted": True,
         },
     )
     assert response.status_code == 201, response.get_json()

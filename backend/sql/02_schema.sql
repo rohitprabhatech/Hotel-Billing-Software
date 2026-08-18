@@ -13,6 +13,13 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- -----------------------------------------------------------------------------
 -- Drop in dependency order (safe re-run for local/dev)
 -- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS subscription_notices;
+DROP TABLE IF EXISTS platform_notifications;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS subscription_plans;
+DROP TABLE IF EXISTS platform_settings;
+DROP TABLE IF EXISTS registration_requests;
+DROP TABLE IF EXISTS master_admins;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS bill_deliveries;
 DROP TABLE IF EXISTS notifications;
@@ -482,6 +489,227 @@ CREATE TABLE stock_movements (
         ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT chk_stock_movements_source
         CHECK (source IN ('BILL', 'CANCEL', 'ADJUST', 'ITEM_UPDATE', 'RECEIVE'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- master_admins (platform operators — not tenant-scoped)
+-- -----------------------------------------------------------------------------
+CREATE TABLE master_admins (
+    id              CHAR(36)      NOT NULL,
+    name            VARCHAR(120)  NOT NULL,
+    email           VARCHAR(255)  NOT NULL,
+    password_hash   VARCHAR(255)  NOT NULL,
+    is_active       TINYINT(1)    NOT NULL DEFAULT 1,
+    token_version   INT           NOT NULL DEFAULT 0,
+    last_login_at   DATETIME(6)   NULL,
+    created_at      DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at      DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                 ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_master_admins_email (email),
+    INDEX ix_master_admins_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- registration_requests (public signup pending Master approval)
+-- Tenant + owner user are created only on APPROVED — not on submit.
+-- -----------------------------------------------------------------------------
+CREATE TABLE registration_requests (
+    id                  CHAR(36)      NOT NULL,
+    business_name       VARCHAR(200)  NOT NULL,
+    business_type       VARCHAR(40)   NOT NULL,
+    owner_name          VARCHAR(120)  NOT NULL,
+    owner_email         VARCHAR(255)  NOT NULL,
+    password_hash       VARCHAR(255)  NOT NULL,
+    mobile              VARCHAR(30)   NULL,
+    address             VARCHAR(255)  NULL,
+    city                VARCHAR(100)  NULL,
+    state               VARCHAR(100)  NULL,
+    country             VARCHAR(80)   NULL,
+    pincode             VARCHAR(20)   NULL,
+    gst_number          VARCHAR(30)   NULL,
+    fssai_number        VARCHAR(50)   NULL,
+    status              VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    requested_at        DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    approved_at         DATETIME(6)   NULL,
+    rejected_at         DATETIME(6)   NULL,
+    approved_by         CHAR(36)      NULL,
+    rejected_by         CHAR(36)      NULL,
+    rejection_reason    TEXT          NULL,
+    tenant_id           CHAR(36)      NULL,
+    terms_accepted_at   DATETIME(6)   NULL,
+    created_at          DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at          DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                     ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_registration_requests_status (status),
+    INDEX ix_registration_requests_email (owner_email),
+    INDEX ix_registration_requests_requested (requested_at),
+    CONSTRAINT chk_registration_requests_status
+        CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    CONSTRAINT fk_registration_requests_approved_by
+        FOREIGN KEY (approved_by) REFERENCES master_admins (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_requests_rejected_by
+        FOREIGN KEY (rejected_by) REFERENCES master_admins (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_requests_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- platform_settings (singleton SaaS trial / warning config)
+-- -----------------------------------------------------------------------------
+CREATE TABLE platform_settings (
+    id                    CHAR(36)     NOT NULL,
+    trial_enabled         TINYINT(1)   NOT NULL DEFAULT 1,
+    trial_days            INT          NOT NULL DEFAULT 15,
+    expiry_warning_days   INT          NOT NULL DEFAULT 5,
+    created_at            DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at            DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                         ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    CONSTRAINT chk_platform_settings_trial_days
+        CHECK (trial_days >= 1 AND trial_days <= 365),
+    CONSTRAINT chk_platform_settings_expiry_warning
+        CHECK (expiry_warning_days >= 1 AND expiry_warning_days <= 30)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO platform_settings (id, trial_enabled, trial_days, expiry_warning_days)
+VALUES ('00000000-0000-0000-0000-000000000001', 1, 15, 5);
+
+-- -----------------------------------------------------------------------------
+-- subscription_plans (Master-managed catalog; public flag used by landing in P8-8)
+-- -----------------------------------------------------------------------------
+CREATE TABLE subscription_plans (
+    id              CHAR(36)       NOT NULL,
+    name            VARCHAR(120)   NOT NULL,
+    description     TEXT           NULL,
+    price           DECIMAL(12,2)  NOT NULL,
+    currency        VARCHAR(8)     NOT NULL DEFAULT 'INR',
+    billing_cycle   VARCHAR(20)    NOT NULL DEFAULT 'MONTHLY',
+    trial_eligible  TINYINT(1)     NOT NULL DEFAULT 1,
+    is_public       TINYINT(1)     NOT NULL DEFAULT 1,
+    is_active       TINYINT(1)     NOT NULL DEFAULT 1,
+    display_order   INT            NOT NULL DEFAULT 0,
+    features        JSON           NULL,
+    created_at      DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at      DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                     ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_subscription_plans_active (is_active, is_public, display_order),
+    CONSTRAINT chk_subscription_plans_cycle
+        CHECK (billing_cycle IN ('MONTHLY', 'YEARLY')),
+    CONSTRAINT chk_subscription_plans_price
+        CHECK (price >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO subscription_plans
+    (id, name, description, price, currency, billing_cycle,
+     trial_eligible, is_public, is_active, display_order, features)
+VALUES (
+    '33333333-3333-3333-3333-333333333333',
+    'Business Billing Plan',
+    'Monthly Business Billing subscription.',
+    550.00,
+    'INR',
+    'MONTHLY',
+    1, 1, 1, 1,
+    JSON_ARRAY(
+        'Billing',
+        'Item & category management',
+        'Stock management & low-stock alerts',
+        'Sales reports and exports',
+        'Bill printing',
+        'WhatsApp bill delivery',
+        'Email bill delivery',
+        'AI business insights (tenant-scoped)',
+        'Notifications',
+        'Audit logs',
+        'Business dashboard',
+        '24/7 technical support access'
+    )
+);
+
+-- -----------------------------------------------------------------------------
+-- subscriptions (trial / paid entitlement)
+-- -----------------------------------------------------------------------------
+CREATE TABLE subscriptions (
+    id                  CHAR(36)       NOT NULL,
+    tenant_id           CHAR(36)       NOT NULL,
+    plan_id             CHAR(36)       NULL,
+    status              VARCHAR(20)    NOT NULL DEFAULT 'TRIAL',
+    starts_at           DATETIME(6)    NULL,
+    ends_at             DATETIME(6)    NULL,
+    trial_starts_at     DATETIME(6)    NULL,
+    trial_ends_at       DATETIME(6)    NULL,
+    price_at_purchase   DECIMAL(12,2)  NULL,
+    payment_status      VARCHAR(30)    NULL,
+    payment_provider    VARCHAR(40)    NULL,
+    payment_reference   VARCHAR(120)   NULL,
+    created_at          DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at          DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                         ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_subscriptions_tenant (tenant_id),
+    INDEX ix_subscriptions_status (status),
+    INDEX ix_subscriptions_trial_ends (trial_ends_at),
+    INDEX ix_subscriptions_plan (plan_id),
+    CONSTRAINT chk_subscriptions_status
+        CHECK (status IN (
+            'TRIAL', 'ACTIVE', 'EXPIRING', 'EXPIRED', 'CANCELLED', 'SUSPENDED'
+        )),
+    CONSTRAINT fk_subscriptions_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_subscriptions_plan
+        FOREIGN KEY (plan_id) REFERENCES subscription_plans (id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- subscription_notices (idempotent expiry/expiring emails + in-app alerts)
+-- -----------------------------------------------------------------------------
+CREATE TABLE subscription_notices (
+    id                  CHAR(36)       NOT NULL,
+    subscription_id     CHAR(36)       NOT NULL,
+    tenant_id           CHAR(36)       NOT NULL,
+    notice_type         VARCHAR(20)    NOT NULL,
+    period_key          VARCHAR(32)    NOT NULL,
+    created_at          DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at          DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                         ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_subscription_notices_period (subscription_id, notice_type, period_key),
+    INDEX ix_subscription_notices_tenant (tenant_id),
+    CONSTRAINT chk_subscription_notices_type
+        CHECK (notice_type IN ('EXPIRING', 'EXPIRED')),
+    CONSTRAINT fk_subscription_notices_subscription
+        FOREIGN KEY (subscription_id) REFERENCES subscriptions (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_subscription_notices_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- platform_notifications (Master Admin in-app alerts; not tenant-scoped)
+-- -----------------------------------------------------------------------------
+CREATE TABLE platform_notifications (
+    id                  CHAR(36)       NOT NULL,
+    type                VARCHAR(50)    NOT NULL,
+    title               VARCHAR(160)   NOT NULL,
+    message             TEXT           NOT NULL,
+    entity_type         VARCHAR(50)    NULL,
+    entity_id           CHAR(36)       NULL,
+    is_read             TINYINT(1)     NOT NULL DEFAULT 0,
+    read_at             DATETIME(6)    NULL,
+    created_at          DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at          DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                         ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_platform_notifications_unread (is_read, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------

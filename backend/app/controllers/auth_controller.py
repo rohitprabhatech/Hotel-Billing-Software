@@ -2,6 +2,7 @@
 
 from flask import request
 
+from app.repositories.master_admin_repository import MasterAdminRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth_schemas import (
     change_password_schema,
@@ -12,7 +13,7 @@ from app.schemas.auth_schemas import (
     token_schema,
 )
 from app.services.auth_service import AuthService
-from app.utils.request_context import require_request_context
+from app.utils.request_context import get_master_context, require_request_context
 from app.utils.responses import success_response
 
 
@@ -31,14 +32,27 @@ def login():
 
 
 def logout():
+    master = get_master_context()
+    ip, ua = _client_meta()
+    if master is not None:
+        admin = MasterAdminRepository.get_by_id(master.admin_id)
+        if admin is None:
+            from app.utils.exceptions import UnauthorizedError
+
+            raise UnauthorizedError("User is inactive or not found")
+        data = AuthService.logout_master(admin)
+        return success_response(data=data)
     ctx = require_request_context()
     user = UserRepository.get_by_id(ctx.user_id)
-    ip, ua = _client_meta()
     data = AuthService.logout(user, ip, ua)
     return success_response(data=data)
 
 
 def me():
+    master = get_master_context()
+    if master is not None:
+        admin = MasterAdminRepository.get_by_id(master.admin_id)
+        return success_response(data=AuthService.serialize_master_admin(admin))
     ctx = require_request_context()
     user = UserRepository.get_by_id(ctx.user_id)
     return success_response(data=AuthService.me(user))
@@ -82,9 +96,19 @@ def reset_password():
 
 
 def change_password():
+    payload = change_password_schema.load(request.get_json() or {})
+    master = get_master_context()
+    if master is not None:
+        admin = MasterAdminRepository.get_by_id(master.admin_id)
+        data = AuthService.change_master_password(
+            admin,
+            current_password=payload["current_password"],
+            new_password=payload["new_password"],
+            confirm_password=payload["confirm_password"],
+        )
+        return success_response(data=data)
     ctx = require_request_context()
     user = UserRepository.get_by_id(ctx.user_id)
-    payload = change_password_schema.load(request.get_json() or {})
     data = AuthService.change_password(
         user,
         current_password=payload["current_password"],

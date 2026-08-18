@@ -5,9 +5,12 @@ import pytest
 from app import create_app
 from app.extensions import db
 from app.models.role import ROLE_BILLING_USER, ROLE_OWNER, Role
+from app.models.subscription import PAYMENT_COMPLIMENTARY, SUBSCRIPTION_ACTIVE, Subscription
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.utils.ids import new_uuid
 from app.utils.security import hash_password
+from app.utils.tokens import utc_now_naive
 
 
 @pytest.fixture()
@@ -90,6 +93,27 @@ def _seed(session):
         ),
     ]
     session.add_all([owner_role, billing_role, tenant_a, tenant_b, *users])
+    now = utc_now_naive()
+    session.add_all(
+        [
+            Subscription(
+                id=new_uuid(),
+                tenant_id=tenant_a.id,
+                status=SUBSCRIPTION_ACTIVE,
+                starts_at=now,
+                ends_at=None,
+                payment_status=PAYMENT_COMPLIMENTARY,
+            ),
+            Subscription(
+                id=new_uuid(),
+                tenant_id=tenant_b.id,
+                status=SUBSCRIPTION_ACTIVE,
+                starts_at=now,
+                ends_at=None,
+                payment_status=PAYMENT_COMPLIMENTARY,
+            ),
+        ]
+    )
     session.commit()
 
 
@@ -98,3 +122,36 @@ def login(client, email, password):
     assert response.status_code == 200, response.get_json()
     token = response.get_json()["data"]["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+def seed_master_admin(
+    app,
+    *,
+    email="master@prabhatech.test",
+    password="Master@12345",
+    active=True,
+):
+    from app.models.master_admin import MasterAdmin
+    from app.repositories.master_admin_repository import MasterAdminRepository
+    from app.utils.ids import new_uuid
+
+    with app.app_context():
+        existing = MasterAdminRepository.find_by_email(email)
+        if existing is not None:
+            return email
+        admin = MasterAdmin(
+            id=new_uuid(),
+            name="Prabha Technology Admin",
+            email=email,
+            password_hash=hash_password(password),
+            is_active=active,
+            token_version=0,
+        )
+        db.session.add(admin)
+        db.session.commit()
+    return email
+
+
+def login_master(client, app, *, email="master@prabhatech.test", password="Master@12345"):
+    seed_master_admin(app, email=email, password=password)
+    return login(client, email, password)

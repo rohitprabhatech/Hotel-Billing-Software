@@ -1,0 +1,97 @@
+import {
+  Alert,
+  Chip,
+  CircularProgress,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
+import EmptyState from '../../components/EmptyState';
+import PageShell from '../../components/PageShell';
+import TableCard from '../../components/TableCard';
+import TruncateText from '../../components/TruncateText';
+import { listMasterTrials } from '../../services/masterService';
+
+function formatWhen(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
+export default function MasterTrialsPage() {
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    listMasterTrials({ per_page: 50 })
+      .then((payload) => {
+        if (active) setRows(payload.data || []);
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err.response?.data?.error?.message || 'Unable to load trials.');
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <PageShell>
+      {error ? <Alert severity="error">{error}</Alert> : null}
+
+      {loading ? (
+        <Stack alignItems="center" py={6}>
+          <CircularProgress size={28} />
+        </Stack>
+      ) : rows.length === 0 ? (
+        <EmptyState
+          title="No active trials"
+          description="Approved businesses appear here while their free trial is still running."
+        />
+      ) : (
+        <TableCard>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Business</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Started</TableCell>
+                <TableCell>Ends</TableCell>
+                <TableCell>Remaining</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id} hover>
+                  <TableCell>
+                    <TruncateText>{row.business_name || row.tenant_id}</TruncateText>
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" color="warning" label={row.status} />
+                  </TableCell>
+                  <TableCell>{formatWhen(row.trial_starts_at || row.starts_at)}</TableCell>
+                  <TableCell>{formatWhen(row.trial_ends_at || row.ends_at)}</TableCell>
+                  <TableCell>
+                    {row.remaining_days == null ? '—' : `${row.remaining_days} days`}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
+      )}
+    </PageShell>
+  );
+}

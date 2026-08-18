@@ -34,6 +34,12 @@ SCRIPTS = [
     "apply_stock_movements.py",
     "apply_stock_receive.py",
     "apply_perf_indexes.py",
+    "apply_master_admins.py",
+    "apply_registration_requests.py",
+    "apply_trial_management.py",
+    "apply_subscription_plans.py",
+    "apply_subscription_lifecycle.py",
+    "apply_expiry_notifications.py",
 ]
 
 

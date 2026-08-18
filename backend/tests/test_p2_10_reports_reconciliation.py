@@ -1,7 +1,7 @@
 """P2-10: reconcile report/dashboard totals against manual sample bills."""
 
 from app.utils.money import calculate_bill_totals
-from tests.conftest import login
+from tests.conftest import login, login_master
 
 
 def _manual_grand(unit_price, qty, gst_percentage, discount=0, payment_method="cash"):
@@ -21,7 +21,7 @@ def _manual_grand(unit_price, qty, gst_percentage, discount=0, payment_method="c
     return result
 
 
-def _register_owner(client, suffix: str):
+def _register_owner(client, app, suffix: str):
     email = f"p210-{suffix}@reconcile.test"
     response = client.post(
         "/api/v1/auth/register-business",
@@ -33,17 +33,23 @@ def _register_owner(client, suffix: str):
             "owner_email": email,
             "password": "Reconcile@12345",
             "confirm_password": "Reconcile@12345",
+            "terms_accepted": True,
         },
     )
     assert response.status_code == 201, response.get_json()
-    token = response.get_json()["data"]["verification_token"]
-    assert client.post("/api/v1/auth/verify-email", json={"token": token}).status_code == 200
+    master = login_master(client, app)
+    request_id = response.get_json()["data"]["request_id"]
+    approved = client.post(
+        f"/api/v1/master/registration-requests/{request_id}/approve",
+        headers=master,
+    )
+    assert approved.status_code == 200, approved.get_json()
     return login(client, email, "Reconcile@12345")
 
 
-def test_summary_today_week_month_match_manual_sample_bills(client):
+def test_summary_today_week_month_match_manual_sample_bills(client, app):
     """Isolated tenant: two finalized bills + one cancelled; metrics must match hand calc."""
-    owner = _register_owner(client, "a")
+    owner = _register_owner(client, app, "a")
 
     category_id = client.post(
         "/api/v1/categories",
@@ -151,9 +157,9 @@ def test_summary_today_week_month_match_manual_sample_bills(client):
     assert weekly["metrics"]["bill_count"] == expected_bills
 
 
-def test_billing_home_today_summary_matches_finalized_only(client):
+def test_billing_home_today_summary_matches_finalized_only(client, app):
     """Billing home KPI path (/bills/today-summary) agrees with report today sales."""
-    owner = _register_owner(client, "b")
+    owner = _register_owner(client, app, "b")
     category_id = client.post(
         "/api/v1/categories",
         headers=owner,

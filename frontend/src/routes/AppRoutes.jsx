@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import AuthLayout from '../layouts/AuthLayout';
 import BillingLayout from '../layouts/BillingLayout';
+import MasterLayout from '../layouts/MasterLayout';
 import OwnerLayout from '../layouts/OwnerLayout';
 import LoginPage from '../pages/auth/LoginPage';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
@@ -30,6 +31,14 @@ const ItemsPage = lazy(() => import('../pages/owner/ItemsPage'));
 const StockMovementsPage = lazy(() => import('../pages/owner/StockMovementsPage'));
 const OwnerBillsPage = lazy(() => import('../pages/owner/OwnerBillsPage'));
 const OwnerDashboardPage = lazy(() => import('../pages/owner/OwnerDashboardPage'));
+const MasterDashboardPage = lazy(() => import('../pages/master/MasterDashboardPage'));
+const MasterRegistrationRequestsPage = lazy(
+  () => import('../pages/master/MasterRegistrationRequestsPage')
+);
+const MasterTrialsPage = lazy(() => import('../pages/master/MasterTrialsPage'));
+const MasterTrialSettingsPage = lazy(() => import('../pages/master/MasterTrialSettingsPage'));
+const MasterPlansPage = lazy(() => import('../pages/master/MasterPlansPage'));
+const MasterBusinessesPage = lazy(() => import('../pages/master/MasterBusinessesPage'));
 const SettingsPage = lazy(() => import('../pages/owner/SettingsPage'));
 const UsersPage = lazy(() => import('../pages/owner/UsersPage'));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage'));
@@ -56,6 +65,19 @@ export default function AppRoutes() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute roles={['MASTER_ADMIN']} />}>
+          <Route path="/master" element={<MasterLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<MasterDashboardPage />} />
+            <Route path="registration-requests" element={<MasterRegistrationRequestsPage />} />
+            <Route path="trials" element={<MasterTrialsPage />} />
+            <Route path="plans" element={<MasterPlansPage />} />
+            <Route path="businesses" element={<MasterBusinessesPage />} />
+            <Route path="settings/trial" element={<MasterTrialSettingsPage />} />
+            <Route path="change-password" element={<ChangePasswordPage />} />
+          </Route>
         </Route>
 
         <Route element={<ProtectedRoute roles={['OWNER']} />}>

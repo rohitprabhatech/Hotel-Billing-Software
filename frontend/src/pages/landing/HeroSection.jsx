@@ -6,7 +6,14 @@ import { PATHS } from '../../routes/paths';
 import BillingDashboardMock from './BillingDashboardMock';
 import { CONTENT_MAX, DISPLAY_FONT } from './constants';
 
-export default function HeroSection({ isDark, scrollToHash }) {
+function planHeadline(plans) {
+  const first = plans?.[0];
+  if (!first) return COMPANY.planPriceLabel;
+  const period = first.billing_cycle === 'YEARLY' ? 'year' : 'month';
+  return `₹${Number(first.price).toLocaleString('en-IN')} / ${period}`;
+}
+
+export default function HeroSection({ isDark, scrollToHash, plans = [] }) {
   return (
     <Box
       component="section"
@@ -164,7 +171,7 @@ export default function HeroSection({ isDark, scrollToHash }) {
           </Stack>
 
           <Typography variant="body2" color="text.secondary" sx={{ letterSpacing: '0.01em' }}>
-            {COMPANY.planPriceLabel}
+            {planHeadline(plans)}
             <Box component="span" sx={{ mx: 1, opacity: 0.45 }}>
               ·
             </Box>

@@ -3,6 +3,7 @@
 from sqlalchemy import func
 
 from app.extensions import db
+from app.models.role import ROLE_OWNER, Role
 from app.models.user import User
 
 
@@ -43,6 +44,20 @@ class UserRepository:
         return (
             db.session.query(User)
             .filter(User.tenant_id == tenant_id)
+            .order_by(User.created_at.asc())
+            .all()
+        )
+
+    @staticmethod
+    def list_active_owners(tenant_id: str) -> list[User]:
+        return (
+            db.session.query(User)
+            .join(Role, User.role_id == Role.id)
+            .filter(
+                User.tenant_id == tenant_id,
+                User.is_active.is_(True),
+                Role.name == ROLE_OWNER,
+            )
             .order_by(User.created_at.asc())
             .all()
         )

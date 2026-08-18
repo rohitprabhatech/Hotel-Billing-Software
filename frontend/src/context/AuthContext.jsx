@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { fetchMe } from '../services/authService';
 import { isValidRole } from '../utils/authRouting';
 
 const AuthContext = createContext(null);
@@ -34,32 +35,78 @@ export function AuthProvider({ children }) {
   const initial = readValidSession();
   const [token, setToken] = useState(() => initial.token);
   const [user, setUser] = useState(() => initial.user);
+  const [sessionReady, setSessionReady] = useState(() => !initial.token);
+
+  useEffect(() => {
+    let active = true;
+    if (!token) {
+      setSessionReady(true);
+      return () => {
+        active = false;
+      };
+    }
+    setSessionReady(false);
+    fetchMe()
+      .then((payload) => {
+        const nextUser = payload?.data;
+        if (!active) return;
+        if (!nextUser || !isValidRole(nextUser.role)) {
+          clearStoredSession();
+          setToken(null);
+          setUser(null);
+          return;
+        }
+        localStorage.setItem('auth_user', JSON.stringify(nextUser));
+        setUser(nextUser);
+      })
+      .catch(() => {
+        if (!active) return;
+        clearStoredSession();
+        setToken(null);
+        setUser(null);
+      })
+      .finally(() => {
+        if (active) setSessionReady(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [token]);
 
   const value = useMemo(
     () => ({
       token,
       user,
-      isAuthenticated: Boolean(token && user && isValidRole(user.role)),
+      sessionReady,
+      isAuthenticated: Boolean(sessionReady && token && user && isValidRole(user.role)),
       role: isValidRole(user?.role) ? user.role : null,
       login: (accessToken, nextUser) => {
         if (!accessToken || !nextUser || !isValidRole(nextUser.role)) {
           clearStoredSession();
           setToken(null);
           setUser(null);
+          setSessionReady(true);
           return;
         }
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('auth_user', JSON.stringify(nextUser));
         setToken(accessToken);
         setUser(nextUser);
+        setSessionReady(true);
+      },
+      updateUser: (nextUser) => {
+        if (!nextUser || !isValidRole(nextUser.role)) return;
+        localStorage.setItem('auth_user', JSON.stringify(nextUser));
+        setUser(nextUser);
       },
       logout: () => {
         clearStoredSession();
         setToken(null);
         setUser(null);
+        setSessionReady(true);
       },
     }),
-    [token, user],
+    [sessionReady, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

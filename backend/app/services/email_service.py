@@ -199,3 +199,138 @@ class EmailService:
             html_body=html,
             text_body=f"Hello {name},\n\nNew login detected from {ip_address or 'unknown'}.\n",
         )
+
+    @staticmethod
+    def send_registration_received_email(*, to: str, name: str, business_name: str):
+        html = EmailService._render(
+            "registration_received.html",
+            name=name,
+            business_name=business_name,
+        )
+        EmailService.send_email(
+            to=to,
+            subject="We received your Business Billing registration",
+            html_body=html,
+            text_body=(
+                f"Hello {name},\n\n"
+                f"Your registration request for {business_name} has been submitted successfully. "
+                "Your account will be activated after approval by Prabha Technology.\n"
+            ),
+        )
+
+    @staticmethod
+    def send_registration_approved_email(
+        *,
+        to: str,
+        name: str,
+        business_name: str,
+        login_url: str,
+        trial_days: int | None = None,
+        trial_ends_at: str | None = None,
+    ):
+        html = EmailService._render(
+            "registration_approved.html",
+            name=name,
+            business_name=business_name,
+            login_url=login_url,
+            trial_days=trial_days,
+            trial_ends_at=trial_ends_at,
+        )
+        trial_line = ""
+        if trial_days:
+            trial_line = (
+                f"Your free trial is {trial_days} days"
+                + (f" (until {trial_ends_at}).\n" if trial_ends_at else ".\n")
+            )
+        EmailService.send_email(
+            to=to,
+            subject="Your Business Billing account is approved",
+            html_body=html,
+            text_body=(
+                f"Hello {name},\n\n"
+                f"Your registration for {business_name} has been approved. "
+                f"{trial_line}"
+                f"You can sign in at {login_url}\n"
+            ),
+        )
+
+    @staticmethod
+    def send_registration_rejected_email(
+        *, to: str, name: str, business_name: str, reason: str
+    ):
+        html = EmailService._render(
+            "registration_rejected.html",
+            name=name,
+            business_name=business_name,
+            reason=reason,
+        )
+        EmailService.send_email(
+            to=to,
+            subject="Update on your Business Billing registration",
+            html_body=html,
+            text_body=(
+                f"Hello {name},\n\n"
+                f"Your registration for {business_name} was not approved.\n"
+                f"Reason: {reason}\n"
+            ),
+        )
+
+    @staticmethod
+    def send_subscription_expiring_email(
+        *,
+        to: str,
+        name: str,
+        business_name: str,
+        remaining_days: int,
+        login_url: str,
+        ends_at: str | None = None,
+    ):
+        days = int(remaining_days)
+        day_word = "day" if days == 1 else "days"
+        html = EmailService._render(
+            "subscription_expiring.html",
+            name=name,
+            business_name=business_name,
+            remaining_days=days,
+            day_word=day_word,
+            ends_at=ends_at,
+            login_url=login_url,
+        )
+        until = f" (until {ends_at})" if ends_at else ""
+        EmailService.send_email(
+            to=to,
+            subject=f"Your {APP_DISPLAY_NAME} subscription expires in {days} {day_word}",
+            html_body=html,
+            text_body=(
+                f"Hello {name},\n\n"
+                f"Your subscription for {business_name} expires in {days} {day_word}{until}. "
+                "Contact Prabha Technology to renew access.\n"
+                f"Sign in: {login_url}\n"
+            ),
+        )
+
+    @staticmethod
+    def send_subscription_expired_email(
+        *,
+        to: str,
+        name: str,
+        business_name: str,
+        login_url: str,
+    ):
+        html = EmailService._render(
+            "subscription_expired.html",
+            name=name,
+            business_name=business_name,
+            login_url=login_url,
+        )
+        EmailService.send_email(
+            to=to,
+            subject=f"Your {APP_DISPLAY_NAME} subscription has expired",
+            html_body=html,
+            text_body=(
+                f"Hello {name},\n\n"
+                f"Your subscription for {business_name} has expired. "
+                "You can still sign in, but billing is locked until Prabha Technology renews access.\n"
+                f"Sign in: {login_url}\n"
+            ),
+        )

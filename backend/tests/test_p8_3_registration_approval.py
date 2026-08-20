@@ -11,7 +11,7 @@ from tests.conftest import login, login_master, seed_master_admin
 def _register(client, **overrides):
     payload = {
         "business_name": "Sunrise Inn Pvt Ltd",
-        "business_type": "hotel",
+        "business_type": "hotel_restaurant",
         "address": "MG Road",
         "city": "Pune",
         "mobile": "9876543210",
@@ -35,7 +35,7 @@ def test_register_does_not_create_tenant_or_allow_login(client):
     assert body["status"] == REGISTRATION_PENDING
     assert "submitted successfully" in body["message"]
     assert "Prabha Technology" in body["message"]
-    assert body["business_type"] == "hotel"
+    assert body["business_type"] == "hotel_restaurant"
 
     outbox = EmailService.get_outbox()
     assert outbox

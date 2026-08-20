@@ -11,7 +11,7 @@ def _register(client, email="trial-owner@shop.test"):
         "/api/v1/auth/register-business",
         json={
             "business_name": "Trial Shop",
-            "business_type": "retail_shop",
+            "business_type": "stationery",
             "owner_name": "Trial Owner",
             "owner_email": email,
             "password": "Trial@12345",

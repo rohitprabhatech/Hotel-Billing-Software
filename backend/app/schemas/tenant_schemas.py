@@ -2,7 +2,7 @@
 
 from marshmallow import EXCLUDE, Schema, ValidationError, fields, validate, validates
 
-from app.constants.business_types import ALLOWED_BUSINESS_TYPES
+from app.constants.business_types import normalize_business_type
 
 
 class UpdateTenantSchema(Schema):
@@ -29,9 +29,10 @@ class UpdateTenantSchema(Schema):
     def validate_business_type(self, value, **kwargs):
         if value is None:
             return
-        code = str(value).strip().lower()
-        if code not in ALLOWED_BUSINESS_TYPES:
-            raise ValidationError("Invalid business type")
+        try:
+            normalize_business_type(value, allow_legacy=False)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
 
 
 update_tenant_schema = UpdateTenantSchema()

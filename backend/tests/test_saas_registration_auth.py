@@ -10,7 +10,7 @@ def test_register_approve_login_flow(client, app):
         "/api/v1/auth/register-business",
         json={
             "business_name": "Sunrise Inn Pvt Ltd",
-            "business_type": "hotel",
+            "business_type": "hotel_restaurant",
             "address": "MG Road",
             "city": "Pune",
             "mobile": "9876543210",
@@ -26,7 +26,7 @@ def test_register_approve_login_flow(client, app):
     assert body["status"] == "PENDING"
     assert "tenant_id" not in body
     assert "verification_token" not in body
-    assert body["business_type"] == "hotel"
+    assert body["business_type"] == "hotel_restaurant"
     outbox = EmailService.get_outbox()
     assert outbox
     assert "registration" in outbox[0]["subject"].lower() or "received" in outbox[0]["subject"].lower()
@@ -51,8 +51,8 @@ def test_register_approve_login_flow(client, app):
     assert ok.status_code == 200
     assert ok.get_json()["data"]["user"]["role"] == "OWNER"
     assert ok.get_json()["data"]["user"]["tenant"]["business_name"] == "Sunrise Inn Pvt Ltd"
-    assert ok.get_json()["data"]["user"]["tenant"]["business_type"] == "hotel"
-    assert ok.get_json()["data"]["user"]["tenant"]["business_type_label"] == "Hotel"
+    assert ok.get_json()["data"]["user"]["tenant"]["business_type"] == "hotel_restaurant"
+    assert ok.get_json()["data"]["user"]["tenant"]["business_type_label"] == "Hotels / Restaurants"
 
 
 def test_legacy_register_hotel_alias_still_works(client):
@@ -61,7 +61,7 @@ def test_legacy_register_hotel_alias_still_works(client):
         json={
             "hotel_name": "Legacy Cafe",
             "business_name": "Legacy Cafe",
-            "business_type": "restaurant",
+            "business_type": "cafe_tea",
             "owner_name": "Legacy Owner",
             "owner_email": "legacy@cafe.test",
             "password": "Legacy@12345",
@@ -70,12 +70,13 @@ def test_legacy_register_hotel_alias_still_works(client):
         },
     )
     assert response.status_code == 201, response.get_json()
-    assert response.get_json()["data"]["business_type"] == "restaurant"
+    assert response.get_json()["data"]["business_type"] == "cafe_tea"
 
 
 def test_register_duplicate_email_rejected(client):
     payload = {
         "business_name": "Hotel Dup",
+        "business_type": "hotel_restaurant",
         "owner_name": "Dup",
         "owner_email": "owner@hotela.com",
         "password": "DupPass@123",
@@ -147,7 +148,7 @@ def test_registered_tenants_are_isolated(client, app):
         "/api/v1/auth/register-business",
         json={
             "business_name": "Iso A",
-            "business_type": "clothing_store",
+            "business_type": "clothing",
             "mobile": "9000000001",
             "owner_name": "Iso Owner A",
             "owner_email": "iso-a@test.com",
@@ -160,7 +161,7 @@ def test_registered_tenants_are_isolated(client, app):
         "/api/v1/auth/register-business",
         json={
             "business_name": "Iso B",
-            "business_type": "grocery_store",
+            "business_type": "grocery_kirana",
             "mobile": "9000000002",
             "owner_name": "Iso Owner B",
             "owner_email": "iso-b@test.com",
@@ -193,8 +194,8 @@ def test_registered_tenants_are_isolated(client, app):
     assert tenant_a["id"] != tenant_b["id"]
     assert tenant_a["business_name"] == "Iso A"
     assert tenant_b["business_name"] == "Iso B"
-    assert tenant_a["business_type"] == "clothing_store"
-    assert tenant_b["business_type"] == "grocery_store"
+    assert tenant_a["business_type"] == "clothing"
+    assert tenant_b["business_type"] == "grocery_kirana"
 
 
 def test_profile_update(client):

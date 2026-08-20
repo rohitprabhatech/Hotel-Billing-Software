@@ -14,6 +14,12 @@ def list_business_types():
     return tenant_controller.list_business_types()
 
 
+@tenants_bp.get("/me/modules")
+@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
+def get_my_modules():
+    return tenant_controller.get_my_modules()
+
+
 @tenants_bp.get("/me")
 @roles_required(ROLE_OWNER, ROLE_BILLING_USER)
 def get_my_tenant():

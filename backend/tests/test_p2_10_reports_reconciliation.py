@@ -27,7 +27,7 @@ def _register_owner(client, app, suffix: str):
         "/api/v1/auth/register-business",
         json={
             "business_name": f"Reconcile Shop {suffix}",
-            "business_type": "grocery_store",
+            "business_type": "grocery_kirana",
             "mobile": "9000000010",
             "owner_name": "Reconcile Owner",
             "owner_email": email,

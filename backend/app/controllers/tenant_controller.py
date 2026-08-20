@@ -13,6 +13,12 @@ def list_business_types():
     return success_response(data=TenantService.list_business_types())
 
 
+def get_my_modules():
+    from app.services.module_service import ModuleService
+
+    return success_response(data=ModuleService.resolve_for_current_tenant())
+
+
 def get_my_tenant():
     ctx = require_request_context()
     full = ctx.role == ROLE_OWNER

@@ -111,12 +111,12 @@ def test_duplicate_line_items_are_merged(client):
     assert bill["subtotal"] == 150.0
 
 
-def test_register_other_and_invalid_business_type(client):
+def test_register_stationery_and_invalid_business_type(client):
     ok = client.post(
         "/api/v1/auth/register-business",
         json={
             "business_name": "Generic Shop",
-            "business_type": "other",
+            "business_type": "stationery",
             "owner_name": "Gen Owner",
             "owner_email": "owner@generic.shop",
             "password": "Generic@12345",
@@ -125,7 +125,7 @@ def test_register_other_and_invalid_business_type(client):
         },
     )
     assert ok.status_code == 201, ok.get_json()
-    assert ok.get_json()["data"]["business_type"] == "other"
+    assert ok.get_json()["data"]["business_type"] == "stationery"
 
     bad = client.post(
         "/api/v1/auth/register-business",
@@ -142,7 +142,7 @@ def test_register_other_and_invalid_business_type(client):
     assert bad.status_code == 400
 
 
-def test_register_defaults_business_type_to_other(client):
+def test_register_requires_business_type(client):
     response = client.post(
         "/api/v1/auth/register-business",
         json={
@@ -154,8 +154,7 @@ def test_register_defaults_business_type_to_other(client):
             "terms_accepted": True,
         },
     )
-    assert response.status_code == 201, response.get_json()
-    assert response.get_json()["data"]["business_type"] == "other"
+    assert response.status_code == 400
 
 
 def test_owner_updates_tenant_settings_fields(client):

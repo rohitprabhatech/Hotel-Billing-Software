@@ -23,7 +23,7 @@ class RegisterBusinessSchema(Schema):
         unknown = EXCLUDE
 
     business_name = fields.String(load_default=None, validate=validate.Length(max=200))
-    business_type = fields.String(load_default="other", validate=validate.Length(min=1, max=40))
+    business_type = fields.String(required=True, validate=validate.Length(min=1, max=40))
     name = fields.String(load_default=None, validate=validate.Length(max=120))
     hotel_name = fields.String(load_default=None, validate=validate.Length(max=120))  # legacy
     address = fields.String(load_default=None, validate=validate.Length(max=255))
@@ -61,7 +61,9 @@ class RegisterBusinessSchema(Schema):
             data["business_name"] = display_name
         if not display_name:
             data["name"] = data["business_name"]
-        business_type = (data.get("business_type") or "other").strip().lower()
+        business_type = (data.get("business_type") or "").strip().lower()
+        if not business_type:
+            raise ValidationError("Business type is required", "business_type")
         if business_type not in ALLOWED_BUSINESS_TYPES:
             raise ValidationError("Invalid business type", "business_type")
         data["business_type"] = business_type

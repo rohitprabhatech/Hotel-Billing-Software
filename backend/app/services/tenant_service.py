@@ -3,8 +3,8 @@
 from decimal import Decimal, InvalidOperation
 
 from app.constants.business_types import (
-    DEFAULT_BUSINESS_TYPE,
     business_type_label,
+    coerce_business_type,
     is_fssai_relevant,
     list_business_types,
     normalize_business_type,
@@ -12,6 +12,7 @@ from app.constants.business_types import (
 from app.extensions import db
 from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
+from app.services.module_service import ModuleService
 from app.utils.exceptions import NotFoundError, ValidationError
 from app.utils.request_context import require_request_context
 
@@ -59,7 +60,9 @@ class TenantService:
 
         if "business_type" in payload and payload["business_type"] is not None:
             try:
-                tenant.business_type = normalize_business_type(payload["business_type"])
+                tenant.business_type = normalize_business_type(
+                    payload["business_type"], allow_legacy=False
+                )
             except ValueError as exc:
                 raise ValidationError(str(exc)) from exc
 
@@ -80,8 +83,8 @@ class TenantService:
             raise ValidationError("Business name is required")
         if not tenant.name:
             raise ValidationError("Business display name is required")
-        if not tenant.business_type:
-            tenant.business_type = DEFAULT_BUSINESS_TYPE
+        # Coerce any leftover legacy code on save (should already be migrated).
+        tenant.business_type = coerce_business_type(tenant.business_type)
 
         AuditService.log(
             tenant_id=ctx.tenant_id,
@@ -96,7 +99,7 @@ class TenantService:
 
     @staticmethod
     def serialize(tenant, *, full: bool = True):
-        business_type = tenant.business_type or DEFAULT_BUSINESS_TYPE
+        business_type = coerce_business_type(tenant.business_type)
         data = {
             "id": tenant.id,
             "name": tenant.name,
@@ -104,6 +107,7 @@ class TenantService:
             "business_type": business_type,
             "business_type_label": business_type_label(business_type),
             "status": tenant.status,
+            "enabled_modules": ModuleService.enabled_codes_for_tenant(tenant),
         }
         if full:
             data.update(

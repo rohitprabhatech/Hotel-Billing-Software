@@ -3,7 +3,8 @@
 from flask import current_app
 from flask_jwt_extended import create_access_token
 
-from app.constants.business_types import business_type_label
+from app.constants.business_types import business_type_label, coerce_business_type
+from app.services.module_service import ModuleService
 from app.extensions import db
 from app.models.auth_token import EmailVerificationToken, PasswordResetToken
 from app.models.master_admin import ROLE_MASTER_ADMIN, MasterAdmin
@@ -448,9 +449,10 @@ class AuthService:
                 "id": user.tenant.id,
                 "name": user.tenant.name,
                 "business_name": user.tenant.business_name,
-                "business_type": user.tenant.business_type or "other",
+                "business_type": coerce_business_type(user.tenant.business_type),
                 "business_type_label": business_type_label(user.tenant.business_type),
                 "status": user.tenant.status,
+                "enabled_modules": ModuleService.enabled_codes_for_tenant(user.tenant),
                 "subscription": SubscriptionService.serialize_for_tenant(user.tenant_id),
             },
         }

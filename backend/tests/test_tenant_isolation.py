@@ -53,8 +53,8 @@ def test_tenant_profile_is_scoped(client):
 
     assert tenant_a["business_name"] == "Hotel A"
     assert tenant_b["business_name"] == "Hotel B"
-    assert tenant_a["business_type"] == "hotel"
-    assert tenant_b["business_type"] == "restaurant"
+    assert tenant_a["business_type"] == "hotel_restaurant"
+    assert tenant_b["business_type"] == "cafe_tea"
     assert tenant_a["id"] != tenant_b["id"]
 
 
@@ -63,9 +63,13 @@ def test_business_types_endpoint_is_public(client):
     assert response.status_code == 200
     types = response.get_json()["data"]["business_types"]
     codes = {row["code"] for row in types}
-    assert "restaurant" in codes
-    assert "clothing_store" in codes
-    assert "other" in codes
+    assert "hotel_restaurant" in codes
+    assert "clothing" in codes
+    assert "travel_agency" in codes
+    assert len(types) == 14
+    assert "medical" not in codes
+    assert "medical_store" not in codes
+    assert "other" not in codes
 
 
 def test_owner_can_update_business_type(client):
@@ -73,12 +77,12 @@ def test_owner_can_update_business_type(client):
     response = client.put(
         "/api/v1/tenants/me",
         headers=headers,
-        json={"business_type": "clothing_store"},
+        json={"business_type": "clothing"},
     )
     assert response.status_code == 200, response.get_json()
     data = response.get_json()["data"]
-    assert data["business_type"] == "clothing_store"
-    assert data["business_type_label"] == "Clothing Store"
+    assert data["business_type"] == "clothing"
+    assert data["business_type_label"] == "Clothing Shops"
     assert data["fssai_relevant"] is False
 
 

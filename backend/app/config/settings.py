@@ -5,6 +5,8 @@ from datetime import timedelta
 
 from dotenv import load_dotenv
 
+from app.utils.database_url import resolve_database_url
+
 load_dotenv()
 
 
@@ -20,9 +22,8 @@ class BaseConfig:
         seconds=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "28800"))
     )
 
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL",
-        "mysql+pymysql://root:password@localhost/hotel_billing",
+    SQLALCHEMY_DATABASE_URI = resolve_database_url() or (
+        "mysql+pymysql://root:password@localhost/hotel_billing"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {

@@ -6,8 +6,14 @@ import { useColorMode } from '../context/ColorModeContext';
 
 const pages = {
   '/login': {
+    overline: 'Business Billing Software',
     title: 'Sign in',
     subtitle: 'Access your business billing workspace',
+  },
+  '/master/login': {
+    overline: 'Prabha Technology',
+    title: 'Administration',
+    subtitle: '',
   },
   '/register': {
     title: 'Register Business',
@@ -31,6 +37,7 @@ export default function AuthLayout() {
   const { pathname } = useLocation();
   const { isDark } = useColorMode();
   const meta = pages[pathname] || {
+    overline: 'Business Billing Software',
     title: 'Business Billing Software',
     subtitle: '',
   };
@@ -67,7 +74,7 @@ export default function AuthLayout() {
           }}
         >
           <Typography variant="overline" color="primary" letterSpacing={1.2}>
-            Business Billing Software
+            {meta.overline || 'Business Billing Software'}
           </Typography>
           <Typography
             variant="h5"

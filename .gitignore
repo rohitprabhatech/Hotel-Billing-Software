@@ -30,3 +30,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Live DB dumps (contain hashes / PII — do not commit)
+backend/backups/

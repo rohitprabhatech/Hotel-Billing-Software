@@ -4,7 +4,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import KpiCard from '../../components/KpiCard';
 import PageShell from '../../components/PageShell';
 import { COMPANY } from '../../constants/company';
-import { PATHS } from '../../routes/paths';
+import { PATHS, masterBusinessesPath } from '../../routes/paths';
 import { fetchMasterDashboardSummary } from '../../services/masterService';
 
 export default function MasterDashboardPage() {
@@ -47,13 +47,39 @@ export default function MasterDashboardPage() {
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard title="Total businesses" value={summary?.total_businesses ?? '—'} />
+          <Box
+            component={RouterLink}
+            to={PATHS.masterBusinesses}
+            sx={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
+          >
+            <KpiCard title="Total businesses" value={summary?.total_businesses ?? '—'} hint="All approved businesses" />
+          </Box>
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard title="Active businesses" value={summary?.active_businesses ?? '—'} />
+          <Box
+            component={RouterLink}
+            to={masterBusinessesPath({ tenant_status: 'ACTIVE' })}
+            sx={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
+          >
+            <KpiCard
+              title="Active businesses"
+              value={summary?.active_businesses ?? '—'}
+              hint="Account active — login allowed"
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard title="Suspended businesses" value={summary?.suspended_businesses ?? '—'} />
+          <Box
+            component={RouterLink}
+            to={masterBusinessesPath({ tenant_status: 'SUSPENDED' })}
+            sx={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
+          >
+            <KpiCard
+              title="Suspended businesses"
+              value={summary?.suspended_businesses ?? '—'}
+              hint="Deactivated accounts — login blocked"
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Box
@@ -84,7 +110,7 @@ export default function MasterDashboardPage() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Box
             component={RouterLink}
-            to={PATHS.masterBusinesses}
+            to={masterBusinessesPath({ status: 'EXPIRING' })}
             sx={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
           >
             <KpiCard
@@ -97,7 +123,7 @@ export default function MasterDashboardPage() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Box
             component={RouterLink}
-            to={PATHS.masterBusinesses}
+            to={masterBusinessesPath({ status: 'EXPIRED' })}
             sx={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
           >
             <KpiCard

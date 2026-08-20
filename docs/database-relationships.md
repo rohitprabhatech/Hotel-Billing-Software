@@ -1,8 +1,8 @@
 # Database Relationships
 
-**Sprint:** 4 — Database relationship refactor  
-**Canonical greenfield schema:** `backend/sql/02_schema.sql`  
-**Product:** Multi-business billing SaaS (shared MySQL DB + `tenant_id`)
+**Phase 8 + follow-on (Sprints 1–15)**  
+**Canonical greenfield schema:** `backend/sql/02_schema.sql` (23 application tables)  
+**Product:** Multi-business billing SaaS (shared MySQL/MariaDB + `tenant_id`)
 
 ---
 
@@ -40,6 +40,8 @@ subscriptions ──► tenants (tenant_id RESTRICT)
 subscription_notices ──► subscriptions (subscription_id RESTRICT)
                       └──► tenants (tenant_id RESTRICT)
 platform_notifications (Master Admin — no tenant_id)
+platform_audit_logs ──► master_admins (actor_id SET NULL)
+                     └──► tenants (tenant_id SET NULL, optional)
 ```
 
 ---
@@ -61,11 +63,15 @@ platform_notifications (Master Admin — no tenant_id)
 | `stock_movements.item_id → items` | **RESTRICT** | Ledger requires catalog row |
 | `stock_movements.created_by → users` | **SET NULL** | Keep movement if user removed |
 | Auth token tables → users | **CASCADE** | Tokens are ephemeral |
+| `registration_requests.approved_by / rejected_by → master_admins` | **SET NULL** | Keep request history if Master row removed |
+| `registration_requests.tenant_id → tenants` | **SET NULL** | Set on approve; optional link |
 | `subscriptions.plan_id → subscription_plans` | **SET NULL** | Keep entitlement if a plan row is removed; billed price stays on the subscription |
 | `subscription_notices.subscription_id → subscriptions` | **RESTRICT** | Idempotency log must stay with subscription |
 | `subscription_notices.tenant_id → tenants` | **RESTRICT** | Consistent with other tenant-scoped tables |
+| `platform_audit_logs.actor_id → master_admins` | **SET NULL** | Keep the action if a Master Admin row is later removed |
+| `platform_audit_logs.tenant_id → tenants` | **SET NULL** | Optional link; platform audit is not tenant-scoped |
 
-**Application rule:** Soft-deactivate items/categories; cancel bills. Do not hard-delete financial rows via API.
+**Application rule:** Soft-deactivate items/categories; cancel bills. Do not hard-delete financial rows via API. Master **deactivate** sets `tenants.status=SUSPENDED` — data is retained.
 
 ---
 
@@ -77,7 +83,7 @@ platform_notifications (Master Admin — no tenant_id)
 | roles | `id` | `name` | — |
 | users | `id` | `(tenant_id, email)` | tenant, tenant+role, tenant+active |
 | categories | `id` | `(tenant_id, parent_key, name)` | tenant, tenant+active, parent |
-| items | `id` | `(tenant_id, name)` | tenant, tenant+category, tenant+active, created_by |
+| items | `id` | `(tenant_id, name)`; SKU when set | tenant, tenant+category, tenant+active, created_by |
 | bills | `id` | `(tenant_id, bill_number)`, `(tenant_id, bill_sequence)` | tenant+created_at/status/created_by/payment_method; composite status+created_at |
 | bill_items | `id` | — | tenant+bill, tenant+item |
 | bill_deliveries | `id` | — | tenant+bill, tenant+created, **tenant+method+bill+created**, provider_message_id |
@@ -87,10 +93,14 @@ platform_notifications (Master Admin — no tenant_id)
 | bill_number_counters | `tenant_id` | — | — |
 | password_reset_tokens | `id` | `token_hash` | `user_id` |
 | email_verification_tokens | `id` | `token_hash` | `user_id` |
+| master_admins | `id` | `email` | `is_active` |
+| registration_requests | `id` | — | status, owner_email, requested_at |
+| platform_settings | `id` | singleton row | — |
 | subscription_plans | `id` | — | `is_active`+`is_public`+`display_order` |
 | subscriptions | `id` | — | tenant, status, trial_ends, plan_id |
 | subscription_notices | `id` | `(subscription_id, notice_type, period_key)` | subscription_id, tenant_id |
 | platform_notifications | `id` | — | created_at, is_read |
+| platform_audit_logs | `id` | — | actor_id, action, tenant_id, created_at |
 
 ---
 
@@ -113,6 +123,7 @@ platform_notifications (Master Admin — no tenant_id)
 ## 5. Tenant isolation
 
 - Every business table (except global `roles`) carries `tenant_id` **or** reaches tenant via `user_id`.
+- Platform tables (`master_admins`, `platform_settings`, `subscription_plans`, `platform_notifications`, `platform_audit_logs`) have **no** tenant scope (or optional `tenant_id` on audit only).
 - Isolation is enforced in repositories/services (JWT → request context → filters).
 - There is **no** MySQL RLS. New queries must always scope by `tenant_id`.
 
@@ -123,12 +134,15 @@ platform_notifications (Master Admin — no tenant_id)
 | Path | Use |
 |------|-----|
 | `backend/sql/01_create_database.sql` | Create empty DB |
-| `backend/sql/02_schema.sql` | **Fresh install** — full current schema |
-| `backend/sql/03_saas_auth_alter.sql` | Legacy alter notes (superseded by Alembic/helpers for upgrades) |
-| `backend/migrations/versions/*` | Incremental upgrades for existing DBs |
-| `backend/scripts/apply_pending_schema.py` | Run all idempotent apply helpers in order |
+| `backend/sql/02_schema.sql` | **Fresh install** — full current schema (23 tables; **DROP**s first) |
+| `backend/sql/03_saas_auth_alter.sql` | **Obsolete** — do not apply |
+| `backend/migrations/versions/*` | Incremental upgrades; head `20260818_phase8_saas` |
+| `backend/scripts/apply_pending_schema.py` | Idempotent helpers for existing DBs |
+| `backend/scripts/stamp_alembic_head.py` | Stamp live DB after helpers (do not blind-upgrade) |
+| `backend/scripts/inspect_database_schema.py` | Read-only live inspect |
+| `backend/scripts/check_platform_ready.py` | Schema + Master seed readiness |
 
-### Upgrade order (Alembic)
+### Upgrade order (Alembic chain)
 
 1. `20260326_saas_auth`  
 2. `20260326_item_created_by`  
@@ -138,8 +152,13 @@ platform_notifications (Master Admin — no tenant_id)
 6. `20260814_item_catalog_fields`  
 7. `20260814_category_parent_key`  
 8. `20260814_bill_report_index`  
+9. `20260814_stock_notifications`  
+10. `20260814_whatsapp_bill_delivery`  
+11. `20260814_users_email_unique`  
+12. `20260814_whatsapp_webhook_statuses`  
+13. `20260818_phase8_saas` (Master + subscriptions + platform audit/notifications)
 
-Or: `python scripts/apply_pending_schema.py` with `DATABASE_URL` set (includes email delivery, stock ledger, and `apply_perf_indexes.py`).
+**Live Hostinger path:** `apply_pending_schema.py` (includes email/stock/perf + Phase 8 helpers) → `stamp_alembic_head.py`. Do **not** `flask db upgrade` from an empty `alembic_version` on production.
 
 ### ORM load notes (speed)
 
@@ -147,24 +166,26 @@ Or: `python scripts/apply_pending_schema.py` with `DATABASE_URL` set (includes e
 - List queries also use `noload(Bill.items)` + `joinedload(Bill.creator)`.
 - Detail/`get_by_id` still `joinedload(Bill.items)`.
 - WhatsApp + email latest status for a page of bills loads in **one** delivery query.
+- Master business lists: SQL pagination; status filter uses ID scan + page hydrate (Sprints 7 / 13).
 
 ---
 
 ## 7. Known intentional asymmetries
 
 1. **DRAFT / VOID** remain in CHECK for forward compatibility; app currently creates **FINALIZED** only.  
-2. **Email uniqueness** is per-tenant in DB; registration service currently blocks globally — product policy (Sprint 21 may revisit).  
+2. **Email uniqueness** is per-tenant in DB; registration service currently blocks globally.  
 3. **Inactive item names** still occupy `uq_items_tenant_name` — reactivation/rename required to reuse a name.  
-4. DB name `hotel_billing` is legacy; product branding is multi-business.  
-5. **Category root uniqueness:** MySQL treats `NULL` as distinct in multi-column UNIQUE keys. Schema uses generated `parent_key` so two main categories cannot share a name in the same tenant.
+4. DB name `hotel_billing` / hosted `…HotelBillingDB` is legacy naming; product branding is multi-business.  
+5. **Category root uniqueness:** MySQL treats `NULL` as distinct in multi-column UNIQUE keys. Schema uses generated `parent_key`.  
+6. **Account vs subscription suspend:** `tenants.status=SUSPENDED` blocks login; `subscriptions.status=SUSPENDED` allows login but locks billing (402).
 
 ---
 
-## 8. Verification checklist (Phase 2 / P2-5)
+## 8. Verification checklist
 
 - [x] PKs/FKs/`tenant_id` reviewed  
-- [x] Cascade policy documented  
-- [x] `02_schema.sql` aligned with ORM (`parent_key`, bill default, bill_items SET NULL, business_type)  
-- [x] Alembic + `apply_category_parent_key.py` for root uniqueness  
-- [x] `update_item` rejects inactive category (matches create)  
-- [x] Single pending-upgrade entry point documented  
+- [x] Cascade policy documented (including Phase 8)  
+- [x] `02_schema.sql` aligned with ORM (`parent_key`, bill default, bill_items SET NULL, business_type, Phase 8)  
+- [x] Alembic head `20260818_phase8_saas` + live stamp path documented  
+- [x] Single pending-upgrade entry point: `apply_pending_schema.py`  
+- [x] Hosted DB: Phase 8 present; Master seed still open ops step  

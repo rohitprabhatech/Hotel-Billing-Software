@@ -1,6 +1,7 @@
 """Global trial / expiry-warning settings (singleton)."""
 
 from app.extensions import db
+from app.models.platform_audit_log import ACTION_TRIAL_SETTINGS_UPDATED
 from app.models.platform_settings import (
     DEFAULT_EXPIRY_WARNING_DAYS,
     DEFAULT_TRIAL_DAYS,
@@ -12,6 +13,7 @@ from app.models.platform_settings import (
     PlatformSettings,
 )
 from app.repositories.platform_settings_repository import PlatformSettingsRepository
+from app.services.platform_audit_service import PlatformAuditService
 from app.utils.exceptions import ValidationError
 from app.utils.request_context import require_master_context
 
@@ -55,6 +57,7 @@ class PlatformSettingsService:
                 f"Trial duration must be between {MIN_TRIAL_DAYS} and {MAX_TRIAL_DAYS} days"
             )
         row = PlatformSettingsService.get_or_create()
+        old = PlatformSettingsService.serialize(row)
         row.trial_enabled = bool(trial_enabled)
         row.trial_days = days
         if expiry_warning_days is not None:
@@ -65,6 +68,13 @@ class PlatformSettingsService:
                     f"{MIN_EXPIRY_WARNING_DAYS} and {MAX_EXPIRY_WARNING_DAYS} days"
                 )
             row.expiry_warning_days = warning
+        PlatformAuditService.log(
+            action=ACTION_TRIAL_SETTINGS_UPDATED,
+            entity_type="PLATFORM_SETTINGS",
+            entity_id=row.id,
+            old_data=old,
+            new_data=PlatformSettingsService.serialize(row),
+        )
         db.session.commit()
         return PlatformSettingsService.serialize(row)
 

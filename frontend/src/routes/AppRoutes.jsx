@@ -6,6 +6,7 @@ import BillingLayout from '../layouts/BillingLayout';
 import MasterLayout from '../layouts/MasterLayout';
 import OwnerLayout from '../layouts/OwnerLayout';
 import LoginPage from '../pages/auth/LoginPage';
+import MasterLoginPage from '../pages/master/MasterLoginPage';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -39,6 +40,7 @@ const MasterTrialsPage = lazy(() => import('../pages/master/MasterTrialsPage'));
 const MasterTrialSettingsPage = lazy(() => import('../pages/master/MasterTrialSettingsPage'));
 const MasterPlansPage = lazy(() => import('../pages/master/MasterPlansPage'));
 const MasterBusinessesPage = lazy(() => import('../pages/master/MasterBusinessesPage'));
+const MasterAuditPage = lazy(() => import('../pages/master/MasterAuditPage'));
 const SettingsPage = lazy(() => import('../pages/owner/SettingsPage'));
 const UsersPage = lazy(() => import('../pages/owner/UsersPage'));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage'));
@@ -61,6 +63,7 @@ export default function AppRoutes() {
 
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/master/login" element={<MasterLoginPage />} />
           <Route path="/register" element={<RegisterBusinessPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -75,6 +78,7 @@ export default function AppRoutes() {
             <Route path="trials" element={<MasterTrialsPage />} />
             <Route path="plans" element={<MasterPlansPage />} />
             <Route path="businesses" element={<MasterBusinessesPage />} />
+            <Route path="audit" element={<MasterAuditPage />} />
             <Route path="settings/trial" element={<MasterTrialSettingsPage />} />
             <Route path="change-password" element={<ChangePasswordPage />} />
           </Route>

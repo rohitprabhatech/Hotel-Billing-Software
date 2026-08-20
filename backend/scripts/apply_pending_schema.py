@@ -17,6 +17,14 @@ import os
 import sys
 from pathlib import Path
 
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = Path(__file__).resolve().parent
+for path in (BACKEND_ROOT, SCRIPTS_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+
+from app.utils.database_url import load_backend_env, resolve_database_url
+
 SCRIPTS = [
     "apply_saas_auth_schema.py",
     "apply_item_created_by.py",
@@ -40,6 +48,7 @@ SCRIPTS = [
     "apply_subscription_plans.py",
     "apply_subscription_lifecycle.py",
     "apply_expiry_notifications.py",
+    "apply_platform_audit.py",
 ]
 
 
@@ -57,9 +66,15 @@ def _run_script(path: Path) -> int:
 
 
 def main() -> int:
-    if not os.environ.get("DATABASE_URL"):
-        print("DATABASE_URL is required", file=sys.stderr)
+    load_backend_env()
+    url = resolve_database_url()
+    if not url:
+        print(
+            "DATABASE_URL or MYSQL_HOST + MYSQL_USER + MYSQL_DATABASE is required",
+            file=sys.stderr,
+        )
         return 1
+    os.environ["DATABASE_URL"] = url
 
     root = Path(__file__).resolve().parent
     for name in SCRIPTS:

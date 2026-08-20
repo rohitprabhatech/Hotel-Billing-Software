@@ -20,8 +20,15 @@ class TenantRepository:
         return int(db.session.query(Tenant).filter(Tenant.status == status).count())
 
     @staticmethod
-    def list_all(*, q: str | None = None, page: int = 1, per_page: int = 25) -> tuple[list[Tenant], int]:
+    def list_ids() -> list[str]:
+        return [row[0] for row in db.session.query(Tenant.id).all()]
+
+    @staticmethod
+    def _filtered(*, q: str | None = None, tenant_status: str | None = None):
         query = db.session.query(Tenant)
+        account = (tenant_status or "").strip().upper() or None
+        if account:
+            query = query.filter(Tenant.status == account)
         term = (q or "").strip()
         if term:
             like = f"%{term}%"
@@ -32,6 +39,17 @@ class TenantRepository:
                     Tenant.email.ilike(like),
                 )
             )
+        return query
+
+    @staticmethod
+    def list_all(
+        *,
+        q: str | None = None,
+        tenant_status: str | None = None,
+        page: int = 1,
+        per_page: int = 25,
+    ) -> tuple[list[Tenant], int]:
+        query = TenantRepository._filtered(q=q, tenant_status=tenant_status)
         total = query.order_by(None).count()
         page = max(int(page or 1), 1)
         per_page = min(max(int(per_page or 25), 1), 100)
@@ -42,6 +60,29 @@ class TenantRepository:
             .all()
         )
         return rows, total
+
+    @staticmethod
+    def list_ids_matching(*, q: str | None = None, tenant_status: str | None = None) -> list[str]:
+        query = TenantRepository._filtered(q=q, tenant_status=tenant_status).with_entities(Tenant.id)
+        return [row[0] for row in query.order_by(Tenant.business_name.asc()).all()]
+
+    @staticmethod
+    def get_many_ordered(ids: list[str]) -> list[Tenant]:
+        if not ids:
+            return []
+        found = {
+            row.id: row
+            for row in db.session.query(Tenant).filter(Tenant.id.in_(ids)).all()
+        }
+        return [found[tid] for tid in ids if tid in found]
+
+    @staticmethod
+    def list_matching(*, q: str | None = None, tenant_status: str | None = None) -> list[Tenant]:
+        return (
+            TenantRepository._filtered(q=q, tenant_status=tenant_status)
+            .order_by(Tenant.business_name.asc())
+            .all()
+        )
 
     @staticmethod
     def add(tenant: Tenant) -> Tenant:

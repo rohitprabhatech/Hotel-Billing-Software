@@ -18,8 +18,10 @@ from app.repositories.master_admin_repository import MasterAdminRepository
 from app.repositories.registration_request_repository import RegistrationRequestRepository
 from app.repositories.role_repository import RoleRepository
 from app.repositories.user_repository import UserRepository
+from app.models.platform_audit_log import ACTION_BUSINESS_APPROVED, ACTION_BUSINESS_REJECTED
 from app.services.audit_service import AuditService
 from app.services.email_service import EmailService
+from app.services.platform_audit_service import PlatformAuditService
 from app.services.subscription_service import SubscriptionService
 from app.utils.exceptions import ConflictError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
@@ -211,6 +213,18 @@ class RegistrationRequestService:
                 ),
             },
         )
+        PlatformAuditService.log(
+            action=ACTION_BUSINESS_APPROVED,
+            entity_type="REGISTRATION_REQUEST",
+            entity_id=row.id,
+            tenant_id=tenant.id,
+            new_data={
+                "business_name": tenant.business_name,
+                "owner_email": owner.email,
+                "tenant_id": tenant.id,
+                "trial_status": trial.status if trial else None,
+            },
+        )
         db.session.commit()
 
         login_url = f"{current_app.config['FRONTEND_URL']}/login"
@@ -252,6 +266,16 @@ class RegistrationRequestService:
         row.rejected_at = now
         row.rejected_by = ctx.admin_id
         row.rejection_reason = reason
+        PlatformAuditService.log(
+            action=ACTION_BUSINESS_REJECTED,
+            entity_type="REGISTRATION_REQUEST",
+            entity_id=row.id,
+            new_data={
+                "business_name": row.business_name,
+                "owner_email": row.owner_email,
+                "reason": reason,
+            },
+        )
         db.session.commit()
 
         try:

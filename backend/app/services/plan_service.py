@@ -3,6 +3,12 @@
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from app.extensions import db
+from app.models.platform_audit_log import (
+    ACTION_PLAN_ACTIVATED,
+    ACTION_PLAN_CREATED,
+    ACTION_PLAN_DEACTIVATED,
+    ACTION_PLAN_UPDATED,
+)
 from app.models.subscription import Subscription
 from app.models.subscription_plan import (
     BILLING_CYCLES,
@@ -10,6 +16,7 @@ from app.models.subscription_plan import (
     SubscriptionPlan,
 )
 from app.repositories.subscription_plan_repository import SubscriptionPlanRepository
+from app.services.platform_audit_service import PlatformAuditService
 from app.utils.exceptions import NotFoundError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.request_context import require_master_context
@@ -65,6 +72,12 @@ class PlanService:
             **PlanService._attrs_from_payload(payload, partial=False),
         )
         SubscriptionPlanRepository.add(row)
+        PlatformAuditService.log(
+            action=ACTION_PLAN_CREATED,
+            entity_type="SUBSCRIPTION_PLAN",
+            entity_id=row.id,
+            new_data=PlanService._audit_snapshot(row),
+        )
         db.session.commit()
         return PlanService.serialize(row, detail=True)
 
@@ -74,8 +87,16 @@ class PlanService:
         row = SubscriptionPlanRepository.get_by_id(plan_id)
         if row is None:
             raise NotFoundError("Plan not found")
+        old = PlanService._audit_snapshot(row)
         for key, value in PlanService._attrs_from_payload(payload, partial=True).items():
             setattr(row, key, value)
+        PlatformAuditService.log(
+            action=ACTION_PLAN_UPDATED,
+            entity_type="SUBSCRIPTION_PLAN",
+            entity_id=row.id,
+            old_data=old,
+            new_data=PlanService._audit_snapshot(row),
+        )
         db.session.commit()
         return PlanService.serialize(row, detail=True)
 
@@ -85,7 +106,15 @@ class PlanService:
         row = SubscriptionPlanRepository.get_by_id(plan_id)
         if row is None:
             raise NotFoundError("Plan not found")
+        previous = bool(row.is_active)
         row.is_active = bool(is_active)
+        PlatformAuditService.log(
+            action=ACTION_PLAN_ACTIVATED if row.is_active else ACTION_PLAN_DEACTIVATED,
+            entity_type="SUBSCRIPTION_PLAN",
+            entity_id=row.id,
+            old_data={"is_active": previous, "name": row.name},
+            new_data={"is_active": bool(row.is_active), "name": row.name},
+        )
         db.session.commit()
         return PlanService.serialize(row, detail=True)
 
@@ -130,6 +159,18 @@ class PlanService:
             data["features"] = _features(payload.get("features"))
         data.setdefault("currency", "INR")
         return data
+
+    @staticmethod
+    def _audit_snapshot(row: SubscriptionPlan) -> dict:
+        return {
+            "name": row.name,
+            "price": float(row.price) if row.price is not None else None,
+            "billing_cycle": row.billing_cycle,
+            "is_active": bool(row.is_active),
+            "is_public": bool(row.is_public),
+            "trial_eligible": bool(row.trial_eligible),
+            "display_order": int(row.display_order or 0),
+        }
 
     @staticmethod
     def serialize(row: SubscriptionPlan, *, detail: bool = False) -> dict:

@@ -176,6 +176,7 @@ export function LandingFooter({ health, error }) {
     <Box
       component="footer"
       sx={{
+        position: 'relative',
         borderTop: '1px solid',
         borderColor: 'divider',
         px: { xs: 2, sm: 3, md: 5 },
@@ -303,6 +304,29 @@ export function LandingFooter({ health, error }) {
           ) : null}
         </Box>
       </Box>
+      <Box
+        component={RouterLink}
+        to={PATHS.masterLogin}
+        aria-label=" "
+        tabIndex={-1}
+        sx={{
+          position: 'absolute',
+          right: { xs: 10, md: 16 },
+          bottom: { xs: 10, md: 14 },
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          bgcolor: 'text.disabled',
+          opacity: 0.28,
+          textDecoration: 'none',
+          '&:hover': { opacity: 0.55 },
+          '&:focus-visible': {
+            outline: '1px solid',
+            outlineColor: 'divider',
+            opacity: 0.7,
+          },
+        }}
+      />
     </Box>
   );
 }

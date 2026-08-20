@@ -5,7 +5,15 @@ from __future__ import annotations
 import os
 import sys
 
+from pathlib import Path
+
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
 from sqlalchemy import create_engine, text
+
+from schema_helpers import check_clause, drop_check_constraint
 
 
 def _has_table(conn, table: str) -> bool:
@@ -19,23 +27,6 @@ def _has_table(conn, table: str) -> bool:
                 """
             ),
             {"table": table},
-        ).scalar()
-    )
-
-
-def _has_check(conn, name: str) -> bool:
-    return bool(
-        conn.execute(
-            text(
-                """
-                SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
-                WHERE TABLE_SCHEMA = DATABASE()
-                  AND TABLE_NAME = 'stock_movements'
-                  AND CONSTRAINT_NAME = :name
-                  AND CONSTRAINT_TYPE = 'CHECK'
-                """
-            ),
-            {"name": name},
         ).scalar()
     )
 
@@ -86,8 +77,12 @@ def main() -> int:
             print("Created stock_movements with RECEIVE")
             return 0
 
-        if _has_check(conn, "chk_stock_movements_source"):
-            conn.execute(text("ALTER TABLE stock_movements DROP CHECK chk_stock_movements_source"))
+        clause = check_clause(conn, "chk_stock_movements_source") or ""
+        if "RECEIVE" in clause.upper():
+            print("stock_movements source CHECK already includes RECEIVE")
+            return 0
+
+        drop_check_constraint(conn, "stock_movements", "chk_stock_movements_source")
         conn.execute(
             text(
                 """

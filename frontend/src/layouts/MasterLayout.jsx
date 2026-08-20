@@ -1,5 +1,6 @@
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
@@ -53,6 +54,7 @@ const navItems = [
   { to: PATHS.masterTrials, label: 'Trials', icon: <TimelapseOutlinedIcon /> },
   { to: PATHS.masterPlans, label: 'Plans', icon: <PaymentsOutlinedIcon /> },
   { to: PATHS.masterBusinesses, label: 'Businesses', icon: <BusinessOutlinedIcon /> },
+  { to: PATHS.masterAudit, label: 'Audit log', icon: <HistoryOutlinedIcon /> },
   { to: PATHS.masterTrialSettings, label: 'Trial settings', icon: <SettingsOutlinedIcon /> },
 ];
 
@@ -75,7 +77,11 @@ const titles = {
   },
   [PATHS.masterBusinesses]: {
     title: 'Businesses',
-    subtitle: 'Assign plans, extend trials, record a manual renewal, or cancel access.',
+    subtitle: 'Assign plans, extend trials, record a manual renewal, or activate / deactivate / suspend a business. Data is never deleted.',
+  },
+  [PATHS.masterAudit]: {
+    title: 'Platform audit',
+    subtitle: 'Master Admin actions only. Passwords and tokens are never stored.',
   },
   [PATHS.masterTrialSettings]: {
     title: 'Trial settings',
@@ -108,7 +114,7 @@ export default function MasterLayout() {
       // Client logout proceeds even if API logout fails
     }
     logout();
-    navigate(PATHS.login, { replace: true });
+    navigate(PATHS.masterLogin, { replace: true });
   };
 
   const drawer = (

@@ -38,7 +38,7 @@ For users with role **OWNER**.
 6. Run a test bill (Cash and Online); try **Print** and **Send on WhatsApp** if configured.  
 7. Open **Reports** and export a sample CSV/PDF.  
 8. Try **AI Assistant** after a few sales exist.  
-9. Note **Subscription** (₹550/mo info) — contact Prabha Technology to subscribe; no checkout in app.  
+9. Note **Subscription** in Settings — trial remaining days, plan name, or contact Prabha Technology to renew. There is **no Pay button**. If the subscription is expired, cancelled, or suspended, you can still sign in and use Profile, but billing is locked.  
 10. Set **Appearance** (light/dark) if desired.
 
 ## Practice sample (grocery)

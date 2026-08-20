@@ -13,6 +13,8 @@ class MasterDashboardService:
     @staticmethod
     def summary():
         require_master_context()
+        now = utc_now_naive()
+        counts = SubscriptionService.access_counts(now=now)
         return {
             "total_businesses": TenantRepository.count_all(),
             "active_businesses": TenantRepository.count_by_status("ACTIVE"),
@@ -20,7 +22,7 @@ class MasterDashboardService:
             "pending_requests": RegistrationRequestRepository.count_by_status(
                 REGISTRATION_PENDING
             ),
-            "trial_businesses": SubscriptionRepository.count_active_trials(now=utc_now_naive()),
-            "expiring_soon": SubscriptionService.count_expiring(now=utc_now_naive()),
-            "expired_subscriptions": SubscriptionService.count_expired(now=utc_now_naive()),
+            "trial_businesses": SubscriptionRepository.count_active_trials(now=now),
+            "expiring_soon": counts["expiring_soon"],
+            "expired_subscriptions": counts["expired_subscriptions"],
         }

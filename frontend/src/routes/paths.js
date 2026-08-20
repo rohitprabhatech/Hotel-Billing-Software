@@ -10,11 +10,13 @@ export const PATHS = {
   privacy: '/privacy',
   terms: '/terms',
 
+  masterLogin: '/master/login',
   masterDashboard: '/master/dashboard',
   masterRegistrationRequests: '/master/registration-requests',
   masterTrials: '/master/trials',
   masterPlans: '/master/plans',
   masterBusinesses: '/master/businesses',
+  masterAudit: '/master/audit',
   masterTrialSettings: '/master/settings/trial',
   masterChangePassword: '/master/change-password',
 
@@ -40,3 +42,11 @@ export const PATHS = {
   billingProfile: '/billing/profile',
   billingChangePassword: '/billing/change-password',
 };
+
+export function masterBusinessesPath({ status, tenant_status } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (tenant_status) params.set('tenant_status', tenant_status);
+  const query = params.toString();
+  return query ? `${PATHS.masterBusinesses}?${query}` : PATHS.masterBusinesses;
+}

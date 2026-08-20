@@ -28,6 +28,7 @@ import { useEffect, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
 import PageShell from '../../components/PageShell';
+import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import {
@@ -56,6 +57,8 @@ function formatWhen(value) {
 export default function MasterRegistrationRequestsPage() {
   const [rows, setRows] = useState([]);
   const [filters, setFilters] = useState({ status: 'PENDING', q: '' });
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ page: 1, per_page: 25, total: 0 });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
@@ -68,11 +71,12 @@ export default function MasterRegistrationRequestsPage() {
     setError('');
     setLoading(true);
     try {
-      const params = { per_page: 50 };
+      const params = { page, per_page: 25 };
       if (filters.status) params.status = filters.status;
       if (filters.q.trim()) params.q = filters.q.trim();
       const response = await listRegistrationRequests(params);
       setRows(response.data || []);
+      setMeta(response.meta || { page, per_page: 25, total: 0 });
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to load registration requests.');
     } finally {
@@ -83,7 +87,7 @@ export default function MasterRegistrationRequestsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filters.status, page]);
 
   const openDetail = async (row) => {
     setError('');
@@ -138,7 +142,18 @@ export default function MasterRegistrationRequestsPage() {
 
       <FilterBar
         actions={
-          <Button variant="contained" onClick={load} disabled={loading}>
+          <Button
+            variant="contained"
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              if (page !== 1) {
+                setPage(1);
+                return;
+              }
+              load();
+            }}
+          >
             Apply
           </Button>
         }
@@ -149,7 +164,10 @@ export default function MasterRegistrationRequestsPage() {
             labelId="reg-status-label"
             label="Status"
             value={filters.status}
-            onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
+            onChange={(event) => {
+              setPage(1);
+              setFilters((prev) => ({ ...prev, status: event.target.value }));
+            }}
           >
             <MenuItem value="">All</MenuItem>
             {STATUS_OPTIONS.filter(Boolean).map((status) => (
@@ -165,7 +183,10 @@ export default function MasterRegistrationRequestsPage() {
           value={filters.q}
           onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') load();
+            if (event.key === 'Enter') {
+              if (page !== 1) setPage(1);
+              else load();
+            }
           }}
           sx={{ minWidth: 220 }}
         />
@@ -198,7 +219,7 @@ export default function MasterRegistrationRequestsPage() {
               {rows.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
-                    <TruncateText>{row.business_name}</TruncateText>
+                    <TruncateText value={row.business_name} />
                   </TableCell>
                   <TableCell>{row.owner_name}</TableCell>
                   <TableCell>{row.owner_email}</TableCell>
@@ -222,6 +243,12 @@ export default function MasterRegistrationRequestsPage() {
               ))}
             </TableBody>
           </Table>
+          <PaginationBar
+            page={meta.page}
+            perPage={meta.per_page}
+            total={meta.total}
+            onPageChange={setPage}
+          />
         </TableCard>
       )}
 

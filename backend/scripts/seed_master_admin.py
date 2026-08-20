@@ -5,56 +5,61 @@ Does not overwrite an existing row. Never commit real passwords to source.
   MASTER_ADMIN_EMAIL
   MASTER_ADMIN_PASSWORD   (min 8 characters)
   MASTER_ADMIN_NAME       (optional, default: Prabha Technology Admin)
+
+Prints the redacted database target before writing. Uses DATABASE_URL or MYSQL_*.
 """
 
 from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
-from dotenv import load_dotenv
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
-load_dotenv()
+from sqlalchemy import create_engine, inspect
 
-from app import create_app  # noqa: E402
-from app.extensions import db  # noqa: E402
-from app.models.master_admin import MasterAdmin  # noqa: E402
-from app.repositories.master_admin_repository import MasterAdminRepository  # noqa: E402
-from app.repositories.user_repository import UserRepository  # noqa: E402
-from app.utils.ids import new_uuid  # noqa: E402
-from app.utils.security import hash_password  # noqa: E402
+from app import create_app
+from app.extensions import db
+from app.services.master_bootstrap_service import MasterBootstrapService
+from app.utils.database_url import load_backend_env
+from app.utils.exceptions import ValidationError
+
+
+def _print_target(uri: str) -> None:
+    engine = create_engine(uri)
+    print(
+        f"target={engine.url.host or engine.dialect.name}/"
+        f"{engine.url.database or '(memory)'}"
+    )
 
 
 def main() -> int:
+    load_backend_env()
+    app = create_app()
+    uri = app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+    _print_target(uri)
+
     email = (os.environ.get("MASTER_ADMIN_EMAIL") or "").strip().lower()
     password = os.environ.get("MASTER_ADMIN_PASSWORD") or ""
     name = (os.environ.get("MASTER_ADMIN_NAME") or "Prabha Technology Admin").strip()
 
-    if not email or "@" not in email:
-        print("MASTER_ADMIN_EMAIL is required", file=sys.stderr)
-        return 1
-    if len(password) < 8:
-        print("MASTER_ADMIN_PASSWORD must be at least 8 characters", file=sys.stderr)
-        return 1
-
-    app = create_app()
     with app.app_context():
-        if MasterAdminRepository.find_by_email(email):
-            print(f"Master admin already exists: {email}")
-            return 0
-        if UserRepository.find_by_email(email):
-            print("That email is already a business user. Choose another.", file=sys.stderr)
+        tables = set(inspect(db.engine).get_table_names())
+        if "master_admins" not in tables:
+            print("master_admins table is missing. Run apply_pending_schema.py first.", file=sys.stderr)
             return 1
-        admin = MasterAdmin(
-            id=new_uuid(),
-            name=name,
-            email=email,
-            password_hash=hash_password(password),
-            is_active=True,
-            token_version=0,
-        )
-        db.session.add(admin)
-        db.session.commit()
+        try:
+            result = MasterBootstrapService.seed_first(email=email, password=password, name=name)
+        except ValidationError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+
+    if result == "exists":
+        print(f"Master admin already exists: {email}")
+    else:
         print(f"Created master admin: {email}")
     return 0
 

@@ -1,0 +1,3391 @@
+{
+  "database_url_present": true,
+  "dialect": "mysql",
+  "target": {
+    "host": "srv1952.hstgr.io",
+    "port": 3306,
+    "database": "u583892242_HotelBillingDB"
+  },
+  "table_count": 23,
+  "tables": [
+    "audit_logs",
+    "bill_deliveries",
+    "bill_items",
+    "bill_number_counters",
+    "bills",
+    "categories",
+    "email_verification_tokens",
+    "items",
+    "master_admins",
+    "notifications",
+    "password_reset_tokens",
+    "platform_audit_logs",
+    "platform_notifications",
+    "platform_settings",
+    "registration_requests",
+    "roles",
+    "stock_movements",
+    "subscription_notices",
+    "subscription_plans",
+    "subscriptions",
+    "tenant_whatsapp_configs",
+    "tenants",
+    "users"
+  ],
+  "core_tables_present": [
+    "tenants",
+    "roles",
+    "users",
+    "password_reset_tokens",
+    "email_verification_tokens",
+    "categories",
+    "items",
+    "bill_number_counters",
+    "bills",
+    "bill_items",
+    "notifications",
+    "tenant_whatsapp_configs",
+    "bill_deliveries",
+    "audit_logs",
+    "stock_movements"
+  ],
+  "phase8_tables_present": [
+    "master_admins",
+    "registration_requests",
+    "platform_settings",
+    "subscription_plans",
+    "subscriptions",
+    "subscription_notices",
+    "platform_notifications",
+    "platform_audit_logs"
+  ],
+  "phase8_tables_missing": [],
+  "alembic_version_present": false,
+  "alembic_versions": [],
+  "row_counts": {
+    "tenants": 1,
+    "users": 1,
+    "items": 3,
+    "bills": 2,
+    "bill_items": 5,
+    "notifications": 0,
+    "audit_logs": 20,
+    "stock_movements": 2,
+    "master_admins": 0,
+    "registration_requests": 0,
+    "subscription_plans": 1,
+    "subscriptions": 1,
+    "subscription_notices": 0,
+    "platform_notifications": 0,
+    "platform_audit_logs": 0
+  },
+  "table_details": {
+    "tenants": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(120)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "business_name",
+          "type": "VARCHAR(200)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "business_type",
+          "type": "VARCHAR(40)",
+          "nullable": false,
+          "default": "'other'",
+          "primary_key": false
+        },
+        {
+          "name": "address",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "state",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "pincode",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "phone",
+          "type": "VARCHAR(30)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "gst_number",
+          "type": "VARCHAR(30)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "fssai_number",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "bill_number_prefix",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "default_gst_percent",
+          "type": "DECIMAL(5, 2)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'ACTIVE'",
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_tenants_business_name",
+          "column_names": [
+            "business_name"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_tenants_business_type",
+          "column_names": [
+            "business_type"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_tenants_status",
+          "column_names": [
+            "status"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": []
+    },
+    "roles": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "uq_roles_name",
+          "column_names": [
+            "name"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": []
+    },
+    "users": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "role_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(120)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "password_hash",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "email_verified",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "0",
+          "primary_key": false
+        },
+        {
+          "name": "email_verified_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "password_changed_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "pending_email",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "token_version",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "primary_key": false
+        },
+        {
+          "name": "last_login_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_users_role",
+          "column_names": [
+            "role_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_users_tenant_active",
+          "column_names": [
+            "tenant_id",
+            "is_active"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_users_tenant_role",
+          "column_names": [
+            "tenant_id",
+            "role_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_users_email",
+          "column_names": [
+            "email"
+          ],
+          "unique": true
+        },
+        {
+          "name": "uq_users_tenant_email",
+          "column_names": [
+            "tenant_id",
+            "email"
+          ],
+          "unique": true
+        },
+        {
+          "name": "uq_users_tenant_id",
+          "column_names": [
+            "tenant_id",
+            "id"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_users_role",
+          "constrained_columns": [
+            "role_id"
+          ],
+          "referred_table": "roles",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_users_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "password_reset_tokens": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "token_hash",
+          "type": "CHAR(64)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "expires_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "used_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_password_reset_user_id",
+          "column_names": [
+            "user_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_password_reset_token_hash",
+          "column_names": [
+            "token_hash"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_password_reset_user",
+          "constrained_columns": [
+            "user_id"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "CASCADE"
+          }
+        }
+      ]
+    },
+    "email_verification_tokens": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "token_hash",
+          "type": "CHAR(64)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "purpose",
+          "type": "VARCHAR(40)",
+          "nullable": false,
+          "default": "'signup'",
+          "primary_key": false
+        },
+        {
+          "name": "new_email",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "expires_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "verified_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_email_verification_user_id",
+          "column_names": [
+            "user_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_email_verification_token_hash",
+          "column_names": [
+            "token_hash"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_email_verification_user",
+          "constrained_columns": [
+            "user_id"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "CASCADE"
+          }
+        }
+      ]
+    },
+    "categories": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "parent_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "parent_key",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": "''",
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(120)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_categories_parent_id",
+          "column_names": [
+            "parent_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_categories_tenant_active",
+          "column_names": [
+            "tenant_id",
+            "is_active"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_categories_tenant_id",
+          "column_names": [
+            "tenant_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_categories_tenant_parent_key_name",
+          "column_names": [
+            "tenant_id",
+            "parent_key",
+            "name"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_categories_parent",
+          "constrained_columns": [
+            "parent_id"
+          ],
+          "referred_table": "categories",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_categories_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "items": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "category_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_by",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(200)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "sku",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "price",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "cost_price",
+          "type": "DECIMAL(12, 2)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "gst_percentage",
+          "type": "DECIMAL(5, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "stock_quantity",
+          "type": "DECIMAL(12, 3)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "minimum_stock_level",
+          "type": "DECIMAL(12, 3)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_items_category",
+          "column_names": [
+            "category_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_items_created_by",
+          "column_names": [
+            "created_by"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_items_tenant_active",
+          "column_names": [
+            "tenant_id",
+            "is_active"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_items_tenant_category",
+          "column_names": [
+            "tenant_id",
+            "category_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_items_tenant_id",
+          "column_names": [
+            "tenant_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_items_tenant_name",
+          "column_names": [
+            "tenant_id",
+            "name"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_items_tenant_sku",
+          "column_names": [
+            "tenant_id",
+            "sku"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_items_tenant_name",
+          "column_names": [
+            "tenant_id",
+            "name"
+          ],
+          "unique": true
+        },
+        {
+          "name": "uq_items_tenant_sku",
+          "column_names": [
+            "tenant_id",
+            "sku"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_items_category",
+          "constrained_columns": [
+            "category_id"
+          ],
+          "referred_table": "categories",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_items_created_by",
+          "constrained_columns": [
+            "created_by"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        },
+        {
+          "name": "fk_items_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "bill_number_counters": {
+      "columns": [
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "next_value",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "tenant_id"
+      ],
+      "indexes": [],
+      "foreign_keys": [
+        {
+          "name": "fk_bill_number_counters_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "bills": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "bill_number",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "bill_sequence",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "table_number",
+          "type": "VARCHAR(30)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "customer_name",
+          "type": "VARCHAR(120)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "customer_phone_country_code",
+          "type": "VARCHAR(8)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "customer_phone_national",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "customer_phone_e164",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "customer_email",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "subtotal",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "discount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "taxable_amount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "cgst_amount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "sgst_amount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "gst_amount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "grand_total",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "round_off",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'FINALIZED'",
+          "primary_key": false
+        },
+        {
+          "name": "payment_method",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'cash'",
+          "primary_key": false
+        },
+        {
+          "name": "created_by",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "cancelled_by",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "cancelled_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "cancellation_reason",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "printed_count",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_bills_cancelled_by",
+          "column_names": [
+            "tenant_id",
+            "cancelled_by"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bills_tenant_created_at",
+          "column_names": [
+            "tenant_id",
+            "created_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bills_tenant_created_by",
+          "column_names": [
+            "tenant_id",
+            "created_by"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bills_tenant_payment_method",
+          "column_names": [
+            "tenant_id",
+            "payment_method"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bills_tenant_status",
+          "column_names": [
+            "tenant_id",
+            "status"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bills_tenant_status_created_at",
+          "column_names": [
+            "tenant_id",
+            "status",
+            "created_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_bills_tenant_bill_number",
+          "column_names": [
+            "tenant_id",
+            "bill_number"
+          ],
+          "unique": true
+        },
+        {
+          "name": "uq_bills_tenant_bill_sequence",
+          "column_names": [
+            "tenant_id",
+            "bill_sequence"
+          ],
+          "unique": true
+        },
+        {
+          "name": "uq_bills_tenant_id",
+          "column_names": [
+            "tenant_id",
+            "id"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_bills_cancelled_by",
+          "constrained_columns": [
+            "tenant_id",
+            "cancelled_by"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "tenant_id",
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_bills_created_by",
+          "constrained_columns": [
+            "tenant_id",
+            "created_by"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "tenant_id",
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_bills_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "bill_items": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "bill_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "item_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "item_name",
+          "type": "VARCHAR(200)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "quantity",
+          "type": "DECIMAL(10, 3)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "unit_price",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "gst_percentage",
+          "type": "DECIMAL(5, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "discount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "taxable_amount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "cgst_amount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "sgst_amount",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "total",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_bill_items_bill",
+          "column_names": [
+            "bill_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "fk_bill_items_item",
+          "column_names": [
+            "item_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bill_items_tenant_bill",
+          "column_names": [
+            "tenant_id",
+            "bill_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bill_items_tenant_item",
+          "column_names": [
+            "tenant_id",
+            "item_id"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_bill_items_bill",
+          "constrained_columns": [
+            "bill_id"
+          ],
+          "referred_table": "bills",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_bill_items_item",
+          "constrained_columns": [
+            "item_id"
+          ],
+          "referred_table": "items",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        },
+        {
+          "name": "fk_bill_items_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "notifications": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "type",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "message",
+          "type": "TEXT",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "entity_type",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "entity_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "is_read",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "0",
+          "primary_key": false
+        },
+        {
+          "name": "read_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_notifications_user",
+          "column_names": [
+            "user_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_notifications_tenant_created",
+          "column_names": [
+            "tenant_id",
+            "created_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_notifications_tenant_entity",
+          "column_names": [
+            "tenant_id",
+            "entity_type",
+            "entity_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_notifications_tenant_unread",
+          "column_names": [
+            "tenant_id",
+            "is_read",
+            "created_at"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_notifications_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_notifications_user",
+          "constrained_columns": [
+            "user_id"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        }
+      ]
+    },
+    "tenant_whatsapp_configs": {
+      "columns": [
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "phone_number_id",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "waba_id",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "display_phone_e164",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "access_token_encrypted",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "template_name",
+          "type": "VARCHAR(120)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "template_language",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'en'",
+          "primary_key": false
+        },
+        {
+          "name": "is_enabled",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "0",
+          "primary_key": false
+        },
+        {
+          "name": "connected_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "tenant_id"
+      ],
+      "indexes": [],
+      "foreign_keys": [
+        {
+          "name": "fk_tenant_whatsapp_configs_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "bill_deliveries": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "bill_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "delivery_method",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "recipient_phone_e164",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "recipient_phone_masked",
+          "type": "VARCHAR(32)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "recipient_email",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "recipient_email_masked",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'PENDING'",
+          "primary_key": false
+        },
+        {
+          "name": "provider_message_id",
+          "type": "VARCHAR(120)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "error_message",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "attempted_by",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "sent_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "delivered_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "read_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_bill_deliveries_bill",
+          "column_names": [
+            "bill_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "fk_bill_deliveries_user",
+          "column_names": [
+            "attempted_by"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bill_deliveries_provider_message",
+          "column_names": [
+            "provider_message_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bill_deliveries_tenant_bill",
+          "column_names": [
+            "tenant_id",
+            "bill_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bill_deliveries_tenant_created",
+          "column_names": [
+            "tenant_id",
+            "created_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_bill_deliveries_tenant_method_bill_created",
+          "column_names": [
+            "tenant_id",
+            "delivery_method",
+            "bill_id",
+            "created_at"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_bill_deliveries_bill",
+          "constrained_columns": [
+            "bill_id"
+          ],
+          "referred_table": "bills",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_bill_deliveries_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_bill_deliveries_user",
+          "constrained_columns": [
+            "attempted_by"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        }
+      ]
+    },
+    "audit_logs": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "user_name",
+          "type": "VARCHAR(120)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "action",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "entity_type",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "entity_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "old_data",
+          "type": "LONGTEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "new_data",
+          "type": "LONGTEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "ip_address",
+          "type": "VARCHAR(45)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "user_agent",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_audit_logs_tenant_action",
+          "column_names": [
+            "tenant_id",
+            "action"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_audit_logs_tenant_created_at",
+          "column_names": [
+            "tenant_id",
+            "created_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_audit_logs_tenant_entity",
+          "column_names": [
+            "tenant_id",
+            "entity_type",
+            "entity_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_audit_logs_tenant_user",
+          "column_names": [
+            "tenant_id",
+            "user_id"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_audit_logs_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_audit_logs_user",
+          "constrained_columns": [
+            "tenant_id",
+            "user_id"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "tenant_id",
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "stock_movements": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "item_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "delta",
+          "type": "DECIMAL(12, 3)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "quantity_after",
+          "type": "DECIMAL(12, 3)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "source",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "reason",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "reference_type",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "reference_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_by",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_stock_movements_item",
+          "column_names": [
+            "item_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "fk_stock_movements_user",
+          "column_names": [
+            "created_by"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_stock_movements_tenant_created",
+          "column_names": [
+            "tenant_id",
+            "created_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_stock_movements_tenant_item",
+          "column_names": [
+            "tenant_id",
+            "item_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_stock_movements_tenant_item_created",
+          "column_names": [
+            "tenant_id",
+            "item_id",
+            "created_at"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_stock_movements_item",
+          "constrained_columns": [
+            "item_id"
+          ],
+          "referred_table": "items",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_stock_movements_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_stock_movements_user",
+          "constrained_columns": [
+            "created_by"
+          ],
+          "referred_table": "users",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        }
+      ]
+    },
+    "master_admins": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(120)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "password_hash",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "token_version",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "primary_key": false
+        },
+        {
+          "name": "last_login_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_master_admins_active",
+          "column_names": [
+            "is_active"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_master_admins_email",
+          "column_names": [
+            "email"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": []
+    },
+    "registration_requests": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "business_name",
+          "type": "VARCHAR(200)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "business_type",
+          "type": "VARCHAR(40)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "owner_name",
+          "type": "VARCHAR(120)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "owner_email",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "password_hash",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "mobile",
+          "type": "VARCHAR(30)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "address",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "state",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(80)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "pincode",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "gst_number",
+          "type": "VARCHAR(30)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "fssai_number",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'PENDING'",
+          "primary_key": false
+        },
+        {
+          "name": "requested_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "approved_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "rejected_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "approved_by",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "rejected_by",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "rejection_reason",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "terms_accepted_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_registration_requests_approved_by",
+          "column_names": [
+            "approved_by"
+          ],
+          "unique": false
+        },
+        {
+          "name": "fk_registration_requests_rejected_by",
+          "column_names": [
+            "rejected_by"
+          ],
+          "unique": false
+        },
+        {
+          "name": "fk_registration_requests_tenant",
+          "column_names": [
+            "tenant_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_registration_requests_email",
+          "column_names": [
+            "owner_email"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_registration_requests_requested",
+          "column_names": [
+            "requested_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_registration_requests_status",
+          "column_names": [
+            "status"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_registration_requests_approved_by",
+          "constrained_columns": [
+            "approved_by"
+          ],
+          "referred_table": "master_admins",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        },
+        {
+          "name": "fk_registration_requests_rejected_by",
+          "constrained_columns": [
+            "rejected_by"
+          ],
+          "referred_table": "master_admins",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        },
+        {
+          "name": "fk_registration_requests_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        }
+      ]
+    },
+    "platform_settings": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "trial_enabled",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "trial_days",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "15",
+          "primary_key": false
+        },
+        {
+          "name": "expiry_warning_days",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "5",
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [],
+      "foreign_keys": []
+    },
+    "subscription_plans": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(120)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "price",
+          "type": "DECIMAL(12, 2)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "default": "'INR'",
+          "primary_key": false
+        },
+        {
+          "name": "billing_cycle",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'MONTHLY'",
+          "primary_key": false
+        },
+        {
+          "name": "trial_eligible",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "is_public",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "1",
+          "primary_key": false
+        },
+        {
+          "name": "display_order",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "primary_key": false
+        },
+        {
+          "name": "features",
+          "type": "LONGTEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_subscription_plans_active",
+          "column_names": [
+            "is_active",
+            "is_public",
+            "display_order"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": []
+    },
+    "subscriptions": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "plan_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'TRIAL'",
+          "primary_key": false
+        },
+        {
+          "name": "starts_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "ends_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "trial_starts_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "trial_ends_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "price_at_purchase",
+          "type": "DECIMAL(12, 2)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "payment_status",
+          "type": "VARCHAR(30)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "payment_provider",
+          "type": "VARCHAR(40)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "payment_reference",
+          "type": "VARCHAR(120)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "fk_subscriptions_plan",
+          "column_names": [
+            "plan_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_subscriptions_status",
+          "column_names": [
+            "status"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_subscriptions_tenant",
+          "column_names": [
+            "tenant_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_subscriptions_trial_ends",
+          "column_names": [
+            "trial_ends_at"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_subscriptions_plan",
+          "constrained_columns": [
+            "plan_id"
+          ],
+          "referred_table": "subscription_plans",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        },
+        {
+          "name": "fk_subscriptions_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "subscription_notices": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "subscription_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "notice_type",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "period_key",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_subscription_notices_tenant",
+          "column_names": [
+            "tenant_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_subscription_notices_period",
+          "column_names": [
+            "subscription_id",
+            "notice_type",
+            "period_key"
+          ],
+          "unique": true
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_subscription_notices_subscription",
+          "constrained_columns": [
+            "subscription_id"
+          ],
+          "referred_table": "subscriptions",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        },
+        {
+          "name": "fk_subscription_notices_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE"
+          }
+        }
+      ]
+    },
+    "platform_notifications": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "type",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "message",
+          "type": "TEXT",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "entity_type",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "entity_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "is_read",
+          "type": "TINYINT",
+          "nullable": false,
+          "default": "0",
+          "primary_key": false
+        },
+        {
+          "name": "read_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6) ON UPDATE current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_platform_notifications_unread",
+          "column_names": [
+            "is_read",
+            "created_at"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": []
+    },
+    "platform_audit_logs": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "CHAR(36)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "actor_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "actor_name",
+          "type": "VARCHAR(120)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "actor_email",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "action",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "entity_type",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "entity_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "CHAR(36)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "old_data",
+          "type": "LONGTEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "new_data",
+          "type": "LONGTEXT",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "ip_address",
+          "type": "VARCHAR(45)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "user_agent",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "current_timestamp(6)",
+          "primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "ix_platform_audit_logs_action",
+          "column_names": [
+            "action"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_platform_audit_logs_actor",
+          "column_names": [
+            "actor_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_platform_audit_logs_created_at",
+          "column_names": [
+            "created_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_platform_audit_logs_tenant",
+          "column_names": [
+            "tenant_id"
+          ],
+          "unique": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_platform_audit_logs_actor",
+          "constrained_columns": [
+            "actor_id"
+          ],
+          "referred_table": "master_admins",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        },
+        {
+          "name": "fk_platform_audit_logs_tenant",
+          "constrained_columns": [
+            "tenant_id"
+          ],
+          "referred_table": "tenants",
+          "referred_columns": [
+            "id"
+          ],
+          "options": {
+            "onupdate": "CASCADE",
+            "ondelete": "SET NULL"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -27,6 +27,8 @@ You cannot open Owner-only areas: Reports, AI, Audit, Users, or business Setting
 
 If WhatsApp is not configured by the Owner, you will see a clear message to contact them. Failed sends can be **retried** without creating another bill.
 
+If the business subscription is expired, cancelled, or billing-suspended, New Bill and catalog APIs are locked (payment required). You can still sign in and open Profile. Ask the Owner to contact Prabha Technology.
+
 **Stock:** On Items, use the inventory icon to **Adjust stock** (+/−) with an optional reason — do not recreate the bill.
 
 Receipts keep historical item names and prices even if the catalog changes later.

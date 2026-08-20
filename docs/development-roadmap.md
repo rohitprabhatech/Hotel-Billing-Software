@@ -182,6 +182,34 @@ Order adjusted to **actual codebase**: landing + contact first (visible commerci
 
 ---
 
+## Phase 8 follow-on — Cloud DB + Master ops hardening (**SIGNED OFF**)
+
+**Program goal:** Inspect the existing hosted database without dropping data, close remaining Master Admin gaps, then publish current manuals and the full E2E guide.
+
+**Execution rule:** After each sprint → test → report → **STOP** → wait for “start the next sprint”.
+
+| Sprint | Title | Status |
+|--------|-------|--------|
+| **1** | Cloud DB audit baseline | **COMPLETED** — [`sprint-1-cloud-db-audit-baseline.md`](./sprint-1-cloud-db-audit-baseline.md) |
+| **2** | Schema diff + upgrade plan | **COMPLETED** — [`sprint-2-cloud-schema-diff-and-upgrade-plan.md`](./sprint-2-cloud-schema-diff-and-upgrade-plan.md) |
+| **3** | Live DB inspection tooling | **COMPLETED** — [`sprint-3-live-db-inspection-tooling.md`](./sprint-3-live-db-inspection-tooling.md) |
+| **4** | Master login UX | **COMPLETED** — [`sprint-4-master-login-ux.md`](./sprint-4-master-login-ux.md) |
+| **5** | Master business lifecycle + platform audit | **COMPLETED** — [`sprint-5-master-lifecycle-platform-audit.md`](./sprint-5-master-lifecycle-platform-audit.md) |
+| **6** | Documentation + E2E testing guide | **COMPLETED** — [`sprint-6-docs-e2e-guide.md`](./sprint-6-docs-e2e-guide.md) |
+| **7** | Master dashboard query performance | **COMPLETED** — [`sprint-7-master-query-performance.md`](./sprint-7-master-query-performance.md) |
+| **8** | Live database inspect | **COMPLETED** — [`sprint-8-live-database-inspect.md`](./sprint-8-live-database-inspect.md) |
+| **9** | Non-destructive live schema apply | **COMPLETED** — [`sprint-9-live-schema-apply.md`](./sprint-9-live-schema-apply.md) |
+| **10** | Live platform readiness + Master Admin bootstrap | **COMPLETED** — [`sprint-10-master-bootstrap.md`](./sprint-10-master-bootstrap.md) |
+| **11** | Phase 8 Alembic coverage | **COMPLETED** — [`sprint-11-phase8-alembic.md`](./sprint-11-phase8-alembic.md) |
+| **12** | Final verification / signoff | **COMPLETED** — [`sprint-12-final-verification.md`](./sprint-12-final-verification.md) |
+| **13** | Status-filtered business list pagination | **COMPLETED** — [`sprint-13-status-filter-pagination.md`](./sprint-13-status-filter-pagination.md) |
+| **14** | Master registration-request list pagination | **COMPLETED** — [`sprint-14-registration-pagination.md`](./sprint-14-registration-pagination.md) |
+| **15** | Master dashboard KPI filters | **COMPLETED** — [`sprint-15-dashboard-kpi-filters.md`](./sprint-15-dashboard-kpi-filters.md) |
+
+**Open ops step:** seed the first Master Admin. Use `.\.venv\Scripts\python.exe scripts\seed_master_admin.py` after setting `MASTER_ADMIN_EMAIL` / `MASTER_ADMIN_PASSWORD` (do not commit). Live `master_admins` remains empty until that succeeds (`check_platform_ready.py` exit 1 = schema OK, seed required).
+
+---
+
 ## Phase 2 sprint details
 
 ### Sprint P2-1 — Audit report + DB checklist

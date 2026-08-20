@@ -5,7 +5,15 @@ from __future__ import annotations
 import os
 import sys
 
+from pathlib import Path
+
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
 from sqlalchemy import create_engine, text
+
+from schema_helpers import check_clause, drop_check_constraint
 
 
 def _has_column(conn, table: str, column: str) -> bool:
@@ -25,20 +33,7 @@ def _has_column(conn, table: str, column: str) -> bool:
 
 
 def _drop_check_if_exists(conn, name: str) -> None:
-    exists = conn.execute(
-        text(
-            """
-            SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME = 'bill_deliveries'
-              AND CONSTRAINT_NAME = :name
-              AND CONSTRAINT_TYPE = 'CHECK'
-            """
-        ),
-        {"name": name},
-    ).scalar()
-    if exists:
-        conn.execute(text(f"ALTER TABLE bill_deliveries DROP CHECK {name}"))
+    if drop_check_constraint(conn, "bill_deliveries", name):
         print(f"Dropped check {name}")
 
 
@@ -83,17 +78,24 @@ def main() -> int:
         else:
             print("bill_deliveries.recipient_email_masked already exists")
 
-        _drop_check_if_exists(conn, "chk_bill_deliveries_method")
-        conn.execute(
-            text(
-                """
-                ALTER TABLE bill_deliveries
-                ADD CONSTRAINT chk_bill_deliveries_method
-                CHECK (delivery_method IN ('WHATSAPP', 'PRINT', 'EMAIL'))
-                """
-            )
-        )
-        print("Updated chk_bill_deliveries_method to include EMAIL")
+        clause = check_clause(conn, "chk_bill_deliveries_method") or ""
+        if "EMAIL" in clause.upper():
+            print("chk_bill_deliveries_method already includes EMAIL")
+        else:
+            _drop_check_if_exists(conn, "chk_bill_deliveries_method")
+            try:
+                conn.execute(
+                    text(
+                        """
+                        ALTER TABLE bill_deliveries
+                        ADD CONSTRAINT chk_bill_deliveries_method
+                        CHECK (delivery_method IN ('WHATSAPP', 'PRINT', 'EMAIL'))
+                        """
+                    )
+                )
+                print("Updated chk_bill_deliveries_method to include EMAIL")
+            except Exception as exc:
+                print(f"CHECK constraint note: {exc}")
 
     print("Email bill delivery schema applied.")
     return 0

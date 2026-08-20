@@ -17,6 +17,7 @@ apiClient.interceptors.request.use((config) => {
 
 const PUBLIC_AUTH_PATHS = [
   '/login',
+  '/master/login',
   '/register',
   '/forgot-password',
   '/reset-password',
@@ -33,7 +34,8 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('auth_user');
       // Only force navigation away from protected pages when a session existed.
       if (hadSession && !PUBLIC_AUTH_PATHS.includes(path)) {
-        window.location.assign('/login');
+        const next = path.startsWith('/master') ? '/master/login' : '/login';
+        window.location.assign(next);
       }
     }
     return Promise.reject(error);

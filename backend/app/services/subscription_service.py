@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 from app.extensions import db
+from app.models.platform_audit_log import ACTION_SUBSCRIPTION_UPDATED
 from app.models.subscription import (
     ACCESS_STATUSES,
     PAYMENT_COMPLIMENTARY,
@@ -19,6 +20,7 @@ from app.models.subscription_plan import DEFAULT_PLAN_ID
 from app.repositories.subscription_plan_repository import SubscriptionPlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.repositories.tenant_repository import TenantRepository
+from app.services.platform_audit_service import PlatformAuditService
 from app.services.platform_settings_service import PlatformSettingsService
 from app.utils.exceptions import NotFoundError, SubscriptionInactiveError, ValidationError
 from app.utils.ids import new_uuid
@@ -36,7 +38,23 @@ def _days(value, *, label: str = "Duration") -> int:
     return days
 
 
+def _subscription_snapshot(row: Subscription | None) -> dict | None:
+    if row is None:
+        return None
+    return {
+        "id": row.id,
+        "status": row.status,
+        "plan_id": row.plan_id,
+        "ends_at": row.ends_at.isoformat() if row.ends_at else None,
+        "trial_ends_at": row.trial_ends_at.isoformat() if row.trial_ends_at else None,
+        "payment_status": row.payment_status,
+        "price_at_purchase": float(row.price_at_purchase) if row.price_at_purchase is not None else None,
+    }
+
+
 class SubscriptionService:
+    TENANT_LIST_STATUSES = {"ACTIVE", "SUSPENDED"}
+
     @staticmethod
     def remaining_days(ends_at, *, now=None) -> int | None:
         if ends_at is None:
@@ -222,42 +240,91 @@ class SubscriptionService:
         )
 
     @staticmethod
-    def list_businesses(*, status: str | None = None, q: str | None = None, page=1, per_page=25):
+    def list_businesses(
+        *,
+        status: str | None = None,
+        tenant_status: str | None = None,
+        q: str | None = None,
+        page=1,
+        per_page=25,
+    ):
         require_master_context()
         now = utc_now_naive()
-        tenants, total = TenantRepository.list_all(q=q, page=1, per_page=500)
-        rows = []
         wanted = (status or "").strip().upper() or None
-        for tenant in tenants:
-            sub = SubscriptionRepository.get_current_for_tenant(tenant.id)
-            SubscriptionService.refresh_status(sub, now=now, persist=True)
-            payload = {
-                "id": tenant.id,
-                "business_name": tenant.business_name,
-                "name": tenant.name,
-                "email": tenant.email,
-                "tenant_status": tenant.status,
-                "subscription": SubscriptionService.serialize(sub, now=now),
-            }
-            effective = payload["subscription"]["status"] if payload["subscription"] else "NONE"
-            if wanted == "EXPIRING":
-                if not payload["subscription"] or not payload["subscription"]["is_expiring"]:
-                    continue
-            elif wanted == "NONE":
-                if payload["subscription"] is not None:
-                    continue
-            elif wanted and effective != wanted:
-                continue
-            rows.append(payload)
-        total = len(rows)
+        account = (tenant_status or "").strip().upper() or None
+        if account and account not in SubscriptionService.TENANT_LIST_STATUSES:
+            raise ValidationError("tenant_status must be ACTIVE or SUSPENDED")
         page = max(int(page or 1), 1)
         per_page = min(max(int(per_page or 25), 1), 100)
+
+        if not wanted:
+            tenants, total = TenantRepository.list_all(
+                q=q, tenant_status=account, page=page, per_page=per_page
+            )
+            rows = SubscriptionService._business_payloads(tenants, now=now)
+            return rows, {"page": page, "per_page": per_page, "total": total}
+
+        tenant_ids = TenantRepository.list_ids_matching(q=q, tenant_status=account)
+        subs = SubscriptionRepository.map_current_for_tenants(tenant_ids)
+        matched: list[str] = []
+        dirty = False
+        for tenant_id in tenant_ids:
+            sub = subs.get(tenant_id)
+            previous = sub.status if sub is not None else None
+            SubscriptionService.refresh_status(sub, now=now, persist=True)
+            if sub is not None and sub.status != previous:
+                dirty = True
+            if SubscriptionService._status_matches(sub, wanted, now=now):
+                matched.append(tenant_id)
+        if dirty:
+            db.session.commit()
+        total = len(matched)
         start = (page - 1) * per_page
-        return rows[start : start + per_page], {
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-        }
+        page_ids = matched[start : start + per_page]
+        tenants = TenantRepository.get_many_ordered(page_ids)
+        rows = SubscriptionService._business_payloads(
+            tenants, now=now, subs=subs, persist=False
+        )
+        return rows, {"page": page, "per_page": per_page, "total": total}
+
+    @staticmethod
+    def _status_matches(sub, wanted: str, *, now) -> bool:
+        if wanted == "NONE":
+            return sub is None
+        if sub is None:
+            return False
+        data = SubscriptionService.serialize(sub, now=now)
+        if wanted == "EXPIRING":
+            return bool(data and data["is_expiring"])
+        return data["status"] == wanted
+
+    @staticmethod
+    def _business_payloads(tenants, *, now, subs=None, persist: bool = True) -> list[dict]:
+        if subs is None:
+            subs = SubscriptionRepository.map_current_for_tenants(
+                [tenant.id for tenant in tenants]
+            )
+        rows = []
+        dirty = False
+        for tenant in tenants:
+            sub = subs.get(tenant.id)
+            previous = sub.status if sub is not None else None
+            SubscriptionService.refresh_status(sub, now=now, persist=True)
+            if sub is not None and sub.status != previous:
+                dirty = True
+            rows.append(
+                {
+                    "id": tenant.id,
+                    "business_name": tenant.business_name,
+                    "name": tenant.name,
+                    "email": tenant.email,
+                    "tenant_status": tenant.status,
+                    "subscription": SubscriptionService.serialize(sub, now=now),
+                }
+            )
+        if persist and dirty:
+            db.session.commit()
+        return rows
 
     @staticmethod
     def list_expiring(*, page=1, per_page=25):
@@ -304,6 +371,7 @@ class SubscriptionService:
         plan = SubscriptionService._require_active_plan(plan_id)
         now = utc_now_naive()
         row = SubscriptionRepository.get_current_for_tenant(tenant.id)
+        old = _subscription_snapshot(row)
         ends = None
         if days is not None:
             ends = now + timedelta(days=_days(days, label="Paid duration"))
@@ -331,6 +399,14 @@ class SubscriptionService:
                 row.status = SUBSCRIPTION_ACTIVE
                 row.ends_at = None
                 row.payment_status = PAYMENT_COMPLIMENTARY
+        PlatformAuditService.log(
+            action=ACTION_SUBSCRIPTION_UPDATED,
+            entity_type="SUBSCRIPTION",
+            entity_id=row.id,
+            tenant_id=tenant.id,
+            old_data=old,
+            new_data={**_subscription_snapshot(row), "operation": "assign_plan"},
+        )
         db.session.commit()
         return SubscriptionService.serialize(row)
 
@@ -341,6 +417,7 @@ class SubscriptionService:
         duration = _days(days, label="Trial duration")
         now = utc_now_naive()
         row = SubscriptionRepository.get_current_for_tenant(tenant.id)
+        old = _subscription_snapshot(row)
         extra = timedelta(days=duration)
         if row is None:
             row = SubscriptionService._create_trial(tenant, days=duration)
@@ -360,6 +437,14 @@ class SubscriptionService:
             row.starts_at = now
             row.ends_at = row.trial_ends_at
             row.payment_status = None
+        PlatformAuditService.log(
+            action=ACTION_SUBSCRIPTION_UPDATED,
+            entity_type="SUBSCRIPTION",
+            entity_id=row.id,
+            tenant_id=tenant.id,
+            old_data=old,
+            new_data={**_subscription_snapshot(row), "operation": "extend_trial"},
+        )
         db.session.commit()
         return SubscriptionService.serialize(row)
 
@@ -371,6 +456,7 @@ class SubscriptionService:
         duration = _days(days, label="Renewal duration")
         now = utc_now_naive()
         row = SubscriptionRepository.get_current_for_tenant(tenant.id)
+        old = _subscription_snapshot(row)
         if plan_id:
             plan = SubscriptionService._require_active_plan(plan_id)
         elif row and row.plan_id:
@@ -403,6 +489,14 @@ class SubscriptionService:
             row.ends_at = base + extra
             row.price_at_purchase = plan.price
             row.payment_status = PAYMENT_MANUAL
+        PlatformAuditService.log(
+            action=ACTION_SUBSCRIPTION_UPDATED,
+            entity_type="SUBSCRIPTION",
+            entity_id=row.id,
+            tenant_id=tenant.id,
+            old_data=old,
+            new_data={**_subscription_snapshot(row), "operation": "renew"},
+        )
         db.session.commit()
         return SubscriptionService.serialize(row)
 
@@ -413,29 +507,46 @@ class SubscriptionService:
         row = SubscriptionRepository.get_current_for_tenant(tenant.id)
         if row is None:
             raise NotFoundError("Subscription not found")
+        old = _subscription_snapshot(row)
         row.status = SUBSCRIPTION_CANCELLED
         row.ends_at = utc_now_naive()
+        PlatformAuditService.log(
+            action=ACTION_SUBSCRIPTION_UPDATED,
+            entity_type="SUBSCRIPTION",
+            entity_id=row.id,
+            tenant_id=tenant.id,
+            old_data=old,
+            new_data={**_subscription_snapshot(row), "operation": "cancel"},
+        )
         db.session.commit()
         return SubscriptionService.serialize(row)
 
     @staticmethod
-    def count_expiring(*, now=None) -> int:
+    def access_counts(*, now=None) -> dict:
         now = now or utc_now_naive()
-        count = 0
-        rows = db.session.query(Subscription).all()
-        for row in rows:
+        tenant_ids = TenantRepository.list_ids()
+        current = SubscriptionRepository.map_current_for_tenants(tenant_ids)
+        expiring = 0
+        expired = 0
+        dirty = False
+        for row in current.values():
+            previous = row.status
             data = SubscriptionService.serialize(row, now=now)
             if data and data["is_expiring"]:
-                count += 1
-        return count
+                expiring += 1
+            SubscriptionService.refresh_status(row, now=now, persist=True)
+            if row.status != previous:
+                dirty = True
+            if row.status == SUBSCRIPTION_EXPIRED:
+                expired += 1
+        if dirty:
+            db.session.commit()
+        return {"expiring_soon": expiring, "expired_subscriptions": expired}
+
+    @staticmethod
+    def count_expiring(*, now=None) -> int:
+        return int(SubscriptionService.access_counts(now=now)["expiring_soon"])
 
     @staticmethod
     def count_expired(*, now=None) -> int:
-        now = now or utc_now_naive()
-        count = 0
-        rows = db.session.query(Subscription).all()
-        for row in rows:
-            SubscriptionService.refresh_status(row, now=now, persist=True)
-            if row.status == SUBSCRIPTION_EXPIRED:
-                count += 1
-        return count
+        return int(SubscriptionService.access_counts(now=now)["expired_subscriptions"])

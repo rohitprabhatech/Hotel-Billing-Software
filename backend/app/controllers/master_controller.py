@@ -14,8 +14,10 @@ from app.schemas.master_schemas import (
     update_trial_settings_schema,
 )
 from app.services.expiry_job_service import ExpiryJobService
+from app.services.master_business_service import MasterBusinessService
 from app.services.master_dashboard_service import MasterDashboardService
 from app.services.plan_service import PlanService
+from app.services.platform_audit_service import PlatformAuditService
 from app.services.platform_notification_service import PlatformNotificationService
 from app.services.platform_settings_service import PlatformSettingsService
 from app.services.registration_request_service import RegistrationRequestService
@@ -119,6 +121,7 @@ def list_businesses():
     per_page = int(request.args.get("per_page", 25))
     data, meta = SubscriptionService.list_businesses(
         status=request.args.get("status"),
+        tenant_status=request.args.get("tenant_status"),
         q=request.args.get("q"),
         page=page,
         per_page=per_page,
@@ -163,6 +166,39 @@ def renew_subscription(tenant_id: str):
 def cancel_subscription(tenant_id: str):
     data = SubscriptionService.cancel(tenant_id)
     return success_response(data=data)
+
+
+def activate_business(tenant_id: str):
+    data = MasterBusinessService.activate(tenant_id)
+    return success_response(data=data)
+
+
+def deactivate_business(tenant_id: str):
+    data = MasterBusinessService.deactivate(tenant_id)
+    return success_response(data=data)
+
+
+def suspend_business(tenant_id: str):
+    data = MasterBusinessService.suspend_subscription(tenant_id)
+    return success_response(data=data)
+
+
+def unsuspend_business(tenant_id: str):
+    data = MasterBusinessService.unsuspend_subscription(tenant_id)
+    return success_response(data=data)
+
+
+def list_audit_logs():
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 25))
+    data, meta = PlatformAuditService.list_logs(
+        action=request.args.get("action"),
+        entity_type=request.args.get("entity_type"),
+        tenant_id=request.args.get("tenant_id"),
+        page=page,
+        per_page=per_page,
+    )
+    return success_response(data=data, meta=meta)
 
 
 def list_notifications():

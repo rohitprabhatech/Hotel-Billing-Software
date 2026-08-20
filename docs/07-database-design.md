@@ -1,15 +1,28 @@
-# 07 — Database Design
+# 07 — Database Design (detailed catalog)
 
-> **Sprint 19 summary:** Prefer [database-design.md](./database-design.md) for the short current overview. This file remains the detailed table catalog.
+> **Prefer** [database-design.md](./database-design.md) for status and table overview, and [database-relationships.md](./database-relationships.md) for FKs/cascades.  
+> **Source of truth:** `backend/sql/02_schema.sql` (23 application tables).  
+> This file is the column-level catalog kept current through Phase 8 + follow-on Sprints 1–15.
 
 ## Design Principles
 
-1. Tenant isolation via `tenant_id` on all tenant-scoped tables
-2. Decimal money fields (`DECIMAL(12,2)` typical; GST rates `DECIMAL(5,2)`)
-3. Soft status changes for financial records (no hard delete via app)
-4. Historical snapshots on `bill_items`
-5. Proper PKs, FKs, unique constraints, and selective indexes
-6. UTC timestamps (`created_at`, `updated_at`)
+1. Tenant isolation via `tenant_id` on all tenant-scoped tables  
+2. Decimal money fields (`DECIMAL(12,2)` typical; GST rates `DECIMAL(5,2)`)  
+3. Soft status changes for financial records (no hard delete via app)  
+4. Historical snapshots on `bill_items`  
+5. Proper PKs, FKs, unique constraints, and selective indexes  
+6. UTC timestamps (`created_at`, `updated_at`)  
+7. Master / platform tables have **no** `tenant_id` (except optional links on audit / registration)
+
+## Table inventory (23)
+
+**Core (15):** `tenants`, `roles`, `users`, `password_reset_tokens`, `email_verification_tokens`, `categories`, `items`, `bill_number_counters`, `bills`, `bill_items`, `notifications`, `tenant_whatsapp_configs`, `bill_deliveries`, `audit_logs`, `stock_movements`
+
+**Phase 8 (8):** `master_admins`, `registration_requests`, `platform_settings`, `subscription_plans`, `subscriptions`, `subscription_notices`, `platform_notifications`, `platform_audit_logs`
+
+Live hosted DBs also have `alembic_version` (stamped `20260818_phase8_saas`).
+
+---
 
 ## Tables
 
@@ -20,32 +33,18 @@
 | id | CHAR(36) PK | UUID |
 | name | VARCHAR(120) | Display name |
 | business_name | VARCHAR(200) | Printed on receipt |
-| business_type | VARCHAR(40) | Option code (`restaurant`, `hotel`, `clothing_store`, …); default `other` |
-| address | VARCHAR(255) | |
-| city | VARCHAR(100) | |
-| state | VARCHAR(100) | |
-| pincode | VARCHAR(20) | |
-| phone | VARCHAR(30) | |
-| email | VARCHAR(255) | |
+| business_type | VARCHAR(40) | Option code; default `other` |
+| address / city / state / pincode / phone / email | VARCHAR | Optional contact |
 | gst_number | VARCHAR(30) NULL | GSTIN |
 | fssai_number | VARCHAR(50) NULL | Optional (food-service) |
-| bill_number_prefix | VARCHAR(20) NULL | e.g. `INV-2026-` or empty for plain sequence |
+| bill_number_prefix | VARCHAR(20) NULL | e.g. `INV-2026-` |
 | default_gst_percent | DECIMAL(5,2) NULL | Optional default for new items |
-| status | ENUM/VARCHAR | ACTIVE, SUSPENDED |
-| created_at | DATETIME | |
-| updated_at | DATETIME | |
+| status | VARCHAR(20) | `ACTIVE` \| `SUSPENDED` (deactivate = SUSPENDED) |
+| created_at / updated_at | DATETIME(6) | |
 
 ### `roles`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | CHAR(36) PK | or SMALLINT |
-| name | VARCHAR(50) UNIQUE | `OWNER`, `BILLING_USER` |
-| description | VARCHAR(255) | |
-| created_at | DATETIME | |
-| updated_at | DATETIME | |
-
-Seeded globally; not tenant-scoped.
+Global seed: `OWNER`, `BILLING_USER`. Not tenant-scoped. `name` UNIQUE.
 
 ### `users`
 
@@ -58,11 +57,17 @@ Seeded globally; not tenant-scoped.
 | email | VARCHAR(255) | Unique per tenant: `(tenant_id, email)` |
 | password_hash | VARCHAR(255) | Never exposed in API |
 | is_active | BOOLEAN | |
+| email_verified | TINYINT | |
+| email_verified_at | DATETIME NULL | |
+| password_changed_at | DATETIME NULL | |
+| pending_email | VARCHAR(255) NULL | Profile email change |
+| token_version | INT | Bumped on logout / password change |
 | last_login_at | DATETIME NULL | |
-| created_at | DATETIME | |
-| updated_at | DATETIME | |
+| created_at / updated_at | DATETIME(6) | |
 
-Indexes: `(tenant_id)`, UNIQUE `(tenant_id, email)`, `(tenant_id, role_id)`
+### `password_reset_tokens` / `email_verification_tokens`
+
+Hashed `token_hash` UNIQUE; FK `user_id` **ON DELETE CASCADE**; `expires_at`, optional `used_at`.
 
 ### `categories`
 
@@ -71,157 +76,110 @@ Indexes: `(tenant_id)`, UNIQUE `(tenant_id, email)`, `(tenant_id, role_id)`
 | id | CHAR(36) PK | |
 | tenant_id | CHAR(36) FK | |
 | parent_id | CHAR(36) NULL FK → categories | Subcategory support |
+| parent_key | CHAR(36) GENERATED VIRTUAL | `IFNULL(parent_id, '')` |
 | name | VARCHAR(120) | |
 | description | TEXT NULL | |
 | is_active | BOOLEAN | |
-| created_at | DATETIME | |
-| updated_at | DATETIME | |
+| created_at / updated_at | DATETIME(6) | |
 
-Indexes: `(tenant_id)`, UNIQUE `(tenant_id, parent_id, name)` (or `(tenant_id, name)` if flat)
+**Unique:** `(tenant_id, parent_key, name)` — not `(tenant_id, parent_id, name)`.
 
 ### `items`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | CHAR(36) PK | |
-| tenant_id | CHAR(36) FK | |
-| category_id | CHAR(36) FK → categories | |
-| created_by | CHAR(36) NULL FK → users | SET NULL |
-| name | VARCHAR(200) | UNIQUE per tenant |
-| sku | VARCHAR(64) NULL | UNIQUE per tenant when set |
-| description | TEXT NULL | |
-| price | DECIMAL(12,2) | Selling price |
-| cost_price | DECIMAL(12,2) NULL | Optional cost |
-| gst_percentage | DECIMAL(5,2) | |
-| stock_quantity | DECIMAL(12,3) NULL | Optional stock (null = not tracked) |
-| is_active | BOOLEAN | Deactivate instead of delete |
-| created_at | DATETIME | |
-| updated_at | DATETIME | |
+Catalog: `price`, `gst_percentage`, optional `sku` / `cost_price` / `stock_quantity`, `created_by` SET NULL, soft `is_active`. UNIQUE `(tenant_id, name)`; SKU unique per tenant when set.
 
-Indexes: `(tenant_id)`, `(tenant_id, category_id)`, `(tenant_id, is_active)`, `(tenant_id, sku)`, UNIQUE `(tenant_id, name)`, UNIQUE `(tenant_id, sku)`
+### `bill_number_counters`
+
+**Required** per tenant. PK = `tenant_id`; `next_value` updated in transaction.
 
 ### `bills`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | CHAR(36) PK | |
-| tenant_id | CHAR(36) FK | |
-| bill_number | VARCHAR(50) | Unique per tenant |
-| bill_sequence | BIGINT | Internal monotonic sequence per tenant |
-| table_number | VARCHAR(30) NULL | Optional |
-| subtotal | DECIMAL(12,2) | |
-| discount | DECIMAL(12,2) | Default 0 |
-| taxable_amount | DECIMAL(12,2) | |
-| cgst_amount | DECIMAL(12,2) | |
-| sgst_amount | DECIMAL(12,2) | |
-| gst_amount | DECIMAL(12,2) | cgst + sgst |
-| grand_total | DECIMAL(12,2) | |
-| round_off | DECIMAL(12,2) | Optional Indian rounding |
-| status | VARCHAR(20) | Default **FINALIZED** (app); CHECK also allows DRAFT/CANCELLED/VOID |
-| payment_method | VARCHAR(20) | `cash` \| `online` (default cash) |
-| created_by | CHAR(36) FK → users | |
-| cancelled_by | CHAR(36) NULL FK → users | |
-| cancelled_at | DATETIME NULL | |
-| cancellation_reason | TEXT NULL | Required on cancel |
-| printed_count | INT | Default 0; increment on print/reprint |
-| created_at | DATETIME | |
-| updated_at | DATETIME | |
-
-Constraints/Indexes:
-
-- UNIQUE `(tenant_id, bill_number)`
-- UNIQUE `(tenant_id, bill_sequence)`
-- INDEX `(tenant_id, created_at)`
-- INDEX `(tenant_id, status)`
-- INDEX `(tenant_id, created_by)`
-- INDEX `(tenant_id, payment_method)`
+Finalized sales. Column `table_number` is the API/UI **reference**. `payment_method` = `cash` \| `online`. App status default **FINALIZED**; cancel → **CANCELLED**. Optional customer name/phone/email for delivery channels. Indexes on tenant + created_at / status / payment_method.
 
 ### `bill_items`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | CHAR(36) PK | |
-| tenant_id | CHAR(36) FK | Denormalized for isolation queries |
-| bill_id | CHAR(36) FK → bills | ON DELETE RESTRICT |
-| item_id | CHAR(36) NULL FK → items | ON DELETE **SET NULL** — snapshots keep history |
-| item_name | VARCHAR(200) | Snapshot |
-| quantity | DECIMAL(10,3) | Usually integer qty; decimal allowed |
-| unit_price | DECIMAL(12,2) | Snapshot |
-| gst_percentage | DECIMAL(5,2) | Snapshot |
-| discount | DECIMAL(12,2) | Line or allocated |
-| taxable_amount | DECIMAL(12,2) | |
-| cgst_amount | DECIMAL(12,2) | |
-| sgst_amount | DECIMAL(12,2) | |
-| total | DECIMAL(12,2) | Line total |
-| created_at | DATETIME | |
+Line snapshots (`item_name`, `unit_price`, GST amounts). `item_id` **SET NULL** on item delete. `bill_id` **RESTRICT**.
 
-Indexes: `(tenant_id, bill_id)`, `(tenant_id, item_id)`
+### `notifications`
 
-**No hard delete of bills after FINALIZED** via application. Relationship details: [database-relationships.md](./database-relationships.md).
+Tenant in-app alerts (`type`, `title`, `message`, `entity_*`, `is_read`). Includes stock and `SUBSCRIPTION_EXPIRING` / `SUBSCRIPTION_EXPIRED`.
+
+### `tenant_whatsapp_configs`
+
+PK = `tenant_id`. Access token stored **encrypted**; never returned raw to clients.
+
+### `bill_deliveries`
+
+Attempts for `WHATSAPP` / `EMAIL` / `PRINT`. Status lifecycle includes Meta webhook updates (`DELIVERED` / `READ` / `FAILED`, etc.).
 
 ### `audit_logs`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | CHAR(36) PK | |
-| tenant_id | CHAR(36) FK | |
-| user_id | CHAR(36) NULL FK → users | |
-| user_name | VARCHAR(120) | Snapshot for display |
-| action | VARCHAR(50) | See action catalog |
-| entity_type | VARCHAR(50) | BILL, ITEM, CATEGORY, USER, AUTH, REPORT |
-| entity_id | CHAR(36) NULL | |
-| old_data | JSON NULL | |
-| new_data | JSON NULL | |
-| ip_address | VARCHAR(45) NULL | |
-| user_agent | VARCHAR(255) NULL | |
-| created_at | DATETIME | |
+Append-only tenant activity. Snapshots `user_name`. Entity types include BILL, ITEM, CATEGORY, USER, AUTH, REPORT, etc.
 
-Indexes: `(tenant_id, created_at)`, `(tenant_id, user_id)`, `(tenant_id, action)`, `(tenant_id, entity_type, entity_id)`
+### `stock_movements`
 
-**Append-only** from application perspective.
+Inventory ledger: receive / adjust; `item_id` RESTRICT; `created_by` SET NULL.
 
-### Optional: `bill_number_counters`
+---
 
-For concurrency-safe sequences:
+## Phase 8 tables
 
-| Column | Type | Notes |
-|--------|------|-------|
-| tenant_id | CHAR(36) PK | |
-| next_value | BIGINT | Locked/updated in transaction |
-| updated_at | DATETIME | |
+### `master_admins`
 
-Alternative: `SELECT MAX(bill_sequence) ... FOR UPDATE` on tenant row/counter.
+Platform operators — **no** `tenant_id`. Columns: `name`, unique `email`, `password_hash`, `is_active`, `token_version`, `last_login_at`.
 
-## Bill Status Lifecycle
+### `registration_requests`
+
+Public signup queue. Status `PENDING` / `APPROVED` / `REJECTED`. Stores `password_hash` until approve (never returned by API). Optional `approved_by` / `rejected_by` → `master_admins`; `tenant_id` set on approve.
+
+### `platform_settings`
+
+Singleton trial config: `trial_enabled`, `trial_days`, `expiry_warning_days`.
+
+### `subscription_plans`
+
+Master catalog: price, `billing_cycle` MONTHLY|YEARLY, features JSON, `trial_eligible`, `is_public`, `is_active`, `display_order`.
+
+### `subscriptions`
+
+Per-tenant entitlement: status TRIAL/ACTIVE/EXPIRED/CANCELLED/SUSPENDED (plus derived EXPIRING in API), `plan_id` SET NULL, `price_at_purchase` snapshot, trial/paid end dates, `payment_status` (e.g. COMPLIMENTARY / MANUAL).
+
+### `subscription_notices`
+
+Idempotency: UNIQUE `(subscription_id, notice_type, period_key)`.
+
+### `platform_notifications`
+
+Master in-app alerts (no `tenant_id`): title, message, type, entity refs, `is_read`.
+
+### `platform_audit_logs`
+
+Master actions only. Optional `tenant_id`, `actor_id` → `master_admins` SET NULL. Secrets stripped before write.
+
+---
+
+## Bill status (application)
 
 ```text
-DRAFT ──finalize──► FINALIZED ──cancel──► CANCELLED
-                         │
-                         └──void──► VOID   (if distinguished)
+(create) ──► FINALIZED ──cancel──► CANCELLED
 ```
 
-v1 may use CANCELLED and VOID as synonyms or treat VOID as owner-level cancel; document in billing workflow.
+SQL CHECK may still allow DRAFT/VOID for forward compatibility; the app creates FINALIZED only.
 
-## Money & GST Notes
+## Money & GST
 
-- Store amounts with 2 decimal places
-- Split GST into CGST + SGST (equal halves of gst_percentage for intra-state model in v1)
-- Backend recalculates; reject mismatched client totals
+- Store amounts with 2 decimal places  
+- Split GST into CGST + SGST (equal halves for intra-state model)  
+- Backend recalculates; reject mismatched client totals  
 
-## Referential Integrity
+## Referential integrity
 
-- ON DELETE RESTRICT for bills/items referenced historically
-- Soft-deactivate users/items/categories
-- Cascades avoided for financial tables
+See [database-relationships.md](./database-relationships.md). Soft-deactivate users/items/categories; never wipe financial history via API.
 
-## Improvements vs Initial Spec
+## Schema apply
 
-| Addition | Why |
-|----------|-----|
-| `bill_sequence` | Reliable ordering/locking |
-| `bill_number_counters` | Concurrent unique numbers |
-| `parent_id` on categories | Subcategory hierarchy |
-| `printed_count` | Reprint monitoring |
-| `round_off` | Match Indian cash-memo totals |
-| `user_name` on audit | Readable history if user renamed |
-| `bill_number_prefix` on tenant | Configurable INV format |
+| Scenario | Command |
+|----------|---------|
+| Fresh | `01_create_database.sql` + `02_schema.sql` |
+| Existing / hosted | `apply_pending_schema.py` then `stamp_alembic_head.py` |
+| Obsolete | Do **not** run `03_saas_auth_alter.sql` |

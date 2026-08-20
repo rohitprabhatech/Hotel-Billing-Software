@@ -2,7 +2,7 @@
 
 **Product:** Business Billing  
 **Provider:** Prabha Technology Pvt. Ltd.  
-**Plan:** ₹550 / month (informational — contact support to activate; no in-app payment)
+**Plan:** Published prices come from Master Admin plans (landing page). In-app there is **no Pay / checkout** — contact support to activate or renew.
 
 ## What it is
 
@@ -14,15 +14,19 @@ Cloud billing for **any** shop type: restaurant, hotel, clothing, grocery, pharm
 |------|--------|
 | **Owner** | Catalog policy, users, reports, AI, audit, settings, and billing |
 | **Billing User** | Day-to-day counter billing, items, and bill history |
+| **Master Admin** | Prabha Technology only — registration approval, plans, trials, business lifecycle. Not a shop login. |
 
 ## Getting started
 
-1. Open the public site → **Register Business** (or **Login**).  
-2. Verify your email if prompted.  
-3. Sign in — Owners land on the Owner Dashboard; Billing Users on Billing.  
-4. Optional: switch **Light / Dark** mode (saved on this device).
+1. Open the public site → **Register Business** (accept Terms and Privacy Policy).  
+2. Wait for Prabha Technology to **approve** the request. You cannot sign in while status is pending.  
+3. After approval email, sign in at **Login** (`/login`) — Owners land on the Owner Dashboard; Billing Users on Billing.  
+4. If a trial is enabled, billing works until the trial end date. If trial is off, wait for your plan to be assigned.  
+5. Optional: switch **Light / Dark** mode (saved on this device).
 
-**QA sample business:** Shree General Store (Grocery) — Owner `owner@example.com`, Billing `billing@example.com`. Exact catalog and bill steps: [test-business-billing-guide.md](./test-business-billing-guide.md).
+Master operators do **not** use `/login` for administration. They use the unadvertised `/master/login` path (footer dot on the landing page). See [master-admin-manual.md](./master-admin-manual.md).
+
+**QA sample business:** Shree General Store (Grocery) — Owner `owner@example.com`, Billing `billing@example.com`. Exact catalog and bill steps: [test-business-billing-guide.md](./test-business-billing-guide.md). New SaaS registration sample: Shree Family Restaurant (`rahul.test@example.com`) in the same guide.
 
 ## Common workflows
 
@@ -56,3 +60,5 @@ Cloud billing for **any** shop type: restaurant, hotel, clothing, grocery, pharm
 
 - [Owner Manual](./owner-manual.md)  
 - [Billing User Manual](./billing-user-manual.md)  
+- [Master Admin Manual](./master-admin-manual.md)  
+- [Privacy Policy](./privacy-policy.md) · [Terms of Service](./terms-of-service.md)  

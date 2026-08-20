@@ -5,7 +5,15 @@ from __future__ import annotations
 import os
 import sys
 
+from pathlib import Path
+
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
 from sqlalchemy import create_engine, text
+
+from schema_helpers import check_clause, drop_check_constraint
 
 
 def _has_column(conn, table: str, column: str) -> bool:
@@ -60,24 +68,25 @@ def main() -> int:
         else:
             print("bill_deliveries.read_at already exists")
 
-        # Widen CHECK by dropping/recreating if present (MySQL 8)
-        try:
-            conn.execute(text("ALTER TABLE bill_deliveries DROP CHECK chk_bill_deliveries_status"))
-        except Exception:
-            pass
-        try:
-            conn.execute(
-                text(
-                    """
-                    ALTER TABLE bill_deliveries
-                    ADD CONSTRAINT chk_bill_deliveries_status
-                    CHECK (status IN ('PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED'))
-                    """
+        clause = check_clause(conn, "chk_bill_deliveries_status") or ""
+        wanted = ("PENDING", "SENT", "DELIVERED", "READ", "FAILED")
+        if all(token in clause.upper() for token in wanted):
+            print("chk_bill_deliveries_status already includes DELIVERED/READ")
+        else:
+            drop_check_constraint(conn, "bill_deliveries", "chk_bill_deliveries_status")
+            try:
+                conn.execute(
+                    text(
+                        """
+                        ALTER TABLE bill_deliveries
+                        ADD CONSTRAINT chk_bill_deliveries_status
+                        CHECK (status IN ('PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED'))
+                        """
+                    )
                 )
-            )
-            print("Updated chk_bill_deliveries_status")
-        except Exception as exc:
-            print(f"CHECK constraint note: {exc}")
+                print("Updated chk_bill_deliveries_status")
+            except Exception as exc:
+                print(f"CHECK constraint note: {exc}")
 
         if not _has_index(conn, "bill_deliveries", "ix_bill_deliveries_provider_message"):
             conn.execute(

@@ -8,6 +8,7 @@ from app.models.category import Category
 from app.models.item import Item
 from app.models.master_admin import ROLE_MASTER_ADMIN, MasterAdmin
 from app.models.notification import Notification
+from app.models.platform_audit_log import PlatformAuditLog
 from app.models.platform_notification import PlatformNotification
 from app.models.platform_settings import PlatformSettings
 from app.models.registration_request import RegistrationRequest
@@ -32,6 +33,7 @@ __all__ = [
     "MasterAdmin",
     "Notification",
     "PasswordResetToken",
+    "PlatformAuditLog",
     "PlatformNotification",
     "PlatformSettings",
     "RegistrationRequest",

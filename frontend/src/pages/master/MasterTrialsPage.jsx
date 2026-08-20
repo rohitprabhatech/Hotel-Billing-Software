@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import PageShell from '../../components/PageShell';
+import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { listMasterTrials } from '../../services/masterService';
@@ -25,14 +26,19 @@ function formatWhen(value) {
 
 export default function MasterTrialsPage() {
   const [rows, setRows] = useState([]);
+  const [meta, setMeta] = useState({ page: 1, per_page: 25, total: 0 });
+  const [page, setPage] = useState(1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    listMasterTrials({ per_page: 50 })
+    listMasterTrials({ page, per_page: 25 })
       .then((payload) => {
-        if (active) setRows(payload.data || []);
+        if (active) {
+          setRows(payload.data || []);
+          setMeta(payload.meta || { page, per_page: 25, total: 0 });
+        }
       })
       .catch((err) => {
         if (active) {
@@ -45,7 +51,7 @@ export default function MasterTrialsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [page]);
 
   return (
     <PageShell>
@@ -76,7 +82,7 @@ export default function MasterTrialsPage() {
               {rows.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
-                    <TruncateText>{row.business_name || row.tenant_id}</TruncateText>
+                    <TruncateText value={row.business_name || row.tenant_id} />
                   </TableCell>
                   <TableCell>
                     <Chip size="small" color="warning" label={row.status} />
@@ -90,6 +96,15 @@ export default function MasterTrialsPage() {
               ))}
             </TableBody>
           </Table>
+          <PaginationBar
+            page={meta.page}
+            perPage={meta.per_page}
+            total={meta.total}
+            onPageChange={(next) => {
+              setLoading(true);
+              setPage(next);
+            }}
+          />
         </TableCard>
       )}
     </PageShell>

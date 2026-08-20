@@ -2,7 +2,11 @@
 -- Business Billing Software — MySQL Schema (Multi-Tenant)
 -- Database : hotel_billing  (legacy DB name; product is multi-business)
 -- Charset  : utf8mb4
--- Tool tip : Open/run this file in DBeaver against the hotel_billing connection
+-- Tables   : 23 application tables (15 core + 8 Phase 8 SaaS / Master)
+--
+-- GREENFIELD / EMPTY DB ONLY. This file DROP TABLEs then recreates.
+-- Never run against hosted/production data (use apply_pending_schema.py).
+-- Tool tip : Open/run this file in DBeaver against an empty hotel_billing connection
 -- =============================================================================
 
 USE hotel_billing;
@@ -13,6 +17,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- -----------------------------------------------------------------------------
 -- Drop in dependency order (safe re-run for local/dev)
 -- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS platform_audit_logs;
 DROP TABLE IF EXISTS subscription_notices;
 DROP TABLE IF EXISTS platform_notifications;
 DROP TABLE IF EXISTS subscriptions;
@@ -710,6 +715,36 @@ CREATE TABLE platform_notifications (
                                          ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     INDEX ix_platform_notifications_unread (is_read, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- platform_audit_logs (Master Admin actions; not tenant-scoped)
+-- -----------------------------------------------------------------------------
+CREATE TABLE platform_audit_logs (
+    id              CHAR(36)     NOT NULL,
+    actor_id        CHAR(36)     NULL,
+    actor_name      VARCHAR(120) NULL,
+    actor_email     VARCHAR(255) NULL,
+    action          VARCHAR(50)  NOT NULL,
+    entity_type     VARCHAR(50)  NOT NULL,
+    entity_id       CHAR(36)     NULL,
+    tenant_id       CHAR(36)     NULL,
+    old_data        JSON         NULL,
+    new_data        JSON         NULL,
+    ip_address      VARCHAR(45)  NULL,
+    user_agent      VARCHAR(255) NULL,
+    created_at      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    INDEX ix_platform_audit_logs_actor (actor_id),
+    INDEX ix_platform_audit_logs_action (action),
+    INDEX ix_platform_audit_logs_tenant (tenant_id),
+    INDEX ix_platform_audit_logs_created_at (created_at),
+    CONSTRAINT fk_platform_audit_logs_actor
+        FOREIGN KEY (actor_id) REFERENCES master_admins (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_platform_audit_logs_tenant
+        FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------

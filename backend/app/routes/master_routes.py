@@ -128,6 +128,36 @@ def cancel_subscription(tenant_id):
     return master_controller.cancel_subscription(tenant_id)
 
 
+@master_bp.post("/businesses/<tenant_id>/activate")
+@master_required
+def activate_business(tenant_id):
+    return master_controller.activate_business(tenant_id)
+
+
+@master_bp.post("/businesses/<tenant_id>/deactivate")
+@master_required
+def deactivate_business(tenant_id):
+    return master_controller.deactivate_business(tenant_id)
+
+
+@master_bp.post("/businesses/<tenant_id>/suspend")
+@master_required
+def suspend_business(tenant_id):
+    return master_controller.suspend_business(tenant_id)
+
+
+@master_bp.post("/businesses/<tenant_id>/unsuspend")
+@master_required
+def unsuspend_business(tenant_id):
+    return master_controller.unsuspend_business(tenant_id)
+
+
+@master_bp.get("/audit-logs")
+@master_required
+def list_audit_logs():
+    return master_controller.list_audit_logs()
+
+
 @master_bp.get("/notifications")
 @master_required
 def list_notifications():

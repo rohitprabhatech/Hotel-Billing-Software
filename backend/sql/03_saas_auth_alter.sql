@@ -1,9 +1,13 @@
 -- Historical incremental alter for the SaaS-auth release (MySQL).
 --
--- This file intentionally covers only the authentication changes introduced in
--- that release. It is NOT a complete upgrade for the current application.
--- For an existing database, use backend/scripts/apply_pending_schema.py.
--- For a fresh database, use 01_create_database.sql followed by 02_schema.sql.
+-- OBSOLETE FOR UPGRADES — do not run this file against any live or staging DB.
+-- It covers only early authentication columns/tables and is NOT a complete
+-- upgrade for the current application (23 tables + Phase 8 SaaS control plane).
+--
+-- Existing database: backend/scripts/apply_pending_schema.py then stamp_alembic_head.py
+-- Fresh database:    01_create_database.sql followed by 02_schema.sql
+--
+-- Kept in-tree only as a historical reference.
 
 USE hotel_billing;
 

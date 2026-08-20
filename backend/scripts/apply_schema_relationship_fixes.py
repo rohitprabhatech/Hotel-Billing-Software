@@ -52,7 +52,8 @@ def main() -> int:
     engine = create_engine(url)
     with engine.begin() as conn:
         default = _column_default(conn, "bills", "status")
-        if default != "FINALIZED":
+        normalized = (default or "").strip().strip("'").strip('"')
+        if normalized != "FINALIZED":
             conn.execute(
                 text(
                     "ALTER TABLE bills MODIFY status VARCHAR(20) NOT NULL DEFAULT 'FINALIZED'"

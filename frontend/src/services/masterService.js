@@ -95,6 +95,31 @@ export async function cancelBusinessSubscription(tenantId) {
   return data;
 }
 
+export async function activateBusiness(tenantId) {
+  const { data } = await apiClient.post(`/master/businesses/${tenantId}/activate`);
+  return data;
+}
+
+export async function deactivateBusiness(tenantId) {
+  const { data } = await apiClient.post(`/master/businesses/${tenantId}/deactivate`);
+  return data;
+}
+
+export async function suspendBusiness(tenantId) {
+  const { data } = await apiClient.post(`/master/businesses/${tenantId}/suspend`);
+  return data;
+}
+
+export async function unsuspendBusiness(tenantId) {
+  const { data } = await apiClient.post(`/master/businesses/${tenantId}/unsuspend`);
+  return data;
+}
+
+export async function listMasterAuditLogs(params = {}) {
+  const { data } = await apiClient.get('/master/audit-logs', { params });
+  return data;
+}
+
 export async function listMasterNotifications(params = {}) {
   const { data } = await apiClient.get('/master/notifications', { params });
   return data;

@@ -1,0 +1,22 @@
+{
+  "target": {
+    "host": "srv1952.hstgr.io",
+    "port": 3306,
+    "database": "u583892242_HotelBillingDB"
+  },
+  "table_count": 24,
+  "phase8_missing": [],
+  "alembic_versions": [
+    "20260818_phase8_saas"
+  ],
+  "row_counts": {
+    "tenants": 1,
+    "users": 1,
+    "bills": 2,
+    "bill_items": 5,
+    "master_admins": 0,
+    "subscription_plans": 1,
+    "subscriptions": 1
+  },
+  "master_admin_seeded": false
+}

@@ -2,6 +2,8 @@
 
 from datetime import datetime
 
+from sqlalchemy.orm import joinedload
+
 from app.extensions import db
 from app.models.subscription import (
     ACCESS_STATUSES,
@@ -9,6 +11,8 @@ from app.models.subscription import (
     SUBSCRIPTION_TRIAL,
     Subscription,
 )
+
+_IN_CHUNK = 500
 
 
 class SubscriptionRepository:
@@ -21,7 +25,7 @@ class SubscriptionRepository:
         return (
             db.session.query(Subscription)
             .filter(Subscription.tenant_id == tenant_id)
-            .order_by(Subscription.created_at.desc())
+            .order_by(Subscription.created_at.desc(), Subscription.id.desc())
             .first()
         )
 
@@ -69,12 +73,32 @@ class SubscriptionRepository:
         page = max(page, 1)
         per_page = min(max(per_page, 1), 100)
         rows = (
-            query.order_by(Subscription.trial_ends_at.asc())
+            query.options(joinedload(Subscription.tenant), joinedload(Subscription.plan))
+            .order_by(Subscription.trial_ends_at.asc())
             .offset((page - 1) * per_page)
             .limit(per_page)
             .all()
         )
         return rows, total
+
+    @staticmethod
+    def map_current_for_tenants(tenant_ids: list[str]) -> dict[str, Subscription]:
+        ids = list(dict.fromkeys([tid for tid in tenant_ids if tid]))
+        current: dict[str, Subscription] = {}
+        if not ids:
+            return current
+        for offset in range(0, len(ids), _IN_CHUNK):
+            chunk = ids[offset : offset + _IN_CHUNK]
+            rows = (
+                db.session.query(Subscription)
+                .options(joinedload(Subscription.plan), joinedload(Subscription.tenant))
+                .filter(Subscription.tenant_id.in_(chunk))
+                .order_by(Subscription.created_at.desc(), Subscription.id.desc())
+                .all()
+            )
+            for row in rows:
+                current.setdefault(row.tenant_id, row)
+        return current
 
     @staticmethod
     def list_all(*, page: int = 1, per_page: int = 25) -> tuple[list[Subscription], int]:

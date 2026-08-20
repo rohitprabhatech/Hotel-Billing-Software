@@ -108,7 +108,7 @@ def main() -> int:
                          trial_eligible, is_public, is_active, display_order, features)
                     VALUES
                         (:id, :name, :description, :price, 'INR', 'MONTHLY',
-                         1, 1, 1, 1, CAST(:features AS JSON))
+                         1, 1, 1, 1, :features)
                     """
                 ),
                 {

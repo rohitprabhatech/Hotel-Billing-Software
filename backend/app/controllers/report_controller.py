@@ -49,6 +49,14 @@ def custom_sales():
     return success_response(data=data)
 
 
+def fb_report():
+    date = request.args.get("date")
+    from_date = request.args.get("from")
+    to_date = request.args.get("to")
+    data = ReportService.fb_report(date=date, from_date=from_date, to_date=to_date)
+    return success_response(data=data)
+
+
 def export_report():
     return ReportService.export(
         report_type=request.args.get("type", "daily"),

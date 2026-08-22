@@ -10,7 +10,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Switch,
   Table,
@@ -29,13 +33,18 @@ import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { PageActions } from '../../context/PageActionsContext';
 import {
-  createBillingUser,
+  createTenantUser,
   listUsers,
   resetUserPassword,
   updateUser,
 } from '../../services/userService';
 
-const emptyForm = { name: '', email: '', password: '' };
+const emptyForm = { name: '', email: '', password: '', role: 'BILLING_USER' };
+
+const ASSIGNABLE_ROLES = [
+  { value: 'BILLING_USER', label: 'Billing User' },
+  { value: 'MANAGER', label: 'Manager' },
+];
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -69,10 +78,10 @@ export default function UsersPage() {
     setError('');
     setSuccess('');
     try {
-      await createBillingUser(form);
+      await createTenantUser(form);
       setOpen(false);
       setForm(emptyForm);
-      setSuccess('Billing user created successfully.');
+      setSuccess('User created successfully.');
       await load();
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to create user');
@@ -112,7 +121,7 @@ export default function UsersPage() {
     <>
       <PageActions>
         <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={() => setOpen(true)}>
-          Add Billing User
+          Add User
         </Button>
       </PageActions>
 
@@ -177,7 +186,7 @@ export default function UsersPage() {
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      {user.role === 'BILLING_USER' ? (
+                      {user.role !== 'OWNER' ? (
                         <Tooltip title="Reset password">
                           <IconButton
                             size="small"
@@ -202,7 +211,7 @@ export default function UsersPage() {
             <EmptyState
               title="No users found"
               description="Create a billing user to start counter operations."
-              actionLabel="Add Billing User"
+              actionLabel="Add User"
               onAction={() => setOpen(true)}
             />
           ) : null}
@@ -210,9 +219,24 @@ export default function UsersPage() {
       </PageShell>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Add Billing User</DialogTitle>
+        <DialogTitle>Add User</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
+            <FormControl fullWidth required>
+              <InputLabel id="user-role-label">Role</InputLabel>
+              <Select
+                labelId="user-role-label"
+                label="Role"
+                value={form.role}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+              >
+                {ASSIGNABLE_ROLES.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="Name"
               value={form.name}

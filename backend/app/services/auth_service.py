@@ -4,6 +4,7 @@ from flask import current_app
 from flask_jwt_extended import create_access_token
 
 from app.constants.business_types import business_type_label, coerce_business_type
+from app.constants.permissions import list_permissions_for_role
 from app.services.module_service import ModuleService
 from app.extensions import db
 from app.models.auth_token import EmailVerificationToken, PasswordResetToken
@@ -441,6 +442,7 @@ class AuthService:
             "name": user.name,
             "email": user.email,
             "role": user.role_name,
+            "permissions": list_permissions_for_role(user.role_name),
             "is_active": user.is_active,
             "email_verified": bool(user.email_verified),
             "pending_email": user.pending_email,

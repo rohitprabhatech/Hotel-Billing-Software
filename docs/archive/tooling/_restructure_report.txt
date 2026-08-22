@@ -1,0 +1,121 @@
+MOVED:
+product-overview.md → 00-project-foundation/01-project-overview.md
+product-vision.md → 00-project-foundation/02-product-vision.md
+supported-business-types.md → 00-project-foundation/04-supported-business-types.md
+01-architecture/system-architecture.md → 02-architecture/01-system-architecture.md
+01-architecture/backend-architecture.md → 02-architecture/02-backend-architecture.md
+01-architecture/frontend-architecture.md → 02-architecture/03-frontend-architecture.md
+01-architecture/api-architecture.md → 02-architecture/04-api-architecture.md
+02-multi-tenant/tenant-architecture.md → 02-architecture/05-multi-tenant-architecture.md
+→ 02-architecture/07-security-architecture.md
+06-database/database-overview.md → 03-database/01-database-overview.md
+06-database/database-architecture.md → 03-database/02-database-architecture.md
+06-database/common-tables.md → 03-database/03-common-tables.md
+06-database/business-specific-tables.md → 03-database/04-business-specific-tables.md
+06-database/relationships.md → 03-database/05-relationships.md
+06-database/migration-strategy.md → 03-database/09-migration-strategy.md
+04-common-modules/billing.md → 04-common-modules/03-billing.md
+04-common-modules/categories.md → 04-common-modules/05-categories.md
+04-common-modules/customers.md → 04-common-modules/06-customers.md
+04-common-modules/suppliers.md → 04-common-modules/07-suppliers.md
+04-common-modules/inventory.md → 04-common-modules/08-inventory.md
+04-common-modules/purchases.md → 04-common-modules/09-purchases.md
+04-common-modules/payments.md → 04-common-modules/10-payments.md
+04-common-modules/expenses.md → 04-common-modules/11-expenses.md
+04-common-modules/notifications.md → 04-common-modules/13-notifications.md
+04-common-modules/audit-logs.md → 04-common-modules/14-audit-logs.md
+04-common-modules/printing.md → 04-common-modules/15-printing.md
+04-common-modules/whatsapp-integration.md → 04-common-modules/16-whatsapp-integration.md
+04-common-modules/ai-assistant.md → 04-common-modules/17-ai-assistant.md
+03-master-admin/master-dashboard.md → 06-master-admin/01-master-dashboard.md
+03-master-admin/business-approval.md → 06-master-admin/02-business-approval.md
+03-master-admin/business-management.md → 06-master-admin/03-business-management.md
+03-master-admin/subscription-management.md → 06-master-admin/04-subscription-management.md
+03-master-admin/plan-management.md → 06-master-admin/05-plan-management.md
+07-api/authentication-apis.md → 07-api/02-authentication-apis.md
+07-api/business-apis.md → 07-api/03-business-apis.md
+07-api/billing-apis.md → 07-api/04-billing-apis.md
+07-api/inventory-apis.md → 07-api/05-inventory-apis.md
+07-api/report-apis.md → 07-api/06-report-apis.md
+07-api/master-admin-apis.md → 07-api/07-master-admin-apis.md
+08-ui-ux/design-system.md → 08-ui-ux/01-design-system.md
+08-ui-ux/navigation.md → 08-ui-ux/02-navigation.md
+08-ui-ux/layout-guidelines.md → 08-ui-ux/03-layout-guidelines.md
+08-ui-ux/responsive-design.md → 08-ui-ux/04-responsive-design.md
+08-ui-ux/dark-mode.md → 08-ui-ux/05-dark-mode.md
+08-ui-ux/common-components.md → 08-ui-ux/06-common-components.md
+09-subscription/subscription-overview.md → 09-subscription/01-subscription-overview.md
+09-subscription/free-trial.md → 09-subscription/03-free-trial.md
+10-testing/testing-strategy.md → 10-testing/01-testing-strategy.md
+10-testing/tenant-isolation-testing.md → 10-testing/06-tenant-isolation-testing.md
+10-testing/security-testing.md → 10-testing/07-security-testing.md
+→ 11-user-manual/01-owner-manual.md
+→ 11-user-manual/02-billing-user-manual.md
+→ 11-user-manual/03-manager-manual.md
+→ 11-user-manual/04-master-admin-manual.md
+
+MERGED:
+authentication.md → 04-common-modules/01-authentication.md
+reporting-system.md → 04-common-modules/12-sales-reports.md
+test-business-billing-guide.md → 12-testing-guides/test-complete-system-guide.md
+tenant-isolation-testing.md → 12-testing-guides/test-multi-tenant-guide.md
+subscription-management.md → 12-testing-guides/test-subscription-guide.md
+master-admin-manual.md → 12-testing-guides/test-master-admin-guide.md
+supported-business-types.md → 12-testing-guides/test-business-types-guide.md
+Root FR/NFR/roles/security/subscription → 01-requirements/*
+
+CREATED:
+06-master-admin/08-master-admin-security.md
+07-api/08-business-specific-apis.md
+08-ui-ux/07-page-design-guidelines.md
+09-subscription/06-subscription-notifications.md
+10-testing/02-test-environment.md
+10-testing/05-database-testing.md
+10-testing/08-performance-testing.md
+10-testing/09-ui-testing.md
+10-testing/10-regression-testing.md
+12-testing-guides/test-complete-system-guide.md
+12-testing-guides/test-multi-tenant-guide.md
+12-testing-guides/test-subscription-guide.md
+12-testing-guides/test-master-admin-guide.md
+12-testing-guides/test-business-types-guide.md
+01-requirements/01-functional-requirements.md
+01-requirements/02-non-functional-requirements.md
+01-requirements/03-business-rules.md
+01-requirements/04-user-roles-and-permissions.md
+01-requirements/05-security-requirements.md
+01-requirements/06-multi-tenant-requirements.md
+01-requirements/07-subscription-requirements.md
+00-project-foundation/07-requirements-traceability.md
+13-phases/phase-00-discovery-and-analysis.md
+13-phases/phase-01-foundation.md
+13-phases/phase-02-database.md
+13-phases/phase-03-authentication-and-tenancy.md
+13-phases/phase-04-common-billing.md
+13-phases/phase-05-business-modules.md
+13-phases/phase-06-master-admin.md
+13-phases/phase-07-subscription.md
+13-phases/phase-08-ai-and-integrations.md
+13-phases/phase-09-testing-and-security.md
+13-phases/phase-10-production-readiness.md
+13-phases/phase-sprint-mapping.md
+13-phases/project-roadmap.md
+14-sprints/sprint-00-project-analysis.md
+14-sprints/sprint-01-documentation-finalization.md
+14-sprints/sprint-02-system-architecture.md
+14-sprints/sprint-03-database-foundation.md
+14-sprints/sprint-04-authentication-and-tenancy.md
+14-sprints/sprint-05-common-billing.md
+14-sprints/sprint-06-inventory-and-products.md
+14-sprints/sprint-07-business-modules.md
+14-sprints/sprint-08-master-admin.md
+14-sprints/sprint-09-subscription-system.md
+14-sprints/sprint-10-ai-and-notifications.md
+14-sprints/sprint-11-integrations.md
+14-sprints/sprint-12-testing-and-security.md
+14-sprints/sprint-13-ui-ux-polish.md
+14-sprints/sprint-14-production-readiness.md
+14-sprints/sprint-tracker.md
+14-sprints/README.md
+documentation-status.md
+README.md

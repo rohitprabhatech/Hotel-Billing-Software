@@ -8,6 +8,7 @@ from flask import current_app
 
 from app.constants.payments import (
     DEFAULT_PAYMENT_METHOD,
+    PAYMENT_CREDIT,
     normalize_payment_method,
     payment_method_label,
 )
@@ -38,6 +39,7 @@ class BillService:
         customer_phone_country_code: str | None = None,
         customer_phone: str | None = None,
         customer_email: str | None = None,
+        customer_id: str | None = None,
     ):
         ctx = require_request_context()
         if not items:
@@ -59,6 +61,20 @@ class BillService:
         phone_e164 = None
         phone_national_store = None
         phone_cc_store = None
+
+        linked_customer = None
+        if customer_id:
+            from app.services.customer_service import CustomerService
+
+            linked_customer = CustomerService.resolve_for_bill(customer_id.strip())
+
+        if linked_customer is not None:
+            if not customer_name_value and linked_customer.name:
+                customer_name_value = linked_customer.name
+            if not phone_cc and not phone_nat and linked_customer.phone_e164:
+                phone_cc = linked_customer.phone_country_code
+                phone_nat = linked_customer.phone_national
+
         if phone_cc or phone_nat:
             from app.utils.phone import normalize_phone
 
@@ -75,6 +91,12 @@ class BillService:
                 customer_email_store = normalize_email(customer_email)
             except ValueError as exc:
                 raise ValidationError(str(exc)) from exc
+        elif linked_customer is not None and linked_customer.email:
+            customer_email_store = linked_customer.email
+
+        if payment == PAYMENT_CREDIT:
+            if linked_customer is None:
+                raise ValidationError("Customer is required for credit (udhari) bills")
 
         # Merge duplicate item_ids from cart
         merged: dict[str, Decimal] = {}
@@ -89,6 +111,10 @@ class BillService:
             if quantity <= 0:
                 raise ValidationError("Quantity must be greater than zero")
             merged[item_id] = merged.get(item_id, Decimal("0")) + quantity
+
+        from app.services.recipe_stock_service import RecipeStockService
+
+        merged = RecipeStockService.expand_for_deduction(ctx.tenant_id, merged)
 
         # Lock items in stable order, validate all stock, then deduct (atomic with bill).
         locked = {}
@@ -185,6 +211,7 @@ class BillService:
             customer_phone_national=phone_national_store,
             customer_phone_e164=phone_e164,
             customer_email=customer_email_store,
+            customer_id=linked_customer.id if linked_customer else None,
             subtotal=calculated["subtotal"],
             discount=calculated["discount"],
             taxable_amount=calculated["taxable_amount"],
@@ -270,6 +297,18 @@ class BillService:
                 item=item,
                 previous=previous,
                 new_stock=new_stock,
+            )
+
+        if payment == PAYMENT_CREDIT and linked_customer is not None:
+            from app.services.party_ledger_service import PartyLedgerService
+
+            PartyLedgerService.record_credit_sale(
+                tenant_id=ctx.tenant_id,
+                customer_id=linked_customer.id,
+                amount=bill.grand_total,
+                bill_id=bill.id,
+                bill_number=bill.bill_number,
+                created_by=ctx.user_id,
             )
 
         db.session.commit()
@@ -391,6 +430,10 @@ class BillService:
         # Restore stock for tracked items (same transaction as cancel).
         line_items = list(bill.items or [])
         restore_ids = sorted({line.item_id for line in line_items if line.item_id})
+        from app.services.recipe_stock_service import RecipeStockService
+
+        restore_merged = RecipeStockService.expand_from_lines(ctx.tenant_id, line_items)
+        restore_ids = sorted(restore_merged.keys())
         locked = {}
         for item_id in restore_ids:
             item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
@@ -400,12 +443,11 @@ class BillService:
         from app.services.notification_service import NotificationService
         from app.services.stock_movement_service import StockMovementService
 
-        for line in line_items:
-            item = locked.get(line.item_id)
+        for item_id, restored_qty in restore_merged.items():
+            item = locked.get(item_id)
             if item is None or item.stock_quantity is None:
                 continue
             previous = Decimal(item.stock_quantity)
-            restored_qty = Decimal(line.quantity)
             new_stock = previous + restored_qty
             item.stock_quantity = new_stock
             AuditService.log(
@@ -447,6 +489,19 @@ class BillService:
         bill.cancelled_by = ctx.user_id
         bill.cancelled_at = datetime.now(timezone.utc).replace(tzinfo=None)
         bill.cancellation_reason = reason
+
+        if bill.payment_method == PAYMENT_CREDIT and bill.customer_id:
+            from app.services.party_ledger_service import PartyLedgerService
+
+            PartyLedgerService.record_bill_cancel_reversal(
+                tenant_id=ctx.tenant_id,
+                customer_id=bill.customer_id,
+                amount=bill.grand_total,
+                bill_id=bill.id,
+                bill_number=bill.bill_number,
+                created_by=ctx.user_id,
+                reason=reason,
+            )
 
         AuditService.log(
             tenant_id=ctx.tenant_id,
@@ -545,17 +600,21 @@ class BillService:
             "customer_phone_masked": mask_e164(bill.customer_phone_e164),
             "customer_email": bill.customer_email,
             "customer_email_masked": mask_email(bill.customer_email),
+            "customer_id": bill.customer_id,
             "subtotal": float(bill.subtotal),
             "discount": float(bill.discount),
             "taxable_amount": float(bill.taxable_amount),
             "cgst_amount": float(bill.cgst_amount),
             "sgst_amount": float(bill.sgst_amount),
             "gst_amount": float(bill.gst_amount),
+            "service_charge": float(getattr(bill, "service_charge", 0) or 0),
             "round_off": float(bill.round_off),
             "grand_total": float(bill.grand_total),
             "status": bill.status,
             "payment_method": bill.payment_method or DEFAULT_PAYMENT_METHOD,
             "payment_method_label": payment_method_label(bill.payment_method),
+            "order_id": getattr(bill, "order_id", None),
+            "split_group_id": getattr(bill, "split_group_id", None),
             "created_by": bill.created_by,
             "created_by_name": bill.creator.name if bill.creator else None,
             "created_at": bill.created_at.isoformat() if bill.created_at else None,

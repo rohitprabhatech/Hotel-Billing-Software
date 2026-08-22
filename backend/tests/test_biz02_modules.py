@@ -15,6 +15,7 @@ def test_defaults_cover_all_fourteen_types():
 def test_restaurant_has_tables_clothing_does_not():
     restaurant = defaults_for_business_type("hotel_restaurant")
     clothing = defaults_for_business_type("clothing")
+    assert "restaurant_menu" in restaurant
     assert "table_management" in restaurant
     assert "kot" in restaurant
     assert "table_management" not in clothing
@@ -34,6 +35,7 @@ def test_me_modules_endpoint(client):
     assert response.status_code == 200, response.get_json()
     data = response.get_json()["data"]
     assert data["business_type"] == "hotel_restaurant"
+    assert "restaurant_menu" in data["enabled_modules"]
     assert "table_management" in data["enabled_modules"]
     assert "variants" not in data["enabled_modules"]
     assert any(m["code"] == "table_management" and m["enabled"] for m in data["modules"])
@@ -44,7 +46,9 @@ def test_tables_api_allowed_for_restaurant(client):
     headers = login(client, "owner@hotela.com", "Owner@12345")
     response = client.get("/api/v1/tables", headers=headers)
     assert response.status_code == 200, response.get_json()
-    assert response.get_json()["data"]["module"] == "table_management"
+    body = response.get_json()
+    assert body["success"] is True
+    assert isinstance(body["data"], list)
 
 
 def test_tables_api_forbidden_for_clothing_tenant(client):

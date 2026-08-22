@@ -1,5 +1,9 @@
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
+import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
+import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
+import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
@@ -13,6 +17,13 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import SwapVertOutlinedIcon from '@mui/icons-material/SwapVertOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutlined';
+import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
+import KitchenOutlinedIcon from '@mui/icons-material/KitchenOutlined';
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
+import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined';
+import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import {
   AppBar,
   Box,
@@ -32,7 +43,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainContent from '../components/MainContent';
 import PageHeader from '../components/PageHeader';
@@ -41,6 +52,7 @@ import ThemeModeToggle from '../components/ThemeModeToggle';
 import NotificationBell from '../components/NotificationBell';
 import SubscriptionLockout from '../components/SubscriptionLockout';
 import { useAuth } from '../context/AuthContext';
+import { useModules } from '../context/ModulesContext';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
 import { DRAWER_WIDTH } from './shell';
 import { fetchMe, logoutRequest } from '../services/authService';
@@ -57,6 +69,64 @@ const navItems = [
   { to: PATHS.ownerStockMovements, label: 'Stock Movements', icon: <SwapVertOutlinedIcon /> },
   { to: PATHS.ownerItemActivity, label: 'Item Activity', icon: <HistoryOutlinedIcon /> },
   { to: PATHS.ownerCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
+  { to: PATHS.ownerCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { to: PATHS.ownerSuppliers, label: 'Suppliers', icon: <LocalShippingOutlinedIcon /> },
+  { to: PATHS.ownerPurchases, label: 'Purchases', icon: <ShoppingCartOutlinedIcon /> },
+  { to: PATHS.ownerExpenses, label: 'Expenses', icon: <PaymentsOutlinedIcon /> },
+  {
+    to: PATHS.ownerOrders,
+    label: 'Orders',
+    icon: <ReceiptLongOutlinedIcon />,
+    module: 'order_channels',
+  },
+  {
+    to: PATHS.ownerMenu,
+    label: 'Menu',
+    icon: <RestaurantMenuOutlinedIcon />,
+    module: 'restaurant_menu',
+  },
+  {
+    to: PATHS.ownerTables,
+    label: 'Tables',
+    icon: <TableRestaurantOutlinedIcon />,
+    module: 'table_management',
+  },
+  {
+    to: PATHS.ownerKitchen,
+    label: 'Kitchen',
+    icon: <KitchenOutlinedIcon />,
+    module: 'kitchen',
+  },
+  {
+    to: PATHS.ownerCafe,
+    label: 'Cafe POS',
+    icon: <LocalCafeOutlinedIcon />,
+    module: 'addons_combos',
+  },
+  {
+    to: PATHS.ownerGrocery,
+    label: 'Grocery POS',
+    icon: <ShoppingCartOutlinedIcon />,
+    module: 'barcode_pos',
+  },
+  {
+    to: PATHS.ownerRecipes,
+    label: 'Recipes',
+    icon: <MenuBookOutlinedIcon />,
+    module: 'recipe',
+  },
+  {
+    to: PATHS.ownerWastage,
+    label: 'Wastage',
+    icon: <DeleteSweepOutlinedIcon />,
+    module: 'wastage',
+  },
+  {
+    to: PATHS.ownerVariants,
+    label: 'Variants',
+    icon: <CheckroomOutlinedIcon />,
+    module: 'variants',
+  },
   { to: PATHS.ownerReports, label: 'Sales Reports', icon: <AssessmentOutlinedIcon /> },
   { to: PATHS.ownerAi, label: 'AI Assistant', icon: <AutoAwesomeOutlinedIcon /> },
   { to: PATHS.ownerAudit, label: 'Audit & Activity', icon: <HistoryOutlinedIcon /> },
@@ -89,6 +159,62 @@ const titles = {
   [PATHS.ownerCategories]: {
     title: 'Categories',
     subtitle: 'Organize business items with main and child categories.',
+  },
+  [PATHS.ownerCustomers]: {
+    title: 'Customers',
+    subtitle: 'Manage customer contacts and view purchase history.',
+  },
+  [PATHS.ownerSuppliers]: {
+    title: 'Suppliers',
+    subtitle: 'Manage vendor contacts for purchase and stock receive flows.',
+  },
+  [PATHS.ownerPurchases]: {
+    title: 'Purchases',
+    subtitle: 'Record supplier purchases that increase stock and update cost price.',
+  },
+  [PATHS.ownerExpenses]: {
+    title: 'Expenses',
+    subtitle: 'Track daily business expenses for P&L-style reporting.',
+  },
+  [PATHS.ownerOrders]: {
+    title: 'Orders',
+    subtitle: 'Open dine-in, takeaway, and delivery orders before billing.',
+  },
+  [PATHS.ownerOrdersNew]: {
+    title: 'New Order',
+    subtitle: 'Take an order by channel — table required for dine-in.',
+  },
+  [PATHS.ownerMenu]: {
+    title: 'Menu',
+    subtitle: 'Active menu items grouped by course/category for F&B service.',
+  },
+  [PATHS.ownerTables]: {
+    title: 'Tables',
+    subtitle: 'Dining table board for restaurants and cafes.',
+  },
+  [PATHS.ownerKitchen]: {
+    title: 'Kitchen',
+    subtitle: 'Live kitchen board — queued, preparing, and ready tickets.',
+  },
+  [PATHS.ownerCafe]: {
+    title: 'Cafe POS',
+    subtitle: 'Quick takeaway billing with add-ons and combos.',
+  },
+  [PATHS.ownerGrocery]: {
+    title: 'Grocery POS',
+    subtitle: 'Scan-first billing with barcode lookup and weight quantities.',
+  },
+  [PATHS.ownerRecipes]: {
+    title: 'Recipes',
+    subtitle: 'Bill of materials — menu items mapped to ingredient stock.',
+  },
+  [PATHS.ownerWastage]: {
+    title: 'Food Wastage',
+    subtitle: 'Log spoilage and prep loss — stock deducts automatically.',
+  },
+  [PATHS.ownerVariants]: {
+    title: 'Variants',
+    subtitle: 'Size, color, and variant stock for clothing and related shops.',
   },
   [PATHS.ownerReports]: {
     title: 'Sales Reports',
@@ -123,6 +249,7 @@ const titles = {
 
 export default function OwnerLayout() {
   const { user, logout, updateUser } = useAuth();
+  const { filterByModule } = useModules();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -130,6 +257,7 @@ export default function OwnerLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const entitled = subscriptionAllowsAccess(user?.tenant?.subscription);
+  const visibleNav = useMemo(() => filterByModule(navItems), [filterByModule]);
 
   useEffect(() => {
     let active = true;
@@ -175,7 +303,7 @@ export default function OwnerLayout() {
       </Toolbar>
       <Divider />
       <List sx={{ px: 1, pt: 1, flexGrow: 1 }}>
-        {navItems.map((item) => (
+        {visibleNav.map((item) => (
           <ListItemButton
             key={item.to}
             component={NavLink}

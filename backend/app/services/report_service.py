@@ -12,12 +12,13 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 from app.constants.payments import normalize_payment_method, payment_method_label
+from app.constants.permissions import PERM_REPORTS
 from app.extensions import db
-from app.models.role import ROLE_OWNER
 from app.repositories.report_repository import ReportRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
-from app.utils.exceptions import ForbiddenError, ValidationError
+from app.utils.exceptions import ValidationError
+from app.utils.permission_access import require_permission
 from app.utils.periods import resolve_period
 from app.utils.request_context import require_request_context
 
@@ -40,11 +41,9 @@ TOP_ITEMS_LIMIT = 5
 
 class ReportService:
     @staticmethod
-    def _ensure_owner():
-        ctx = require_request_context()
-        if ctx.role != ROLE_OWNER:
-            raise ForbiddenError("Only business owners can access reports")
-        return ctx
+    def _ensure_reports_access():
+        require_permission(PERM_REPORTS)
+        return require_request_context()
 
     @staticmethod
     def _tz():
@@ -128,7 +127,7 @@ class ReportService:
 
     @staticmethod
     def summary(period: str = "today", from_date=None, to_date=None):
-        ctx = ReportService._ensure_owner()
+        ctx = ReportService._ensure_reports_access()
         start, end, label, prev_start, prev_end, prev_label = ReportService._bounds(
             period, from_date, to_date
         )
@@ -165,7 +164,7 @@ class ReportService:
 
     @staticmethod
     def daily_sales(date: str | None = None, payment_method: str | None = None):
-        ctx = ReportService._ensure_owner()
+        ctx = ReportService._ensure_reports_access()
         if date:
             start, end, label, *_ = ReportService._bounds("custom", date, date)
         else:
@@ -176,7 +175,7 @@ class ReportService:
 
     @staticmethod
     def weekly_sales(payment_method: str | None = None):
-        ctx = ReportService._ensure_owner()
+        ctx = ReportService._ensure_reports_access()
         start, end, label, *_ = ReportService._bounds("this_week")
         return ReportService._build_report(
             ctx.tenant_id, start, end, label, "weekly", payment_method=payment_method
@@ -188,7 +187,7 @@ class ReportService:
         month: int | None = None,
         payment_method: str | None = None,
     ):
-        ctx = ReportService._ensure_owner()
+        ctx = ReportService._ensure_reports_access()
         if year and month:
             last = calendar.monthrange(int(year), int(month))[1]
             from_date = f"{int(year):04d}-{int(month):02d}-01"
@@ -202,11 +201,37 @@ class ReportService:
 
     @staticmethod
     def custom_sales(from_date: str, to_date: str, payment_method: str | None = None):
-        ctx = ReportService._ensure_owner()
+        ctx = ReportService._ensure_reports_access()
         start, end, label, *_ = ReportService._bounds("custom", from_date, to_date)
         return ReportService._build_report(
             ctx.tenant_id, start, end, label, "custom", payment_method=payment_method
         )
+
+    @staticmethod
+    def fb_report(*, date: str | None = None, from_date: str | None = None, to_date: str | None = None):
+        ctx = ReportService._ensure_reports_access()
+        if from_date and to_date:
+            start, end, label, *_ = ReportService._bounds("custom", from_date, to_date)
+            period = "custom"
+        elif date:
+            start, end, label, *_ = ReportService._bounds("custom", date, date)
+            period = "daily"
+        else:
+            start, end, label, *_ = ReportService._bounds("today")
+            period = "daily"
+
+        from app.repositories.fb_report_repository import FbReportRepository
+
+        metrics = ReportRepository.period_metrics(ctx.tenant_id, start, end)
+        wastage = FbReportRepository.wastage_summary(ctx.tenant_id, start, end)
+        return {
+            "period": period,
+            "label": label,
+            "metrics": metrics,
+            "channel_wise": FbReportRepository.channel_wise(ctx.tenant_id, start, end),
+            "table_wise": FbReportRepository.table_wise(ctx.tenant_id, start, end),
+            "wastage": wastage,
+        }
 
     @staticmethod
     def export(
@@ -220,7 +245,7 @@ class ReportService:
         month=None,
         payment_method=None,
     ):
-        ctx = ReportService._ensure_owner()
+        ctx = ReportService._ensure_reports_access()
         fmt = (fmt or "xlsx").lower()
         if fmt not in {"xlsx", "csv", "pdf"}:
             raise ValidationError("format must be xlsx, csv, or pdf")

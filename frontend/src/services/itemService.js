@@ -5,6 +5,12 @@ export async function listItems(params = {}) {
   return data;
 }
 
+export async function getItemByBarcode(barcode, params = {}) {
+  const encoded = encodeURIComponent(barcode);
+  const { data } = await apiClient.get(`/items/by-barcode/${encoded}`, { params });
+  return data;
+}
+
 export async function createItem(payload) {
   const { data } = await apiClient.post('/items', payload);
   return data;

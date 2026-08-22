@@ -15,11 +15,12 @@ def qty(value) -> Decimal:
     return Decimal(str(value)).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
 
-def calculate_bill_totals(lines: list[dict], discount_amount) -> dict:
+def calculate_bill_totals(lines: list[dict], discount_amount, service_charge_amount=0) -> dict:
     """
     Line-level GST with proportional bill discount allocation.
 
     lines: [{item_id, item_name, quantity, unit_price, gst_percentage}]
+    service_charge_amount: flat fee added after GST (before rupee rounding).
     """
     prepared = []
     subtotal = ZERO
@@ -82,7 +83,10 @@ def calculate_bill_totals(lines: list[dict], discount_amount) -> dict:
     cgst_amount = money(sum((x["cgst_amount"] for x in result_lines), ZERO))
     sgst_amount = money(sum((x["sgst_amount"] for x in result_lines), ZERO))
     gst_amount = money(cgst_amount + sgst_amount)
-    pre_round = money(taxable_amount + gst_amount)
+    service_charge = money(service_charge_amount or 0)
+    if service_charge < ZERO:
+        raise ValueError("Service charge cannot be negative")
+    pre_round = money(taxable_amount + gst_amount + service_charge)
     grand_total = pre_round.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     round_off = money(grand_total - pre_round)
 
@@ -93,6 +97,7 @@ def calculate_bill_totals(lines: list[dict], discount_amount) -> dict:
         "cgst_amount": cgst_amount,
         "sgst_amount": sgst_amount,
         "gst_amount": gst_amount,
+        "service_charge": service_charge,
         "round_off": round_off,
         "grand_total": money(grand_total),
         "lines": result_lines,

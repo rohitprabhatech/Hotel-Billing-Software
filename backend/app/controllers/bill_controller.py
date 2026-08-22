@@ -8,6 +8,7 @@ from app.schemas.bill_schemas import (
     send_email_bill_schema,
 )
 from app.services.bill_service import BillService
+from app.controllers import order_settlement_controller
 from app.utils.responses import success_response
 
 
@@ -25,8 +26,13 @@ def create_bill():
         customer_phone_country_code=payload.get("customer_phone_country_code"),
         customer_phone=payload.get("customer_phone"),
         customer_email=payload.get("customer_email"),
+        customer_id=payload.get("customer_id"),
     )
     return success_response(data=data, status_code=201)
+
+
+def split_order_bills():
+    return order_settlement_controller.split_order_bills()
 
 
 def list_bills():

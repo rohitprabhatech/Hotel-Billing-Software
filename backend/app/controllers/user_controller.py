@@ -21,10 +21,11 @@ def get_user(user_id: str):
 
 def create_user():
     payload = create_user_schema.load(request.get_json() or {})
-    data = UserService.create_billing_user(
+    data = UserService.create_tenant_user(
         name=payload["name"],
         email=payload["email"],
         password=payload["password"],
+        role=payload.get("role"),
     )
     return success_response(data=data, status_code=201)
 

@@ -4,7 +4,7 @@ from flask import Blueprint
 
 from app.controllers import tenant_controller
 from app.middleware.auth import roles_required
-from app.models.role import ROLE_BILLING_USER, ROLE_OWNER
+from app.models.role import ROLE_BILLING_USER, ROLE_MANAGER, ROLE_OWNER
 
 tenants_bp = Blueprint("tenants", __name__, url_prefix="/tenants")
 
@@ -15,13 +15,13 @@ def list_business_types():
 
 
 @tenants_bp.get("/me/modules")
-@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
+@roles_required(ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 def get_my_modules():
     return tenant_controller.get_my_modules()
 
 
 @tenants_bp.get("/me")
-@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
+@roles_required(ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 def get_my_tenant():
     return tenant_controller.get_my_tenant()
 
@@ -33,7 +33,7 @@ def update_my_tenant():
 
 
 @tenants_bp.get("/me/whatsapp")
-@roles_required(ROLE_OWNER, ROLE_BILLING_USER)
+@roles_required(ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 def get_whatsapp_config():
     from app.controllers import whatsapp_controller
 

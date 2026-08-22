@@ -2,6 +2,12 @@
 
 from decimal import Decimal, InvalidOperation
 
+from app.constants.permissions import (
+    PERM_ITEMS_READ,
+    PERM_ITEMS_STOCK,
+    PERM_ITEMS_WRITE,
+)
+from app.constants.uom import DEFAULT_UOM, normalize_uom
 from app.extensions import db
 from app.models.item import Item
 from app.repositories.category_repository import CategoryRepository
@@ -10,14 +16,23 @@ from app.services.audit_service import AuditService
 from app.services.category_service import CategoryService
 from app.utils.exceptions import ConflictError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
+from app.utils.permission_access import require_permission
 from app.utils.request_context import require_request_context
 
 
 class ItemService:
     @staticmethod
     def list_items(
-        *, q=None, category_id=None, is_active=None, stock_status=None, page=1, per_page=50
+        *,
+        q=None,
+        barcode=None,
+        category_id=None,
+        is_active=None,
+        stock_status=None,
+        page=1,
+        per_page=50,
     ):
+        require_permission(PERM_ITEMS_READ)
         ctx = require_request_context()
         status = None
         if stock_status:
@@ -27,6 +42,7 @@ class ItemService:
         items, total = ItemRepository.list_by_tenant(
             ctx.tenant_id,
             q=q,
+            barcode=barcode,
             category_id=category_id,
             is_active=is_active,
             stock_status=status,
@@ -47,10 +63,25 @@ class ItemService:
 
     @staticmethod
     def get_item(item_id: str):
+        require_permission(PERM_ITEMS_READ)
         ctx = require_request_context()
         item = ItemRepository.get_by_id_and_tenant(item_id, ctx.tenant_id)
         if item is None:
             raise NotFoundError("Item not found")
+        return ItemService.serialize(item)
+
+    @staticmethod
+    def get_item_by_barcode(barcode: str, *, active_only=True):
+        require_permission(PERM_ITEMS_READ)
+        ctx = require_request_context()
+        cleaned = (barcode or "").strip()
+        if not cleaned:
+            raise ValidationError("Barcode is required")
+        item = ItemRepository.find_by_tenant_and_barcode(ctx.tenant_id, cleaned)
+        if item is None:
+            raise NotFoundError("Item not found for barcode")
+        if active_only and not item.is_active:
+            raise NotFoundError("Item not found for barcode")
         return ItemService.serialize(item)
 
     @staticmethod
@@ -62,10 +93,15 @@ class ItemService:
         price,
         gst_percentage,
         sku=None,
+        barcode=None,
+        uom=None,
         cost_price=None,
         stock_quantity=None,
         minimum_stock_level=None,
+        is_menu=False,
+        is_veg=None,
     ):
+        require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
         name = (name or "").strip()
         if not name:
@@ -84,6 +120,12 @@ class ItemService:
         if sku_value and ItemRepository.find_by_tenant_and_sku(ctx.tenant_id, sku_value):
             raise ConflictError("Item with this SKU already exists")
 
+        barcode_value = ItemService._normalize_barcode(barcode)
+        if barcode_value and ItemRepository.find_by_tenant_and_barcode(ctx.tenant_id, barcode_value):
+            raise ConflictError("Item with this barcode already exists")
+
+        uom_value = ItemService._normalize_uom(uom)
+
         price_dec = ItemService._parse_money(price, "price")
         cost_dec = ItemService._parse_optional_money(cost_price, "cost_price")
         stock_dec = ItemService._parse_optional_stock(stock_quantity)
@@ -97,6 +139,8 @@ class ItemService:
             created_by=ctx.user_id,
             name=name,
             sku=sku_value,
+            barcode=barcode_value,
+            uom=uom_value,
             description=(description or "").strip() or None,
             price=price_dec,
             cost_price=cost_dec,
@@ -104,6 +148,8 @@ class ItemService:
             stock_quantity=stock_dec,
             minimum_stock_level=min_stock_dec,
             is_active=True,
+            is_menu=bool(is_menu),
+            is_veg=is_veg if is_veg is None else bool(is_veg),
         )
         ItemRepository.add(item)
         AuditService.log(
@@ -127,13 +173,22 @@ class ItemService:
         gst_percentage=None,
         sku=None,
         sku_provided=False,
+        barcode=None,
+        barcode_provided=False,
+        uom=None,
+        uom_provided=False,
         cost_price=None,
         cost_price_provided=False,
         stock_quantity=None,
         stock_quantity_provided=False,
         minimum_stock_level=None,
         minimum_stock_level_provided=False,
+        is_menu=None,
+        is_menu_provided=False,
+        is_veg=None,
+        is_veg_provided=False,
     ):
+        require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
         item = ItemRepository.get_by_id_and_tenant(item_id, ctx.tenant_id)
         if item is None:
@@ -175,6 +230,19 @@ class ItemService:
                     raise ConflictError("Item with this SKU already exists")
             item.sku = sku_value
 
+        if barcode_provided:
+            barcode_value = ItemService._normalize_barcode(barcode)
+            if barcode_value:
+                existing_barcode = ItemRepository.find_by_tenant_and_barcode(
+                    ctx.tenant_id, barcode_value
+                )
+                if existing_barcode and existing_barcode.id != item.id:
+                    raise ConflictError("Item with this barcode already exists")
+            item.barcode = barcode_value
+
+        if uom_provided:
+            item.uom = ItemService._normalize_uom(uom)
+
         if price is not None:
             new_price = ItemService._parse_money(price, "price")
             if Decimal(item.price) != new_price:
@@ -196,6 +264,12 @@ class ItemService:
 
         if minimum_stock_level_provided:
             item.minimum_stock_level = ItemService._parse_optional_stock(minimum_stock_level)
+
+        if is_menu_provided:
+            item.is_menu = bool(is_menu)
+
+        if is_veg_provided:
+            item.is_veg = None if is_veg is None else bool(is_veg)
 
         new_data = ItemService.serialize(item)
         AuditService.log(
@@ -264,6 +338,7 @@ class ItemService:
 
     @staticmethod
     def set_status(item_id: str, is_active: bool, reason: str | None = None):
+        require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
         item = ItemRepository.get_by_id_and_tenant(item_id, ctx.tenant_id)
         if item is None:
@@ -294,6 +369,7 @@ class ItemService:
     @staticmethod
     def adjust_stock(item_id: str, *, delta, reason: str | None = None):
         """Apply a signed stock delta with row lock (null stock = untracked → reject)."""
+        require_permission(PERM_ITEMS_STOCK)
         ctx = require_request_context()
         item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
         if item is None:
@@ -356,6 +432,7 @@ class ItemService:
     @staticmethod
     def receive_stock(item_id: str, *, quantity, reason: str | None = None):
         """Add positive stock (or start tracking). Records source RECEIVE."""
+        require_permission(PERM_ITEMS_STOCK)
         ctx = require_request_context()
         item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
         if item is None:
@@ -421,6 +498,20 @@ class ItemService:
         return cleaned or None
 
     @staticmethod
+    def _normalize_barcode(value) -> str | None:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+    @staticmethod
+    def _normalize_uom(value) -> str:
+        try:
+            return normalize_uom(value, default=DEFAULT_UOM)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
+    @staticmethod
     def _parse_money(value, field_name: str) -> Decimal:
         try:
             amount = Decimal(str(value))
@@ -473,6 +564,8 @@ class ItemService:
             "category_hierarchy_path": hierarchy_path,
             "name": item.name,
             "sku": item.sku,
+            "barcode": item.barcode,
+            "uom": item.uom,
             "description": item.description,
             "price": float(item.price),
             "cost_price": float(item.cost_price) if item.cost_price is not None else None,
@@ -486,6 +579,8 @@ class ItemService:
                 else None
             ),
             "is_active": item.is_active,
+            "is_menu": item.is_menu,
+            "is_veg": item.is_veg,
             "created_by": item.created_by,
             "created_by_name": item.creator.name if item.creator else None,
             "created_at": item.created_at.isoformat() if item.created_at else None,

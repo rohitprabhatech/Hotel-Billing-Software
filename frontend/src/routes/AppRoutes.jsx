@@ -27,6 +27,10 @@ const PrintBillPage = lazy(() => import('../pages/print/PrintBillPage'));
 const AuditPage = lazy(() => import('../pages/owner/AuditPage'));
 const AiAssistantPage = lazy(() => import('../pages/owner/AiAssistantPage'));
 const CategoriesPage = lazy(() => import('../pages/owner/CategoriesPage'));
+const CustomersPage = lazy(() => import('../pages/owner/CustomersPage'));
+const SuppliersPage = lazy(() => import('../pages/owner/SuppliersPage'));
+const PurchasesPage = lazy(() => import('../pages/owner/PurchasesPage'));
+const ExpensesPage = lazy(() => import('../pages/owner/ExpensesPage'));
 const ItemActivityPage = lazy(() => import('../pages/owner/ItemActivityPage'));
 const ItemsPage = lazy(() => import('../pages/owner/ItemsPage'));
 const StockMovementsPage = lazy(() => import('../pages/owner/StockMovementsPage'));
@@ -44,6 +48,27 @@ const MasterAuditPage = lazy(() => import('../pages/master/MasterAuditPage'));
 const SettingsPage = lazy(() => import('../pages/owner/SettingsPage'));
 const UsersPage = lazy(() => import('../pages/owner/UsersPage'));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage'));
+const ModulePlaceholderPage = lazy(() => import('../pages/modules/ModulePlaceholderPage'));
+const MenuPage = lazy(() => import('../pages/modules/MenuPage'));
+const OrdersPage = lazy(() => import('../pages/modules/OrdersPage'));
+const NewOrderPage = lazy(() => import('../pages/modules/NewOrderPage'));
+const TablesPage = lazy(() => import('../pages/modules/TablesPage'));
+const KitchenPage = lazy(() => import('../pages/modules/KitchenPage'));
+const RecipesPage = lazy(() => import('../pages/owner/RecipesPage'));
+const CafePosPage = lazy(() => import('../pages/modules/CafePosPage'));
+const WastagePage = lazy(() => import('../pages/owner/WastagePage'));
+const GroceryPosPage = lazy(() => import('../pages/modules/GroceryPosPage'));
+const PrintKotPage = lazy(() => import('../pages/print/PrintKotPage'));
+
+function VariantsModulePage() {
+  return (
+    <ModulePlaceholderPage
+      moduleCode="variants"
+      title="Variants"
+      description="Manage size, color, and variant stock for clothing and related shops."
+    />
+  );
+}
 
 function RouteFallback() {
   return (
@@ -89,6 +114,20 @@ export default function AppRoutes() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<OwnerDashboardPage />} />
             <Route path="categories" element={<CategoriesPage />} />
+            <Route path="customers" element={<CustomersPage />} />
+            <Route path="suppliers" element={<SuppliersPage />} />
+            <Route path="purchases" element={<PurchasesPage />} />
+            <Route path="expenses" element={<ExpensesPage />} />
+            <Route path="tables" element={<TablesPage />} />
+            <Route path="menu" element={<MenuPage />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="orders/new" element={<NewOrderPage />} />
+            <Route path="kitchen" element={<KitchenPage />} />
+            <Route path="cafe" element={<CafePosPage />} />
+            <Route path="grocery" element={<GroceryPosPage />} />
+            <Route path="recipes" element={<RecipesPage />} />
+            <Route path="wastage" element={<WastagePage />} />
+            <Route path="variants" element={<VariantsModulePage />} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="item-activity" element={<ItemActivityPage />} />
             <Route path="stock-movements" element={<StockMovementsPage />} />
@@ -103,13 +142,26 @@ export default function AppRoutes() {
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute roles={['BILLING_USER', 'OWNER']} />}>
+        <Route element={<ProtectedRoute roles={['BILLING_USER', 'OWNER', 'MANAGER']} />}>
           <Route path="/billing" element={<BillingLayout />}>
             <Route index element={<BillingHomePage />} />
             <Route path="new" element={<NewBillPage />} />
             <Route path="bills" element={<BillingBillsPage />} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="categories" element={<BillingCategoriesPage />} />
+            <Route path="customers" element={<CustomersPage />} />
+            <Route path="suppliers" element={<SuppliersPage />} />
+            <Route path="purchases" element={<PurchasesPage />} />
+            <Route path="expenses" element={<ExpensesPage />} />
+            <Route path="tables" element={<TablesPage />} />
+            <Route path="menu" element={<MenuPage />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="orders/new" element={<NewOrderPage />} />
+            <Route path="kitchen" element={<KitchenPage />} />
+            <Route path="cafe" element={<CafePosPage />} />
+            <Route path="grocery" element={<GroceryPosPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="stock-movements" element={<StockMovementsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="change-password" element={<ChangePasswordPage />} />
           </Route>
@@ -118,6 +170,14 @@ export default function AppRoutes() {
             element={
               <RouteErrorBoundary>
                 <PrintBillPage />
+              </RouteErrorBoundary>
+            }
+          />
+          <Route
+            path="/print/kots/:kotId"
+            element={
+              <RouteErrorBoundary>
+                <PrintKotPage />
               </RouteErrorBoundary>
             }
           />

@@ -53,10 +53,26 @@ class ItemRepository:
         )
 
     @staticmethod
+    def find_by_tenant_and_barcode(tenant_id: str, barcode: str) -> Item | None:
+        cleaned = (barcode or "").strip()
+        if not cleaned:
+            return None
+        return (
+            db.session.query(Item)
+            .options(joinedload(Item.category), joinedload(Item.creator))
+            .filter(
+                Item.tenant_id == tenant_id,
+                func.lower(Item.barcode) == cleaned.lower(),
+            )
+            .first()
+        )
+
+    @staticmethod
     def list_by_tenant(
         tenant_id: str,
         *,
         q: str | None = None,
+        barcode: str | None = None,
         category_id: str | None = None,
         is_active: bool | None = None,
         stock_status: str | None = None,
@@ -64,9 +80,14 @@ class ItemRepository:
         per_page: int = 50,
     ) -> tuple[list[Item], int]:
         query = db.session.query(Item).filter(Item.tenant_id == tenant_id)
-        if q:
+        if barcode:
+            cleaned = barcode.strip()
+            query = query.filter(func.lower(Item.barcode) == cleaned.lower())
+        elif q:
             like = f"%{q.strip()}%"
-            query = query.filter(or_(Item.name.ilike(like), Item.sku.ilike(like)))
+            query = query.filter(
+                or_(Item.name.ilike(like), Item.sku.ilike(like), Item.barcode.ilike(like))
+            )
         if category_id:
             query = query.filter(Item.category_id == category_id)
         if is_active is not None:
@@ -97,6 +118,21 @@ class ItemRepository:
             .all()
         )
         return items, total
+
+    @staticmethod
+    def list_menu_items_by_tenant(tenant_id: str, *, is_veg: bool | None = None) -> list[Item]:
+        query = (
+            db.session.query(Item)
+            .options(joinedload(Item.category), joinedload(Item.creator))
+            .filter(
+                Item.tenant_id == tenant_id,
+                Item.is_menu.is_(True),
+                Item.is_active.is_(True),
+            )
+        )
+        if is_veg is not None:
+            query = query.filter(Item.is_veg.is_(is_veg))
+        return query.order_by(Item.name.asc()).all()
 
     @staticmethod
     def inventory_health_counts(tenant_id: str) -> dict:

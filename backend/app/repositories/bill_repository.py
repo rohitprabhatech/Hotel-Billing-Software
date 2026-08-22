@@ -32,6 +32,7 @@ class BillRepository:
         payment_method: str | None = None,
         whatsapp_status: str | None = None,
         email_status: str | None = None,
+        customer_id: str | None = None,
         page: int = 1,
         per_page: int = 50,
     ) -> tuple[list[Bill], int]:
@@ -42,6 +43,8 @@ class BillRepository:
             query = query.filter(Bill.created_by == created_by)
         if payment_method:
             query = query.filter(Bill.payment_method == payment_method)
+        if customer_id:
+            query = query.filter(Bill.customer_id == customer_id)
         if date_from:
             query = query.filter(Bill.created_at >= date_from)
         if date_to:

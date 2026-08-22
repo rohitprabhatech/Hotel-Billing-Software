@@ -51,6 +51,9 @@ class Bill(db.Model, TimestampMixin):
     customer_phone_national: Mapped[str | None] = mapped_column(String(20))
     customer_phone_e164: Mapped[str | None] = mapped_column(String(20))
     customer_email: Mapped[str | None] = mapped_column(String(255))
+    customer_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("customers.id", ondelete="SET NULL"), index=True
+    )
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     discount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     taxable_amount: Mapped[Decimal] = mapped_column(
@@ -84,10 +87,19 @@ class Bill(db.Model, TimestampMixin):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
     cancellation_reason: Mapped[str | None] = mapped_column(Text)
     printed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    order_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("orders.id", ondelete="SET NULL"), index=True
+    )
+    service_charge: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, default=Decimal("0.00")
+    )
+    split_group_id: Mapped[str | None] = mapped_column(String(36), index=True)
 
     # selectin (not joined): list endpoints must not pull every line item.
     items = relationship("BillItem", back_populates="bill", lazy="selectin")
     creator = relationship("User", foreign_keys=[created_by])
+    customer = relationship("Customer", back_populates="bills")
+    order = relationship("Order", foreign_keys=[order_id], back_populates="settlement_bills")
 
 
 class BillItem(db.Model):

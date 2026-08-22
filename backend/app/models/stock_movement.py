@@ -21,7 +21,7 @@ class StockMovement(db.Model, TimestampMixin):
     )
     delta: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     quantity_after: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
-    # BILL | CANCEL | ADJUST | ITEM_UPDATE | RECEIVE
+    # BILL | CANCEL | ADJUST | ITEM_UPDATE | RECEIVE | PURCHASE | PURCHASE_CANCEL
     source: Mapped[str] = mapped_column(String(20), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text)
     reference_type: Mapped[str | None] = mapped_column(String(20))  # BILL

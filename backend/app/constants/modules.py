@@ -20,6 +20,7 @@ MODULE_CATALOG: dict[str, str] = {
     "core_ai": "AI Assistant",
     "core_settings": "Settings",
     # Industry / shared capability modules
+    "restaurant_menu": "Restaurant Menu",
     "table_management": "Table Management",
     "kot": "Kitchen Order Tickets (KOT)",
     "kitchen": "Kitchen Dashboard",
@@ -73,6 +74,7 @@ CORE_MODULES: frozenset[str] = frozenset(
 _BUSINESS_TYPE_INDUSTRY: dict[str, frozenset[str]] = {
     "hotel_restaurant": frozenset(
         {
+            "restaurant_menu",
             "table_management",
             "kot",
             "kitchen",
@@ -84,12 +86,14 @@ _BUSINESS_TYPE_INDUSTRY: dict[str, frozenset[str]] = {
     ),
     "cafe_tea": frozenset(
         {
+            "restaurant_menu",
             "table_management",
             "kot",
             "kitchen",
             "order_channels",
             "addons_combos",
             "recipe",
+            "wastage",
         }
     ),
     "grocery_kirana": frozenset(

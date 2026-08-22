@@ -1,0 +1,39 @@
+# Supported Business Types (exactly 14)
+
+| # | Folder | Display name | Code |
+|---|--------|--------------|------|
+| 1 | [01-hotels-restaurants](../05-businesses/01-hotels-restaurants/) | Hotels / Restaurants | `hotel_restaurant` |
+| 2 | [02-cafes-tea-shops](../05-businesses/02-cafes-tea-shops/) | Cafes / Tea Shops | `cafe_tea` |
+| 3 | [03-grocery-kirana](../05-businesses/03-grocery-kirana/) | Grocery / Kirana | `grocery_kirana` |
+| 4 | [04-clothing](../05-businesses/04-clothing/) | Clothing Shops | `clothing` |
+| 5 | [05-mobile-shops](../05-businesses/05-mobile-shops/) | Mobile Shops | `mobile` |
+| 6 | [06-hardware](../05-businesses/06-hardware/) | Hardware Stores | `hardware` |
+| 7 | [07-bakery-sweet-shops](../05-businesses/07-bakery-sweet-shops/) | Bakery / Sweet Shops | `bakery_sweet` |
+| 8 | [08-stationery](../05-businesses/08-stationery/) | Stationery Shops | `stationery` |
+| 9 | [09-electronics](../05-businesses/09-electronics/) | Electronics Shops | `electronics` |
+| 10 | [10-furniture](../05-businesses/10-furniture/) | Furniture Shops | `furniture` |
+| 11 | [11-building-material](../05-businesses/11-building-material/) | Hardware / Building Material | `building_material` |
+| 12 | [12-book-stores](../05-businesses/12-book-stores/) | Book Stores | `book_store` |
+| 13 | [13-wholesale](../05-businesses/13-wholesale/) | Wholesale Shops | `wholesale` |
+| 14 | [14-travel-agencies](../05-businesses/14-travel-agencies/) | Travel Agencies | `travel_agency` |
+
+**Removed from scope:** Medical Store / pharmacy (codes such as `medical`, `medical_store`, `pharmacy` are rejected).
+
+## Source of truth
+
+Runtime catalog: `backend/app/constants/business_types.py` (Sprint **BIZ-01**).
+
+## Legacy → canonical mapping
+
+| Legacy code | Canonical code |
+|---|---|
+| `restaurant`, `hotel` | `hotel_restaurant` |
+| `clothing_store`, `footwear_store` | `clothing` |
+| `kirana_store`, `grocery_store` | `grocery_kirana` |
+| `electronics_store` | `electronics` |
+| `retail_shop` | `stationery` |
+| `other` | `grocery_kirana` |
+| `bakery_sweets` | `bakery_sweet` |
+| `bookstore` | `book_store` |
+
+Alembic data migration: `20260820_biz01_business_types` updates `tenants` and `registration_requests`.

@@ -1,0 +1,281 @@
+# Archive Reasons
+
+- `00-overview\product-overview.md` → `00-project-foundation\01-project-overview.md`: canonical foundation
+- `00-overview\product-vision.md` → `00-project-foundation\02-product-vision.md`: canonical foundation
+- `00-overview\supported-business-types.md` → `00-project-foundation\04-supported-business-types.md`: canonical foundation
+- `01-architecture\system-architecture.md` → `02-architecture\01-system-architecture.md`: canonical architecture
+- `01-architecture\backend-architecture.md` → `02-architecture\02-backend-architecture.md`: canonical architecture
+- `01-architecture\frontend-architecture.md` → `02-architecture\03-frontend-architecture.md`: canonical architecture
+- `01-architecture\api-architecture.md` → `02-architecture\04-api-architecture.md`: canonical architecture
+- `02-multi-tenant\tenant-architecture.md` → `02-architecture\05-multi-tenant-architecture.md`: from multi-tenant docs
+- `security-architecture.md` → `02-architecture\07-security-architecture.md`: security architecture
+- `06-database\database-overview.md` → `03-database\01-database-overview.md`: canonical database
+- `06-database\database-architecture.md` → `03-database\02-database-architecture.md`: canonical database
+- `06-database\common-tables.md` → `03-database\03-common-tables.md`: canonical database
+- `06-database\business-specific-tables.md` → `03-database\04-business-specific-tables.md`: canonical database
+- `06-database\relationships.md` → `03-database\05-relationships.md`: canonical database
+- `06-database\migration-strategy.md` → `03-database\09-migration-strategy.md`: canonical database
+- `authentication.md` → `04-common-modules\01-authentication.md`: from root topical doc
+- `04-common-modules\billing.md` → `04-common-modules\03-billing.md`: canonical common module
+- `04-common-modules\categories.md` → `04-common-modules\05-categories.md`: canonical common module
+- `04-common-modules\customers.md` → `04-common-modules\06-customers.md`: canonical common module
+- `04-common-modules\suppliers.md` → `04-common-modules\07-suppliers.md`: canonical common module
+- `04-common-modules\inventory.md` → `04-common-modules\08-inventory.md`: canonical common module
+- `04-common-modules\purchases.md` → `04-common-modules\09-purchases.md`: canonical common module
+- `04-common-modules\payments.md` → `04-common-modules\10-payments.md`: canonical common module
+- `04-common-modules\expenses.md` → `04-common-modules\11-expenses.md`: canonical common module
+- `reporting-system.md` → `04-common-modules\12-sales-reports.md`: from root topical doc
+- `04-common-modules\notifications.md` → `04-common-modules\13-notifications.md`: canonical common module
+- `04-common-modules\audit-logs.md` → `04-common-modules\14-audit-logs.md`: canonical common module
+- `04-common-modules\printing.md` → `04-common-modules\15-printing.md`: canonical common module
+- `04-common-modules\whatsapp-integration.md` → `04-common-modules\16-whatsapp-integration.md`: canonical common module
+- `04-common-modules\ai-assistant.md` → `04-common-modules\17-ai-assistant.md`: canonical common module
+- `03-master-admin\master-dashboard.md` → `06-master-admin\01-master-dashboard.md`: canonical master admin
+- `03-master-admin\business-approval.md` → `06-master-admin\02-business-approval.md`: canonical master admin
+- `03-master-admin\business-management.md` → `06-master-admin\03-business-management.md`: canonical master admin
+- `03-master-admin\subscription-management.md` → `06-master-admin\04-subscription-management.md`: canonical master admin
+- `03-master-admin\plan-management.md` → `06-master-admin\05-plan-management.md`: canonical master admin
+- `07-api\authentication-apis.md` → `07-api\02-authentication-apis.md`: canonical API
+- `07-api\business-apis.md` → `07-api\03-business-apis.md`: canonical API
+- `07-api\billing-apis.md` → `07-api\04-billing-apis.md`: canonical API
+- `07-api\inventory-apis.md` → `07-api\05-inventory-apis.md`: canonical API
+- `07-api\report-apis.md` → `07-api\06-report-apis.md`: canonical API
+- `07-api\master-admin-apis.md` → `07-api\07-master-admin-apis.md`: canonical API
+- `08-ui-ux\design-system.md` → `08-ui-ux\01-design-system.md`: canonical UI
+- `08-ui-ux\navigation.md` → `08-ui-ux\02-navigation.md`: canonical UI
+- `08-ui-ux\layout-guidelines.md` → `08-ui-ux\03-layout-guidelines.md`: canonical UI
+- `08-ui-ux\responsive-design.md` → `08-ui-ux\04-responsive-design.md`: canonical UI
+- `08-ui-ux\dark-mode.md` → `08-ui-ux\05-dark-mode.md`: canonical UI
+- `08-ui-ux\common-components.md` → `08-ui-ux\06-common-components.md`: canonical UI
+- `09-subscription\subscription-overview.md` → `09-subscription\01-subscription-overview.md`: canonical subscription
+- `09-subscription\free-trial.md` → `09-subscription\03-free-trial.md`: canonical subscription
+- `10-testing\testing-strategy.md` → `10-testing\01-testing-strategy.md`: canonical testing
+- `10-testing\tenant-isolation-testing.md` → `10-testing\06-tenant-isolation-testing.md`: canonical testing
+- `10-testing\security-testing.md` → `10-testing\07-security-testing.md`: canonical testing
+- `11-user-manual\owner-manual.md` → `11-user-manual\01-owner-manual.md`: canonical user manual
+- `11-user-manual\billing-user-manual.md` → `11-user-manual\02-billing-user-manual.md`: canonical user manual
+- `11-user-manual\manager-manual.md` → `11-user-manual\03-manager-manual.md`: canonical user manual
+- `11-user-manual\master-admin-manual.md` → `11-user-manual\04-master-admin-manual.md`: canonical user manual
+- Archived leftover `04-common-modules/ai-assistant.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/audit-logs.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/billing.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/categories.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/customers.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/expenses.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/inventory.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/notifications.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/payments.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/pdf-invoices.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/printing.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/products.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/purchases.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/reports.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/suppliers.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `04-common-modules/whatsapp-integration.md` → archive/prior-structured/04-common-modules/ (unnumbered duplicate)
+- Archived leftover `07-api/authentication-apis.md` → archive/prior-structured/07-api/ (unnumbered duplicate)
+- Archived leftover `07-api/billing-apis.md` → archive/prior-structured/07-api/ (unnumbered duplicate)
+- Archived leftover `07-api/business-apis.md` → archive/prior-structured/07-api/ (unnumbered duplicate)
+- Archived leftover `07-api/common-apis.md` → archive/prior-structured/07-api/ (unnumbered duplicate)
+- Archived leftover `07-api/inventory-apis.md` → archive/prior-structured/07-api/ (unnumbered duplicate)
+- Archived leftover `07-api/master-admin-apis.md` → archive/prior-structured/07-api/ (unnumbered duplicate)
+- Archived leftover `07-api/report-apis.md` → archive/prior-structured/07-api/ (unnumbered duplicate)
+- Archived leftover `08-ui-ux/common-components.md` → archive/prior-structured/08-ui-ux/ (unnumbered duplicate)
+- Archived leftover `08-ui-ux/dark-mode.md` → archive/prior-structured/08-ui-ux/ (unnumbered duplicate)
+- Archived leftover `08-ui-ux/design-system.md` → archive/prior-structured/08-ui-ux/ (unnumbered duplicate)
+- Archived leftover `08-ui-ux/layout-guidelines.md` → archive/prior-structured/08-ui-ux/ (unnumbered duplicate)
+- Archived leftover `08-ui-ux/navigation.md` → archive/prior-structured/08-ui-ux/ (unnumbered duplicate)
+- Archived leftover `08-ui-ux/responsive-design.md` → archive/prior-structured/08-ui-ux/ (unnumbered duplicate)
+- Archived leftover `09-subscription/billing-for-subscription.md` → archive/prior-structured/09-subscription/ (unnumbered duplicate)
+- Archived leftover `09-subscription/expiry-notifications.md` → archive/prior-structured/09-subscription/ (unnumbered duplicate)
+- Archived leftover `09-subscription/free-trial.md` → archive/prior-structured/09-subscription/ (unnumbered duplicate)
+- Archived leftover `09-subscription/plans.md` → archive/prior-structured/09-subscription/ (unnumbered duplicate)
+- Archived leftover `09-subscription/subscription-overview.md` → archive/prior-structured/09-subscription/ (unnumbered duplicate)
+- Archived leftover `10-testing/integration-testing.md` → archive/prior-structured/10-testing/ (unnumbered duplicate)
+- Archived leftover `10-testing/performance-testing.md` → archive/prior-structured/10-testing/ (unnumbered duplicate)
+- Archived leftover `10-testing/regression-testing.md` → archive/prior-structured/10-testing/ (unnumbered duplicate)
+- Archived leftover `10-testing/security-testing.md` → archive/prior-structured/10-testing/ (unnumbered duplicate)
+- Archived leftover `10-testing/tenant-isolation-testing.md` → archive/prior-structured/10-testing/ (unnumbered duplicate)
+- Archived leftover `10-testing/testing-strategy.md` → archive/prior-structured/10-testing/ (unnumbered duplicate)
+- Archived leftover `11-user-manual/billing-user-manual.md` → archive/prior-structured/11-user-manual/ (unnumbered duplicate)
+- Archived leftover `11-user-manual/manager-manual.md` → archive/prior-structured/11-user-manual/ (unnumbered duplicate)
+- Archived leftover `11-user-manual/master-admin-manual.md` → archive/prior-structured/11-user-manual/ (unnumbered duplicate)
+- Archived leftover `11-user-manual/owner-manual.md` → archive/prior-structured/11-user-manual/ (unnumbered duplicate)
+- Archived `00-overview` under `archive/prior-structured/`: Superseded by 00-project-foundation
+- Archived `01-architecture` under `archive/prior-structured/`: Superseded by 02-architecture
+- Archived `02-multi-tenant` under `archive/prior-structured/`: Merged into 02-architecture and 01-requirements
+- Archived `03-master-admin` under `archive/prior-structured/`: Superseded by 06-master-admin
+- Archived `06-database` under `archive/prior-structured/`: Superseded by 03-database
+- Archived `12-sprints` under `archive/prior-structured/`: Superseded by 14-sprints (00–14 plan)
+- Archived `99-historical` under `archive/prior-structured/`: Historical index; contents merged into archive
+- Archived `01-project-overview.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `02-functional-requirements.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `03-non-functional-requirements.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `04-system-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `05-multi-tenant-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `06-user-roles-permissions.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `07-database-design.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `08-database-erd.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `09-api-documentation.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `10-authentication-authorization.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `11-billing-workflow.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `12-bill-printing.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `13-sales-reporting.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `14-audit-fraud-monitoring.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `15-frontend-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `16-backend-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `17-security.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `18-testing-strategy.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `19-deployment.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `20-development-sprints.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `21-production-readiness.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `22-saas-hotel-registration.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `ai-assistant.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `api-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `api-documentation.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `architecture-audit-report.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `audit-system.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `authentication.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `authorization.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `backend-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `backup-and-recovery.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `billing-engine.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `billing-user-manual.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `business-types.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `category-hierarchy.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `common-core-modules.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `database-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `database-design.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `database-relationships.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `db-speed-pass-2026-08-16.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `deployment-guide.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `development-roadmap.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `existing-system-analysis.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `final-qa-report.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `frontend-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `functional-requirements.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `industry-modules.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `inventory-engine.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `master-admin-manual.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `master-admin.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `notification-system.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `owner-manual.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-architecture-audit.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-final-qa-report.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-p2-10-reports-verification.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-p2-11-audit-verification.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-p2-12-testing-sample-data.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-p2-13-security-isolation.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-p2-3-auth-verification.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-p2-7-responsive-checklist.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-p2-8-performance.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase2-p2-9-billing-verification.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase3-final-qa-report.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase3-p3-1-ai-stock-notifications.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase3-p3-2-stock-notification-polish.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase3-p3-3-whatsapp-bill-delivery.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase3-p3-4-whatsapp-delivery-polish.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase3-p3-5-pdf-stock-adjust.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase3-p3-6-phase3-gate.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase4-final-qa-report.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase4-p4-1-whatsapp-webhooks.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase4-p4-2-whatsapp-ops-polish.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase4-p4-3-failed-delivery-visibility.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase4-p4-4-delivery-analytics.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase4-p4-5-phase4-gate.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase5-final-qa-report.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase5-p5-1-list-whatsapp-retry.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase5-p5-2-email-bill-delivery.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase5-p5-3-email-ops-parity.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase5-p5-4-phase5-gate.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase6-final-qa-report.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase6-p6-1-stock-movements.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase6-p6-2-receive-stock.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase6-p6-3-inventory-health-gate.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase7-final-qa-report.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase7-p7-1-landing-redesign.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase7-p7-2-landing-polish-gate.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-1-architecture-audit.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-10-testing-docs-gate.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-2-master-auth.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-3-registration-approval.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-4-trial-management.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-5-plan-management.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-6-subscription-lifecycle.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-7-expiry-notifications.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-8-dynamic-landing-pricing.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `phase8-p8-9-security-isolation.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `plan-management.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `privacy-policy.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `product-overview.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `product-requirements.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `project-structure.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `registration-approval-flow.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `reporting-system.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `security-architecture.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `security-tenant-audit.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `security.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-1-cloud-db-audit-baseline.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-10-master-bootstrap.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-11-phase8-alembic.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-12-final-verification.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-13-status-filter-pagination.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-14-registration-pagination.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-15-dashboard-kpi-filters.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-2-cloud-schema-diff-and-upgrade-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-3-live-db-inspection-tooling.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-4-master-login-ux.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-5-master-lifecycle-platform-audit.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-6-docs-e2e-guide.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-7-master-query-performance.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-8-live-database-inspect.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-9-live-schema-apply.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-landing-page-redesign-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p3-1-ai-stock-notifications-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p3-2-stock-notification-polish-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p3-3-whatsapp-bill-delivery-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p3-4-whatsapp-delivery-polish-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p3-5-pdf-stock-adjust-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p3-6-phase3-gate-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p4-1-whatsapp-webhooks-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p4-2-whatsapp-ops-polish-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p4-3-failed-delivery-visibility-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p4-4-delivery-analytics-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p4-5-phase4-gate-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p5-1-list-whatsapp-retry-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p5-2-email-bill-delivery-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p5-3-email-ops-parity-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p5-4-phase5-gate-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p6-1-stock-movements-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p6-2-receive-stock-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p6-3-inventory-health-gate-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p7-2-landing-polish-gate-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-1-architecture-audit-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-2-master-auth-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-3-registration-approval-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-4-trial-management-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-5-plan-management-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-6-subscription-lifecycle-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-7-expiry-notifications-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-8-dynamic-landing-pricing-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-p8-9-security-isolation-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-plan.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `subscription-management.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `subscription-system.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `tenant-isolation.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `terms-of-service.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `test-business-billing-guide.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `test-hotel-billing-guide.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `testing-guide.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `trial-management.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `trial-system.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `user-manual.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `whatsapp-integration.md` under `archive/flat-root/`: Flat/historical duplicate; content migrated or superseded
+- Archived `sprint-10-platform-ready.json` under `archive/flat-root/`: Sprint verification artifact; historical
+- Archived `sprint-12-final-verification.json` under `archive/flat-root/`: Sprint verification artifact; historical
+- Archived `sprint-8-live-schema-inspect.json` under `archive/flat-root/`: Sprint verification artifact; historical
+- Archived `sprint-9-post-apply-inspect.json` under `archive/flat-root/`: Sprint verification artifact; historical
+- Archived `_generate_business_docs.py` under `archive/tooling/`: Doc generation helper; no longer primary
+- Archived `_generate_shared_docs.py` under `archive/tooling/`: Doc generation helper; no longer primary
+- Archived `_generate_shared_docs2.py` under `archive/tooling/`: Doc generation helper; no longer primary
+- Archived `_inventory_md.txt` under `archive/tooling/`: Pre-restructure inventory snapshot

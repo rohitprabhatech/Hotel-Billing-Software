@@ -10,8 +10,8 @@ export async function updateMyTenant(payload) {
   return data;
 }
 
-export async function fetchBusinessTypes() {
-  const { data } = await apiClient.get('/tenants/business-types');
+export async function fetchMyModules() {
+  const { data } = await apiClient.get('/tenants/me/modules');
   return data;
 }
 

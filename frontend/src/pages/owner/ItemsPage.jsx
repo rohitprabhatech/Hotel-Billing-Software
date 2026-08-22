@@ -38,8 +38,12 @@ import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { PageActions } from '../../context/PageActionsContext';
+import { useAuth } from '../../context/AuthContext';
+import { useModuleGate } from '../../context/ModulesContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { filterControlSx, filterControlWideSx } from '../../layouts/shell';
 import { PATHS } from '../../routes/paths';
+import { stockMovementsPath } from '../../utils/permissions';
 import { listCategories } from '../../services/categoryService';
 import {
   adjustItemStock,
@@ -49,11 +53,14 @@ import {
   setItemStatus,
   updateItem,
 } from '../../services/itemService';
+import { DEFAULT_UOM, UOM_OPTIONS } from '../../utils/uom';
 import { formatCategoryPath } from '../../utils/categoryHierarchy';
 
 const emptyForm = {
   name: '',
   sku: '',
+  barcode: '',
+  uom: DEFAULT_UOM,
   category_id: '',
   description: '',
   price: '',
@@ -61,6 +68,8 @@ const emptyForm = {
   gst_percentage: '2.5',
   stock_quantity: '',
   minimum_stock_level: '',
+  is_menu: false,
+  is_veg: '',
 };
 
 const PAGE_SIZE = 25;
@@ -71,6 +80,10 @@ function money(value) {
 }
 
 export default function ItemsPage() {
+  const { role } = useAuth();
+  const restaurantMenuEnabled = useModuleGate('restaurant_menu');
+  const { canWriteItems, canStockItems, canAudit, canStockMovements } = usePermissions();
+  const movementsPath = stockMovementsPath(role);
   const [searchParams] = useSearchParams();
   const initialStock = ['low', 'out', 'tracked'].includes(searchParams.get('stock_status') || '')
     ? searchParams.get('stock_status')
@@ -146,6 +159,8 @@ export default function ItemsPage() {
     setForm({
       name: item.name || '',
       sku: item.sku || '',
+      barcode: item.barcode || '',
+      uom: item.uom || DEFAULT_UOM,
       category_id: item.category_id || '',
       description: item.description || '',
       price: item.price ?? '',
@@ -153,6 +168,8 @@ export default function ItemsPage() {
       gst_percentage: item.gst_percentage ?? '2.5',
       stock_quantity: item.stock_quantity ?? '',
       minimum_stock_level: item.minimum_stock_level ?? '',
+      is_menu: Boolean(item.is_menu),
+      is_veg: item.is_veg === true ? 'true' : item.is_veg === false ? 'false' : '',
     });
     setOpen(true);
   };
@@ -172,6 +189,8 @@ export default function ItemsPage() {
     const payload = {
       name: form.name.trim(),
       sku: form.sku.trim() || null,
+      barcode: form.barcode.trim() || null,
+      uom: form.uom || DEFAULT_UOM,
       category_id: form.category_id,
       description: form.description || null,
       price: form.price,
@@ -181,6 +200,10 @@ export default function ItemsPage() {
       minimum_stock_level:
         form.minimum_stock_level === '' ? null : form.minimum_stock_level,
     };
+    if (restaurantMenuEnabled) {
+      payload.is_menu = Boolean(form.is_menu);
+      payload.is_veg = form.is_veg === '' ? null : form.is_veg === 'true';
+    }
     try {
       if (editing) {
         await updateItem(editing.id, payload);
@@ -233,9 +256,11 @@ export default function ItemsPage() {
   return (
     <>
       <PageActions>
-        <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={openCreate}>
-          Add Item
-        </Button>
+        {canWriteItems ? (
+          <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={openCreate}>
+            Add Item
+          </Button>
+        ) : null}
       </PageActions>
 
       <PageShell>
@@ -313,6 +338,14 @@ export default function ItemsPage() {
                 <TableRow>
                   <TableCell>Item Name</TableCell>
                   <TableCell>SKU</TableCell>
+                  <TableCell>Barcode</TableCell>
+                  <TableCell>UoM</TableCell>
+                  {restaurantMenuEnabled ? (
+                    <>
+                      <TableCell>Menu</TableCell>
+                      <TableCell>Diet</TableCell>
+                    </>
+                  ) : null}
                   <TableCell>Category</TableCell>
                   <TableCell align="right">Price</TableCell>
                   <TableCell align="right">Cost</TableCell>
@@ -332,6 +365,22 @@ export default function ItemsPage() {
                     <TableCell>
                       <TruncateText value={item.sku || '—'} maxWidth={100} />
                     </TableCell>
+                    <TableCell>
+                      <TruncateText value={item.barcode || '—'} maxWidth={120} />
+                    </TableCell>
+                    <TableCell>{item.uom || DEFAULT_UOM}</TableCell>
+                    {restaurantMenuEnabled ? (
+                      <>
+                        <TableCell>{item.is_menu ? 'Yes' : 'No'}</TableCell>
+                        <TableCell>
+                          {item.is_veg === true
+                            ? 'Veg'
+                            : item.is_veg === false
+                              ? 'Non-veg'
+                              : '—'}
+                        </TableCell>
+                      </>
+                    ) : null}
                     <TableCell>
                       <TruncateText
                         value={formatCategoryPath(
@@ -354,39 +403,49 @@ export default function ItemsPage() {
                       ) : null}
                     </TableCell>
                     <TableCell>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Switch
-                          size="small"
-                          checked={item.is_active}
-                          onChange={() => onToggleActive(item)}
-                          inputProps={{ 'aria-label': `Toggle ${item.name}` }}
-                        />
+                      {canWriteItems ? (
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Switch
+                            size="small"
+                            checked={item.is_active}
+                            onChange={() => onToggleActive(item)}
+                            inputProps={{ 'aria-label': `Toggle ${item.name}` }}
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            {item.is_active ? 'Active' : 'Inactive'}
+                          </Typography>
+                        </Stack>
+                      ) : (
                         <Typography variant="caption" color="text.secondary">
                           {item.is_active ? 'Active' : 'Inactive'}
                         </Typography>
-                      </Stack>
+                      )}
                     </TableCell>
                     <TableCell>
                       <TruncateText value={item.created_by_name || '—'} maxWidth={110} />
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="Receive stock">
-                          <IconButton
-                            size="small"
-                            aria-label={`Receive stock for ${item.name}`}
-                            onClick={() => {
-                              setReceiveTarget(item);
-                              setReceiveQty('');
-                              setReceiveReason('');
-                              setError('');
-                              setSuccess('');
-                            }}
-                          >
-                            <MoveToInboxOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        {item.stock_quantity !== null && item.stock_quantity !== undefined ? (
+                        {canStockItems ? (
+                          <Tooltip title="Receive stock">
+                            <IconButton
+                              size="small"
+                              aria-label={`Receive stock for ${item.name}`}
+                              onClick={() => {
+                                setReceiveTarget(item);
+                                setReceiveQty('');
+                                setReceiveReason('');
+                                setError('');
+                                setSuccess('');
+                              }}
+                            >
+                              <MoveToInboxOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        {canStockItems &&
+                        item.stock_quantity !== null &&
+                        item.stock_quantity !== undefined ? (
                           <Tooltip title="Adjust stock">
                             <IconButton
                               size="small"
@@ -403,35 +462,41 @@ export default function ItemsPage() {
                             </IconButton>
                           </Tooltip>
                         ) : null}
-                        <Tooltip title="Edit">
-                          <IconButton
-                            size="small"
-                            aria-label={`Edit ${item.name}`}
-                            onClick={() => openEdit(item)}
-                          >
-                            <EditOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="View stock movements">
-                          <IconButton
-                            size="small"
-                            component={RouterLink}
-                            to={`${PATHS.ownerStockMovements}?item_id=${encodeURIComponent(item.id)}`}
-                            aria-label={`View stock movements for ${item.name}`}
-                          >
-                            <SwapVertOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="View activity">
-                          <IconButton
-                            size="small"
-                            component={RouterLink}
-                            to={`${PATHS.ownerItemActivity}?q=${encodeURIComponent(item.name || '')}`}
-                            aria-label={`View activity for ${item.name}`}
-                          >
-                            <HistoryOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        {canWriteItems ? (
+                          <Tooltip title="Edit">
+                            <IconButton
+                              size="small"
+                              aria-label={`Edit ${item.name}`}
+                              onClick={() => openEdit(item)}
+                            >
+                              <EditOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        {canStockMovements ? (
+                          <Tooltip title="View stock movements">
+                            <IconButton
+                              size="small"
+                              component={RouterLink}
+                              to={`${movementsPath}?item_id=${encodeURIComponent(item.id)}`}
+                              aria-label={`View stock movements for ${item.name}`}
+                            >
+                              <SwapVertOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        {canAudit ? (
+                          <Tooltip title="View activity">
+                            <IconButton
+                              size="small"
+                              component={RouterLink}
+                              to={`${PATHS.ownerItemActivity}?q=${encodeURIComponent(item.name || '')}`}
+                              aria-label={`View activity for ${item.name}`}
+                            >
+                              <HistoryOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -443,8 +508,8 @@ export default function ItemsPage() {
             <EmptyState
               title="No items found"
               description="Add catalog items with price, GST, optional SKU, cost, and stock."
-              actionLabel="Add Item"
-              onAction={openCreate}
+              actionLabel={canWriteItems ? 'Add Item' : undefined}
+              onAction={canWriteItems ? openCreate : undefined}
             />
           ) : null}
           {!loading && items.length ? (
@@ -485,6 +550,28 @@ export default function ItemsPage() {
               fullWidth
               helperText="Unique per business when provided"
             />
+            <TextField
+              label="Barcode (optional)"
+              value={form.barcode}
+              onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))}
+              fullWidth
+              helperText="Scannable code — unique per business"
+            />
+            <FormControl fullWidth>
+              <InputLabel id="item-uom-label">Unit of measure</InputLabel>
+              <Select
+                labelId="item-uom-label"
+                label="Unit of measure"
+                value={form.uom}
+                onChange={(e) => setForm((f) => ({ ...f, uom: e.target.value }))}
+              >
+                {UOM_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <CategoryHierarchyAutocomplete
               categories={categories}
               valueId={form.category_id}
@@ -541,6 +628,30 @@ export default function ItemsPage() {
               inputProps={{ min: 0, step: '0.001' }}
               helperText="Low-stock alert when stock reaches this level (blank = no alert)"
             />
+            {restaurantMenuEnabled ? (
+              <>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ gridColumn: { sm: '1 / -1' } }}>
+                  <Switch
+                    checked={Boolean(form.is_menu)}
+                    onChange={(e) => setForm((f) => ({ ...f, is_menu: e.target.checked }))}
+                  />
+                  <Typography variant="body2">Show on restaurant menu</Typography>
+                </Stack>
+                <FormControl fullWidth>
+                  <InputLabel id="item-veg-label">Diet type (optional)</InputLabel>
+                  <Select
+                    labelId="item-veg-label"
+                    label="Diet type (optional)"
+                    value={form.is_veg}
+                    onChange={(e) => setForm((f) => ({ ...f, is_veg: e.target.value }))}
+                  >
+                    <MenuItem value="">Not specified</MenuItem>
+                    <MenuItem value="true">Veg</MenuItem>
+                    <MenuItem value="false">Non-veg</MenuItem>
+                  </Select>
+                </FormControl>
+              </>
+            ) : null}
             <TextField
               label="Description"
               value={form.description}

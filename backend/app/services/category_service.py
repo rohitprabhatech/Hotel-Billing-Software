@@ -2,7 +2,7 @@
 
 from app.extensions import db
 from app.models.category import Category
-from app.models.role import ROLE_BILLING_USER
+from app.models.role import ROLE_BILLING_USER, ROLE_MANAGER
 from app.repositories.category_repository import CategoryRepository
 from app.services.audit_service import AuditService
 from app.utils.exceptions import ConflictError, NotFoundError, ValidationError
@@ -14,7 +14,7 @@ class CategoryService:
     @staticmethod
     def list_categories():
         ctx = require_request_context()
-        active_only = ctx.role == ROLE_BILLING_USER
+        active_only = ctx.role in {ROLE_BILLING_USER, ROLE_MANAGER}
         categories = CategoryRepository.list_by_tenant(
             ctx.tenant_id, active_only=active_only
         )
@@ -29,7 +29,7 @@ class CategoryService:
         category = CategoryRepository.get_by_id_and_tenant(category_id, ctx.tenant_id)
         if category is None:
             raise NotFoundError("Category not found")
-        if ctx.role == ROLE_BILLING_USER and not category.is_active:
+        if ctx.role in {ROLE_BILLING_USER, ROLE_MANAGER} and not category.is_active:
             raise NotFoundError("Category not found")
         return CategoryService.serialize(category)
 

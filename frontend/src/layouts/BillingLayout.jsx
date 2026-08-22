@@ -1,3 +1,14 @@
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+import SwapVertOutlinedIcon from '@mui/icons-material/SwapVertOutlined';
+import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutlined';
+import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
+import KitchenOutlinedIcon from '@mui/icons-material/KitchenOutlined';
+import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
+import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
+import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
+import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
@@ -35,6 +46,8 @@ import ThemeModeToggle from '../components/ThemeModeToggle';
 import NotificationBell from '../components/NotificationBell';
 import SubscriptionLockout from '../components/SubscriptionLockout';
 import { useAuth } from '../context/AuthContext';
+import { useModules } from '../context/ModulesContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
 import { DRAWER_WIDTH } from './shell';
 import { fetchMe, logoutRequest } from '../services/authService';
@@ -49,6 +62,44 @@ const billingNav = [
   { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
   { to: PATHS.billingItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
   { to: PATHS.billingCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
+  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { to: PATHS.billingSuppliers, label: 'Suppliers', icon: <LocalShippingOutlinedIcon /> },
+  {
+    to: PATHS.billingOrders,
+    label: 'Orders',
+    icon: <ReceiptLongOutlinedIcon />,
+    module: 'order_channels',
+  },
+  {
+    to: PATHS.billingMenu,
+    label: 'Menu',
+    icon: <RestaurantMenuOutlinedIcon />,
+    module: 'restaurant_menu',
+  },
+  {
+    to: PATHS.billingTables,
+    label: 'Tables',
+    icon: <TableRestaurantOutlinedIcon />,
+    module: 'table_management',
+  },
+  {
+    to: PATHS.billingKitchen,
+    label: 'Kitchen',
+    icon: <KitchenOutlinedIcon />,
+    module: 'kitchen',
+  },
+  {
+    to: PATHS.billingCafe,
+    label: 'Cafe POS',
+    icon: <LocalCafeOutlinedIcon />,
+    module: 'addons_combos',
+  },
+  {
+    to: PATHS.billingGrocery,
+    label: 'Grocery POS',
+    icon: <ShoppingCartOutlinedIcon />,
+    module: 'barcode_pos',
+  },
   { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
 ];
 
@@ -83,6 +134,84 @@ function pageMeta(pathname) {
       subtitle: 'Browse categories available for billing items.',
     };
   }
+  if (pathname.startsWith(PATHS.billingCustomers)) {
+    return {
+      title: 'Customers',
+      subtitle: 'Manage customer contacts and purchase history.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingSuppliers)) {
+    return {
+      title: 'Suppliers',
+      subtitle: 'View supplier contacts for purchase flows.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingPurchases)) {
+    return {
+      title: 'Purchases',
+      subtitle: 'Record supplier purchases and review stock receipts.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingExpenses)) {
+    return {
+      title: 'Expenses',
+      subtitle: 'Track daily business expenses and category totals.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingTables)) {
+    return {
+      title: 'Tables',
+      subtitle: 'Dining table board for restaurants and cafes.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingKitchen)) {
+    return {
+      title: 'Kitchen',
+      subtitle: 'Live kitchen board — queued, preparing, and ready tickets.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingCafe)) {
+    return {
+      title: 'Cafe POS',
+      subtitle: 'Quick takeaway billing with add-ons and combos.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingGrocery)) {
+    return {
+      title: 'Grocery POS',
+      subtitle: 'Scan-first billing with barcode lookup and weight quantities.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingOrdersNew)) {
+    return {
+      title: 'New Order',
+      subtitle: 'Take an order by channel — table required for dine-in.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingOrders)) {
+    return {
+      title: 'Orders',
+      subtitle: 'Open dine-in, takeaway, and delivery orders.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingMenu)) {
+    return {
+      title: 'Menu',
+      subtitle: 'Active menu items grouped by course/category.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingReports)) {
+    return {
+      title: 'Sales Reports',
+      subtitle: 'Review sales performance and export summaries.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingStockMovements)) {
+    return {
+      title: 'Stock Movements',
+      subtitle: 'Track inventory changes across items.',
+    };
+  }
   if (pathname.startsWith(PATHS.billingProfile)) {
     return {
       title: 'Profile',
@@ -100,6 +229,8 @@ function pageMeta(pathname) {
 
 export default function BillingLayout() {
   const { user, role, logout, updateUser } = useAuth();
+  const { filterByModule } = useModules();
+  const { canReports, canStockMovements, canViewPurchases, canViewExpenses } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -107,6 +238,7 @@ export default function BillingLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const isOwner = role === 'OWNER';
+  const isManager = role === 'MANAGER';
   const entitled = subscriptionAllowsAccess(user?.tenant?.subscription);
 
   useEffect(() => {
@@ -123,22 +255,53 @@ export default function BillingLayout() {
   }, []);
 
   const navItems = useMemo(() => {
+    let items;
     if (!isOwner) {
-      return [
+      items = [
         { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
         ...billingNav.slice(1),
       ];
+      if (canReports) {
+        items.push({
+          to: PATHS.billingReports,
+          label: 'Reports',
+          icon: <AssessmentOutlinedIcon />,
+        });
+      }
+      if (canStockMovements) {
+        items.push({
+          to: PATHS.billingStockMovements,
+          label: 'Stock Movements',
+          icon: <SwapVertOutlinedIcon />,
+        });
+      }
+      if (canViewPurchases) {
+        items.push({
+          to: PATHS.billingPurchases,
+          label: 'Purchases',
+          icon: <ShoppingCartOutlinedIcon />,
+        });
+      }
+      if (canViewExpenses) {
+        items.push({
+          to: PATHS.billingExpenses,
+          label: 'Expenses',
+          icon: <PaymentsOutlinedIcon />,
+        });
+      }
+    } else {
+      items = [
+        {
+          to: PATHS.ownerDashboard,
+          label: 'Owner Dashboard',
+          icon: <DashboardOutlinedIcon />,
+          end: true,
+        },
+        ...billingNav,
+      ];
     }
-    return [
-      {
-        to: PATHS.ownerDashboard,
-        label: 'Owner Dashboard',
-        icon: <DashboardOutlinedIcon />,
-        end: true,
-      },
-      ...billingNav,
-    ];
-  }, [isOwner]);
+    return filterByModule(items);
+  }, [isOwner, canReports, canStockMovements, filterByModule]);
 
   const meta = pageMeta(location.pathname);
 
@@ -162,7 +325,7 @@ export default function BillingLayout() {
             </Typography>
           </Tooltip>
           <Typography variant="caption" color="text.secondary">
-            {isOwner ? 'Owner · Billing' : 'Billing'}
+            {isOwner ? 'Owner · Billing' : isManager ? 'Manager · Billing' : 'Billing'}
           </Typography>
         </Box>
       </Toolbar>
@@ -220,8 +383,8 @@ export default function BillingLayout() {
           </Box>
           <Chip
             size="small"
-            label={isOwner ? 'OWNER' : 'BILLING'}
-            color={isOwner ? 'primary' : 'default'}
+            label={isOwner ? 'OWNER' : isManager ? 'MANAGER' : 'BILLING'}
+            color={isOwner ? 'primary' : isManager ? 'secondary' : 'default'}
             variant="outlined"
             sx={{ mr: 0.5, display: { xs: 'none', sm: 'inline-flex' } }}
           />

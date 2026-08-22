@@ -1,6 +1,7 @@
 """Owner-managed billing user operations."""
 
 from app.extensions import db
+from app.constants.permissions import ASSIGNABLE_TENANT_ROLES
 from app.models.role import ROLE_BILLING_USER, ROLE_OWNER
 from app.models.user import User
 from app.repositories.master_admin_repository import MasterAdminRepository
@@ -31,23 +32,27 @@ class UserService:
         return UserService.serialize(user)
 
     @staticmethod
-    def create_billing_user(*, name: str, email: str, password: str):
+    def create_tenant_user(*, name: str, email: str, password: str, role: str = ROLE_BILLING_USER):
         ctx = require_request_context()
         UserService._validate_user_payload(name, email, password, require_password=True)
+
+        role_name = (role or ROLE_BILLING_USER).strip().upper()
+        if role_name not in ASSIGNABLE_TENANT_ROLES:
+            raise ValidationError("Invalid role for new user")
 
         if UserRepository.find_by_email(email.strip().lower()) or MasterAdminRepository.find_by_email(
             email.strip().lower()
         ):
             raise ConflictError("An account with this email already exists")
 
-        role = RoleRepository.get_by_name(ROLE_BILLING_USER)
-        if role is None:
-            raise ValidationError("Billing user role is not configured")
+        role_row = RoleRepository.get_by_name(role_name)
+        if role_row is None:
+            raise ValidationError(f"{role_name} role is not configured")
 
         user = User(
             id=new_uuid(),
             tenant_id=ctx.tenant_id,
-            role_id=role.id,
+            role_id=role_row.id,
             name=name.strip(),
             email=email.strip().lower(),
             password_hash=hash_password(password),
@@ -65,12 +70,21 @@ class UserService:
             new_data={
                 "name": user.name,
                 "email": user.email,
-                "role": ROLE_BILLING_USER,
+                "role": role_name,
                 "is_active": True,
             },
         )
         db.session.commit()
         return UserService.serialize(user)
+
+    @staticmethod
+    def create_billing_user(*, name: str, email: str, password: str):
+        return UserService.create_tenant_user(
+            name=name,
+            email=email,
+            password=password,
+            role=ROLE_BILLING_USER,
+        )
 
     @staticmethod
     def update_user(user_id: str, *, name: str | None, email: str | None, is_active: bool | None):

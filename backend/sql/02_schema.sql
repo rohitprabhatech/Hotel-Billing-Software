@@ -82,7 +82,7 @@ CREATE TABLE roles (
     updated_at   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_roles_name (name),
-    CONSTRAINT chk_roles_name CHECK (name IN ('OWNER', 'BILLING_USER'))
+    CONSTRAINT chk_roles_name CHECK (name IN ('OWNER', 'BILLING_USER', 'MANAGER'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------

@@ -42,7 +42,7 @@ import {
 const emptyBusiness = {
   name: '',
   business_name: '',
-  business_type: 'other',
+  business_type: '',
   address: '',
   city: '',
   state: '',
@@ -295,7 +295,7 @@ export default function SettingsPage() {
               <Select
                 labelId="settings-business-type-label"
                 label="Business Type"
-                value={business.business_type || 'other'}
+                value={business.business_type || ''}
                 onChange={onBusinessChange('business_type')}
               >
                 {businessTypes.map((row) => (

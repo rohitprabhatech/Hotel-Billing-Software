@@ -5,15 +5,16 @@ from decimal import Decimal
 
 from flask import current_app
 
-from app.models.role import ROLE_OWNER
+from app.constants.permissions import PERM_STOCK_MOVEMENTS
 from app.models.stock_movement import StockMovement
 from app.repositories.stock_movement_repository import StockMovementRepository
-from app.utils.exceptions import ForbiddenError, ValidationError
+from app.utils.exceptions import ValidationError
+from app.utils.permission_access import require_permission
 from app.utils.ids import new_uuid
 from app.utils.periods import parse_date, to_utc_naive
 from app.utils.request_context import require_request_context
 
-_ALLOWED_SOURCES = {"BILL", "CANCEL", "ADJUST", "ITEM_UPDATE", "RECEIVE"}
+_ALLOWED_SOURCES = {"BILL", "CANCEL", "ADJUST", "ITEM_UPDATE", "RECEIVE", "PURCHASE", "PURCHASE_CANCEL", "RECIPE", "WASTAGE"}
 
 
 class StockMovementService:
@@ -60,8 +61,7 @@ class StockMovementService:
         per_page=50,
     ):
         ctx = require_request_context()
-        if ctx.role != ROLE_OWNER:
-            raise ForbiddenError("Only the business owner can view stock movements.")
+        require_permission(PERM_STOCK_MOVEMENTS)
         source_filter = None
         if source:
             source_filter = str(source).strip().upper()

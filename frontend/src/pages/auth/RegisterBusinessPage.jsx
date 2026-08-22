@@ -25,7 +25,7 @@ import { homePathForRole, isValidRole } from '../../utils/authRouting';
 
 const initial = {
   business_name: '',
-  business_type: 'other',
+  business_type: '',
   address: '',
   city: '',
   state: '',
@@ -72,6 +72,10 @@ export default function RegisterBusinessPage() {
     setSuccess('');
     if (!form.business_name.trim()) {
       setError('Business name is required');
+      return;
+    }
+    if (!form.business_type) {
+      setError('Please select a business type');
       return;
     }
     if (form.password !== form.confirm_password) {
@@ -154,7 +158,11 @@ export default function RegisterBusinessPage() {
               label="Business Type"
               value={form.business_type}
               onChange={onChange('business_type')}
+              displayEmpty
             >
+              <MenuItem value="" disabled>
+                Select business type
+              </MenuItem>
               {businessTypes.map((row) => (
                 <MenuItem key={row.code} value={row.code}>
                   {row.label}

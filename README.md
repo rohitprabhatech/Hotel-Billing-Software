@@ -64,17 +64,17 @@ cd backend
 
 ## Docs
 
-Start at [`docs/README.md`](docs/README.md):
+Start at [`docs/README.md`](docs/README.md) — single structured system:
 
-- User / Owner / Billing / [Master Admin](docs/master-admin-manual.md) manuals  
-- API, database, [security architecture](docs/security-architecture.md), [backup](docs/backup-and-recovery.md)  
-- [Deployment guide](docs/deployment-guide.md)  
-- [Complete E2E test guide](docs/test-business-billing-guide.md)  
-- [Development roadmap](docs/development-roadmap.md)  
+`00-project-foundation` · `01-requirements` · `02-architecture` · `03-database` · `04-common-modules` · **`05-businesses` (14 packs)** · `06-master-admin` · `07-api` · `08-ui-ux` · `09-subscription` · `10-testing` · `11-user-manual` · `12-testing-guides` · `13-phases` · `14-sprints` · `archive/`
+
+Status: [`docs/documentation-status.md`](docs/documentation-status.md) · Tracker: [`docs/14-sprints/sprint-tracker.md`](docs/14-sprints/sprint-tracker.md)
+
+Historical Phase/Sprint reports: [`docs/archive/`](docs/archive/).
 
 ## Production
 
-Follow [`docs/deployment-guide.md`](docs/deployment-guide.md) and [`docs/21-production-readiness.md`](docs/21-production-readiness.md).  
+Follow archived ops notes under [`docs/archive/flat-root/deployment-guide.md`](docs/archive/flat-root/deployment-guide.md) and [`docs/archive/flat-root/21-production-readiness.md`](docs/archive/flat-root/21-production-readiness.md) until promoted into phase/sprint docs.  
 Onboard real businesses with **Register Business** (Master must **approve**) or `backend/scripts/onboard_tenant.py` (not the demo seeder).
 
 **Hosted schema (current):** Phase 8 tables are present; Alembic stamped `20260818_phase8_saas`.  
@@ -85,6 +85,6 @@ cd backend
 .\.venv\Scripts\python.exe scripts\seed_master_admin.py
 ```
 
-Then `/master/login` via the landing footer dot. See [`docs/master-admin-manual.md`](docs/master-admin-manual.md).
+Then `/master/login` via the landing footer dot. See [`docs/11-user-manual/04-master-admin-manual.md`](docs/11-user-manual/04-master-admin-manual.md).
 
 **Plan:** Landing prices come from the plan catalog. No in-app payment gateway — contact Prabha Technology to activate.

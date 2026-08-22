@@ -26,8 +26,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
+import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
 import TruncateText from '../../components/TruncateText';
 import {
@@ -38,10 +39,12 @@ import {
   sendBillWhatsapp,
 } from '../../services/billService';
 import { listCategories } from '../../services/categoryService';
-import { listItems } from '../../services/itemService';
+import { getItemByBarcode, listItems } from '../../services/itemService';
+import { uomLabel } from '../../utils/uom';
 import {
   DEFAULT_PAYMENT_METHOD,
   PAYMENT_CASH,
+  PAYMENT_CREDIT,
   PAYMENT_ONLINE,
   isAllowedPaymentMethod,
   paymentMethodLabel,
@@ -76,6 +79,9 @@ function sortCategoriesHierarchically(categories) {
 
 export default function NewBillPage() {
   const [q, setQ] = useState('');
+  const [barcode, setBarcode] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const barcodeInputRef = useRef(null);
   const [catalog, setCatalog] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState('');
@@ -87,6 +93,7 @@ export default function NewBillPage() {
   const [countryCode, setCountryCode] = useState('91');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -167,6 +174,12 @@ export default function NewBillPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, categoryId]);
 
+  useEffect(() => {
+    if (!selectedCustomer && paymentMethod === PAYMENT_CREDIT) {
+      setPaymentMethod(DEFAULT_PAYMENT_METHOD);
+    }
+  }, [selectedCustomer, paymentMethod]);
+
   const subtotalPreview = useMemo(
     () => cart.reduce((sum, line) => sum + line.price * line.quantity, 0),
     [cart],
@@ -213,6 +226,23 @@ export default function NewBillPage() {
         },
       ];
     });
+  };
+
+  const scanBarcode = async () => {
+    const code = barcode.trim();
+    if (!code || scanning) return;
+    setScanning(true);
+    setError('');
+    try {
+      const res = await getItemByBarcode(code);
+      addItem(res.data);
+      setBarcode('');
+      window.requestAnimationFrame(() => barcodeInputRef.current?.focus());
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'No active item found for this barcode.');
+    } finally {
+      setScanning(false);
+    }
   };
 
   const setQty = (itemId, quantity) => {
@@ -280,6 +310,7 @@ export default function NewBillPage() {
         customer_phone_country_code: customerPhone ? countryCode : null,
         customer_phone: customerPhone || null,
         customer_email: customerEmail.trim() || null,
+        customer_id: selectedCustomer?.id || null,
         items: cart.map((line) => ({
           item_id: line.item_id,
           quantity: line.quantity,
@@ -397,20 +428,45 @@ export default function NewBillPage() {
                 Available Items
               </Typography>
 
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
+              <Stack spacing={2} sx={{ mb: 2.5 }}>
                 <TextField
-                  label="Search items"
-                  placeholder="Name or SKU…"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  inputRef={barcodeInputRef}
+                  label="Scan barcode"
+                  placeholder="Focus here and scan or type barcode…"
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') search(q, categoryId);
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      scanBarcode();
+                    }
                   }}
                   fullWidth
+                  autoComplete="off"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: 'action.hover',
+                      fontSize: '1.05rem',
+                      letterSpacing: '0.04em',
+                    },
+                  }}
+                  helperText="Press Enter after scan — adds item to bill"
                 />
-                <Button variant="outlined" onClick={() => search(q, categoryId)} sx={{ flexShrink: 0 }}>
-                  Search
-                </Button>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    label="Search items"
+                    placeholder="Name, SKU, or barcode…"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') search(q, categoryId);
+                    }}
+                    fullWidth
+                  />
+                  <Button variant="outlined" onClick={() => search(q, categoryId)} sx={{ flexShrink: 0 }}>
+                    Search
+                  </Button>
+                </Stack>
               </Stack>
 
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2.5 }}>
@@ -475,7 +531,9 @@ export default function NewBillPage() {
                         <TruncateText value={item.name} maxWidth="100%" fontWeight={600} />
                         <Typography variant="caption" color="text.secondary" noWrap display="block" sx={{ mt: 0.5 }}>
                           {item.sku ? `${item.sku} · ` : ''}
-                          {item.category_name || 'Item'} · GST {Number(item.gst_percentage).toFixed(1)}%
+                          {item.barcode ? `${item.barcode} · ` : ''}
+                          {item.category_name || 'Item'} · {uomLabel(item.uom)} · GST{' '}
+                          {Number(item.gst_percentage).toFixed(1)}%
                           {item.stock_quantity !== null && item.stock_quantity !== undefined
                             ? ` · Available stock: ${Number(item.stock_quantity)}`
                             : ''}
@@ -551,6 +609,22 @@ export default function NewBillPage() {
                   inputProps={{ min: 0, step: '0.01' }}
                 />
               </Stack>
+
+              <Box sx={{ mb: 2.5 }}>
+                <CustomerPicker
+                  value={selectedCustomer}
+                  onChange={(customer) => {
+                    setSelectedCustomer(customer);
+                    setCustomerName(customer.name || '');
+                    setCountryCode(customer.phone_country_code || '91');
+                    setCustomerPhone(customer.phone_national || '');
+                    setCustomerEmail(customer.email || '');
+                  }}
+                  onClear={() => {
+                    setSelectedCustomer(null);
+                  }}
+                />
+              </Box>
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
                 <TextField
@@ -691,10 +765,20 @@ export default function NewBillPage() {
                     value={PAYMENT_ONLINE}
                     control={<Radio size="small" />}
                     label="Online"
+                    sx={{ mr: 3 }}
                   />
+                  {selectedCustomer ? (
+                    <FormControlLabel
+                      value={PAYMENT_CREDIT}
+                      control={<Radio size="small" />}
+                      label="Credit (Udhari)"
+                    />
+                  ) : null}
                 </RadioGroup>
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                  Required · defaults to Cash
+                  {selectedCustomer
+                    ? 'Credit requires a linked customer and adds to their outstanding balance.'
+                    : 'Required · defaults to Cash. Link a customer to enable credit.'}
                 </Typography>
               </FormControl>
 

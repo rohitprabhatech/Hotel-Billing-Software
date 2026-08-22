@@ -24,6 +24,7 @@ def _parse_bool(value):
 
 def list_items():
     q = request.args.get("q")
+    barcode = request.args.get("barcode")
     category_id = request.args.get("category_id")
     is_active = _parse_bool(request.args.get("is_active"))
     stock_status = request.args.get("stock_status")
@@ -31,6 +32,7 @@ def list_items():
     per_page = int(request.args.get("per_page", 50))
     data, meta = ItemService.list_items(
         q=q,
+        barcode=barcode,
         category_id=category_id,
         is_active=is_active,
         stock_status=stock_status,
@@ -38,6 +40,11 @@ def list_items():
         per_page=per_page,
     )
     return success_response(data=data, meta=meta)
+
+
+def get_item_by_barcode(barcode: str):
+    active_only = request.args.get("active_only", "true").lower() not in {"0", "false", "no"}
+    return success_response(data=ItemService.get_item_by_barcode(barcode, active_only=active_only))
 
 
 def get_item(item_id: str):
@@ -53,9 +60,13 @@ def create_item():
         price=payload["price"],
         gst_percentage=payload.get("gst_percentage", 0),
         sku=payload.get("sku"),
+        barcode=payload.get("barcode"),
+        uom=payload.get("uom"),
         cost_price=payload.get("cost_price"),
         stock_quantity=payload.get("stock_quantity"),
         minimum_stock_level=payload.get("minimum_stock_level"),
+        is_menu=payload.get("is_menu", False),
+        is_veg=payload.get("is_veg"),
     )
     return success_response(data=data, status_code=201)
 
@@ -72,6 +83,10 @@ def update_item(item_id: str):
         gst_percentage=payload.get("gst_percentage") if "gst_percentage" in raw else None,
         sku=payload.get("sku") if "sku" in raw else None,
         sku_provided="sku" in raw,
+        barcode=payload.get("barcode") if "barcode" in raw else None,
+        barcode_provided="barcode" in raw,
+        uom=payload.get("uom") if "uom" in raw else None,
+        uom_provided="uom" in raw,
         cost_price=payload.get("cost_price") if "cost_price" in raw else None,
         cost_price_provided="cost_price" in raw,
         stock_quantity=payload.get("stock_quantity") if "stock_quantity" in raw else None,
@@ -80,6 +95,10 @@ def update_item(item_id: str):
             payload.get("minimum_stock_level") if "minimum_stock_level" in raw else None
         ),
         minimum_stock_level_provided="minimum_stock_level" in raw,
+        is_menu=payload.get("is_menu") if "is_menu" in raw else None,
+        is_menu_provided="is_menu" in raw,
+        is_veg=payload.get("is_veg") if "is_veg" in raw else None,
+        is_veg_provided="is_veg" in raw,
     )
     return success_response(data=data)
 

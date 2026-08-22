@@ -4,7 +4,7 @@ import pytest
 
 from app import create_app
 from app.extensions import db
-from app.models.role import ROLE_BILLING_USER, ROLE_OWNER, Role
+from app.models.role import ROLE_BILLING_USER, ROLE_MANAGER, ROLE_OWNER, Role
 from app.models.subscription import PAYMENT_COMPLIMENTARY, SUBSCRIPTION_ACTIVE, Subscription
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -42,6 +42,11 @@ def _seed(session):
         id="22222222-2222-2222-2222-222222222222",
         name=ROLE_BILLING_USER,
         description="Billing",
+    )
+    manager_role = Role(
+        id="33333333-3333-3333-3333-333333333333",
+        name=ROLE_MANAGER,
+        description="Manager",
     )
     tenant_a = Tenant(
         id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -81,6 +86,17 @@ def _seed(session):
             token_version=0,
         ),
         User(
+            id="a3333333-3333-3333-3333-333333333333",
+            tenant_id=tenant_a.id,
+            role_id=manager_role.id,
+            name="Manager A",
+            email="manager@hotela.com",
+            password_hash=hash_password("Manager@12345"),
+            is_active=True,
+            email_verified=True,
+            token_version=0,
+        ),
+        User(
             id="b1111111-1111-1111-1111-111111111111",
             tenant_id=tenant_b.id,
             role_id=owner_role.id,
@@ -92,7 +108,7 @@ def _seed(session):
             token_version=0,
         ),
     ]
-    session.add_all([owner_role, billing_role, tenant_a, tenant_b, *users])
+    session.add_all([owner_role, billing_role, manager_role, tenant_a, tenant_b, *users])
     now = utc_now_naive()
     session.add_all(
         [

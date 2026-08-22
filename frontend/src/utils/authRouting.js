@@ -1,4 +1,4 @@
-export const VALID_ROLES = ['OWNER', 'BILLING_USER', 'MASTER_ADMIN'];
+export const VALID_ROLES = ['OWNER', 'MANAGER', 'BILLING_USER', 'MASTER_ADMIN'];
 
 export function isValidRole(role) {
   return VALID_ROLES.includes(role);
@@ -8,6 +8,7 @@ export function isValidRole(role) {
 export function homePathForRole(role) {
   if (role === 'MASTER_ADMIN') return '/master/dashboard';
   if (role === 'OWNER') return '/owner/dashboard';
+  if (role === 'MANAGER') return '/billing';
   if (role === 'BILLING_USER') return '/billing';
   return '/login';
 }

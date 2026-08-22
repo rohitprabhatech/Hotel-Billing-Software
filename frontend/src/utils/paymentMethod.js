@@ -2,7 +2,12 @@
 
 export const PAYMENT_CASH = 'cash';
 export const PAYMENT_ONLINE = 'online';
-export const ALLOWED_PAYMENT_METHODS = Object.freeze([PAYMENT_CASH, PAYMENT_ONLINE]);
+export const PAYMENT_CREDIT = 'credit';
+export const ALLOWED_PAYMENT_METHODS = Object.freeze([
+  PAYMENT_CASH,
+  PAYMENT_ONLINE,
+  PAYMENT_CREDIT,
+]);
 export const DEFAULT_PAYMENT_METHOD = PAYMENT_CASH;
 
 export function isAllowedPaymentMethod(value) {
@@ -12,5 +17,6 @@ export function isAllowedPaymentMethod(value) {
 export function paymentMethodLabel(value) {
   const method = String(value || DEFAULT_PAYMENT_METHOD).toLowerCase();
   if (method === PAYMENT_ONLINE) return 'Online';
+  if (method === PAYMENT_CREDIT) return 'Credit';
   return 'Cash';
 }

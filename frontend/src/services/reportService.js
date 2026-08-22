@@ -25,6 +25,11 @@ export async function fetchCustomSales(params = {}) {
   return data;
 }
 
+export async function fetchFbReport(params = {}) {
+  const { data } = await apiClient.get('/reports/fb', { params });
+  return data;
+}
+
 export function exportReportUrl(params = {}) {
   const search = new URLSearchParams(params);
   const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';

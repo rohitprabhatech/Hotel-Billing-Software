@@ -27,7 +27,7 @@ if str(BACKEND_ROOT) not in sys.path:
 from app import create_app
 from app.constants.business_types import DEFAULT_BUSINESS_TYPE, normalize_business_type
 from app.extensions import db
-from app.models.role import ROLE_BILLING_USER, ROLE_OWNER, Role
+from app.models.role import ROLE_BILLING_USER, ROLE_MANAGER, ROLE_OWNER, Role
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.utils.ids import new_uuid
@@ -35,12 +35,14 @@ from app.utils.security import hash_password
 
 ROLE_OWNER_ID = "11111111-1111-1111-1111-111111111111"
 ROLE_BILLING_ID = "22222222-2222-2222-2222-222222222222"
+ROLE_MANAGER_ID = "33333333-3333-3333-3333-333333333333"
 
 
 def ensure_roles():
     for role_id, name, description in [
         (ROLE_OWNER_ID, ROLE_OWNER, "Business owner with full tenant management access"),
         (ROLE_BILLING_ID, ROLE_BILLING_USER, "Counter billing user with limited access"),
+        (ROLE_MANAGER_ID, ROLE_MANAGER, "Operations manager — billing, reports, stock"),
     ]:
         role = db.session.get(Role, role_id) or Role.query.filter_by(name=name).first()
         if role is None:

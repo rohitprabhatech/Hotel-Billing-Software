@@ -10,6 +10,8 @@ import {
   MenuItem,
   Select,
   Stack,
+  Tab,
+  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -35,10 +37,12 @@ import PageShell from '../../components/PageShell';
 import Section from '../../components/Section';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import { useModuleGate } from '../../context/ModulesContext';
 import {
   downloadReport,
   fetchCustomSales,
   fetchDailySales,
+  fetchFbReport,
   fetchMonthlySales,
   fetchWeeklySales,
 } from '../../services/reportService';
@@ -83,6 +87,8 @@ function ItemSalesTable({ rows, emptyTitle, emptyDescription }) {
 
 export default function ReportsPage() {
   const theme = useTheme();
+  const fbEnabled = useModuleGate('order_channels');
+  const [view, setView] = useState('sales');
   const [type, setType] = useState('daily');
   const [date, setDate] = useState('');
   const [fromDate, setFromDate] = useState('');
@@ -101,7 +107,13 @@ export default function ReportsPage() {
     try {
       const paymentParams = paymentMethod ? { payment_method: paymentMethod } : {};
       let res;
-      if (type === 'daily') {
+      if (view === 'fb') {
+        if (type === 'custom') {
+          res = await fetchFbReport({ from: fromDate, to: toDate });
+        } else {
+          res = await fetchFbReport({ ...(date ? { date } : {}) });
+        }
+      } else if (type === 'daily') {
         res = await fetchDailySales({ ...(date ? { date } : {}), ...paymentParams });
       } else if (type === 'weekly') {
         res = await fetchWeeklySales(paymentParams);
@@ -145,6 +157,12 @@ export default function ReportsPage() {
 
   return (
     <PageShell>
+      {fbEnabled ? (
+        <Tabs value={view} onChange={(_, value) => setView(value)} sx={{ mb: 2 }}>
+          <Tab value="sales" label="Sales" />
+          <Tab value="fb" label="F&B Insights" />
+        </Tabs>
+      ) : null}
       <FilterBar
         actions={
           <Button
@@ -157,19 +175,29 @@ export default function ReportsPage() {
           </Button>
         }
       >
-        <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
-          <InputLabel>Report Type</InputLabel>
-          <Select
-            label="Report Type"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <MenuItem value="daily">Daily</MenuItem>
-            <MenuItem value="weekly">Weekly</MenuItem>
-            <MenuItem value="monthly">Monthly</MenuItem>
-            <MenuItem value="custom">Custom Range</MenuItem>
-          </Select>
-        </FormControl>
+        {view === 'sales' ? (
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+            <InputLabel>Report Type</InputLabel>
+            <Select
+              label="Report Type"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+            >
+              <MenuItem value="daily">Daily</MenuItem>
+              <MenuItem value="weekly">Weekly</MenuItem>
+              <MenuItem value="monthly">Monthly</MenuItem>
+              <MenuItem value="custom">Custom Range</MenuItem>
+            </Select>
+          </FormControl>
+        ) : (
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+            <InputLabel>Period</InputLabel>
+            <Select label="Period" value={type} onChange={(e) => setType(e.target.value)}>
+              <MenuItem value="daily">Daily</MenuItem>
+              <MenuItem value="custom">Custom Range</MenuItem>
+            </Select>
+          </FormControl>
+        )}
 
         {type === 'daily' ? (
           <TextField
@@ -183,13 +211,13 @@ export default function ReportsPage() {
           />
         ) : null}
 
-        {type === 'weekly' ? (
+        {view === 'sales' && type === 'weekly' ? (
           <Alert severity="info" sx={{ py: 0, alignItems: 'center' }}>
             Current calendar week (business timezone)
           </Alert>
         ) : null}
 
-        {type === 'monthly' ? (
+        {view === 'sales' && type === 'monthly' ? (
           <>
             <TextField
               label="Year"
@@ -230,23 +258,114 @@ export default function ReportsPage() {
           </>
         ) : null}
 
-        <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
-          <InputLabel>Payment Method</InputLabel>
-          <Select
-            label="Payment Method"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
-            <MenuItem value={PAYMENT_ONLINE}>Online</MenuItem>
-          </Select>
-        </FormControl>
+        {view === 'sales' ? (
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+            <InputLabel>Payment Method</InputLabel>
+            <Select
+              label="Payment Method"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
+              <MenuItem value={PAYMENT_ONLINE}>Online</MenuItem>
+            </Select>
+          </FormControl>
+        ) : null}
       </FilterBar>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      {report ? (
+      {report && view === 'fb' ? (
+        <>
+          <Section title={report.label} description="Sales by order channel and dining table">
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' },
+              }}
+            >
+              <KpiCard title="Total Sales" value={money(metrics.total_sales)} />
+              <KpiCard title="Bills" value={metrics.bill_count ?? '—'} />
+              <KpiCard title="Items Sold" value={metrics.items_sold ?? '—'} />
+            </Box>
+          </Section>
+
+          <Section title="Sales by Channel">
+            <Card>
+              <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: { xs: 2, sm: 3 } } }}>
+                <Box sx={{ width: '100%', height: 280 }}>
+                  {(report.channel_wise || []).length ? (
+                    <ResponsiveContainer>
+                      <BarChart data={report.channel_wise || []}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="channel_label" />
+                        <YAxis tickFormatter={(v) => `₹${v}`} />
+                        <Tooltip formatter={(v) => money(v)} />
+                        <Bar dataKey="total_sales" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <EmptyState title="No channel data" description="No settled order bills in this period." />
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </Section>
+
+          <Section title="Sales by Table">
+            <TableCard>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Table</TableCell>
+                    <TableCell align="right">Bills</TableCell>
+                    <TableCell align="right">Sales</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(report.table_wise || []).map((row) => (
+                    <TableRow key={row.table_code} hover>
+                      <TableCell>{row.table_code}</TableCell>
+                      <TableCell align="right">{row.bill_count}</TableCell>
+                      <TableCell align="right">{money(row.total_sales)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {!report.table_wise?.length ? (
+                <EmptyState title="No table sales" description="No table-linked bills in this period." />
+              ) : null}
+            </TableCard>
+          </Section>
+
+          <Section title="Wastage Summary">
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                mb: 2,
+              }}
+            >
+              <KpiCard title="Wastage entries" value={report.wastage?.entry_count ?? 0} />
+              <KpiCard title="Total quantity lost" value={report.wastage?.total_quantity ?? 0} />
+            </Box>
+            <ItemSalesTable
+              rows={(report.wastage?.top_items || []).map((row) => ({
+                item_name: row.item_name,
+                quantity: row.quantity,
+                revenue: row.entry_count,
+              }))}
+              emptyTitle="No wastage"
+              emptyDescription="No wastage logged in this period."
+            />
+          </Section>
+        </>
+      ) : null}
+
+      {report && view === 'sales' ? (
         <>
           <Section
             title={report.label}

@@ -2,7 +2,14 @@ import './receipt.css';
 import { paymentMethodLabel } from '../utils/paymentMethod';
 
 /** Food-service types where FSSAI is typically relevant (mirrors backend). */
-const FSSAI_RELEVANT_TYPES = new Set(['restaurant', 'hotel']);
+const FSSAI_RELEVANT_TYPES = new Set([
+  'hotel_restaurant',
+  'cafe_tea',
+  'bakery_sweet',
+  // legacy codes (pre–BIZ-01) — safe if old payloads remain
+  'restaurant',
+  'hotel',
+]);
 
 function formatMoney(value) {
   return Number(value || 0).toFixed(2);

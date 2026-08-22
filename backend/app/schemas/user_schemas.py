@@ -2,6 +2,8 @@
 
 from marshmallow import EXCLUDE, Schema, fields, validate
 
+from app.models.role import ROLE_BILLING_USER, ROLE_MANAGER
+
 
 class CreateUserSchema(Schema):
     class Meta:
@@ -10,6 +12,10 @@ class CreateUserSchema(Schema):
     name = fields.String(required=True, validate=validate.Length(min=1, max=120))
     email = fields.Email(required=True)
     password = fields.String(required=True, validate=validate.Length(min=8, max=128))
+    role = fields.String(
+        load_default=ROLE_BILLING_USER,
+        validate=validate.OneOf([ROLE_BILLING_USER, ROLE_MANAGER]),
+    )
 
 
 class UpdateUserSchema(Schema):

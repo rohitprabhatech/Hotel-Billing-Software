@@ -4,6 +4,7 @@ import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
+import PhoneIphoneOutlinedIcon from '@mui/icons-material/PhoneIphoneOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
 import SwapVertOutlinedIcon from '@mui/icons-material/SwapVertOutlined';
@@ -85,6 +86,7 @@ const emptyForm = {
   is_veg: '',
   tracks_batches: false,
   block_expired_batches: true,
+  tracks_serial: false,
 };
 
 const PAGE_SIZE = 25;
@@ -100,6 +102,7 @@ export default function ItemsPage() {
   const bulkPricingEnabled = useModuleGate('bulk_pricing');
   const batchExpiryEnabled = useModuleGate('batch_expiry');
   const variantsEnabled = useModuleGate('variants');
+  const serialImeiEnabled = useModuleGate('serial_imei');
   const productImagesEnabled = useModuleGate('product_images');
   const { canWriteItems, canStockItems, canAudit, canStockMovements } = usePermissions();
   const movementsPath = stockMovementsPath(role);

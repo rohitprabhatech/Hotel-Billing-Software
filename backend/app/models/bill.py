@@ -118,6 +118,17 @@ class BillItem(db.Model):
     variant_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("item_variants.id", ondelete="SET NULL"), index=True
     )
+    serial_unit_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey(
+            "serial_units.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_bill_items_serial_unit_id",
+        ),
+        index=True,
+    )
+    serial_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
     item_name: Mapped[str] = mapped_column(String(200), nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

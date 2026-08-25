@@ -121,6 +121,8 @@ class VariantService:
         require_permission(PERM_ITEMS_WRITE)
         ctx, _ = VariantService._require_module()
         item = VariantService._get_item(ctx.tenant_id, item_id)
+        if getattr(item, "tracks_serial", False):
+            raise ValidationError("Serial / IMEI items cannot also track size/color variants")
         size_v = VariantService._norm_label(size, field="size")
         color_v = VariantService._norm_label(color, field="color")
         if ItemVariantRepository.find_size_color(ctx.tenant_id, item.id, size_v, color_v):

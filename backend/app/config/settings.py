@@ -24,12 +24,16 @@ class BaseConfig:
     )
 
     SQLALCHEMY_DATABASE_URI = resolve_database_url() or (
-        "mysql+pymysql://root:password@localhost/hotel_billing"
+        "mysql+pymysql://root:password@localhost/hotel_billing?charset=utf8mb4"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
-        "pool_recycle": 280,
+        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "280")),
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
+        "max_overflow": int(os.getenv("DB_POOL_MAX_OVERFLOW", "10")),
+        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
+        "connect_args": {"charset": "utf8mb4"},
     }
 
     CORS_ORIGINS = _csv_env(

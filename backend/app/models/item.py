@@ -45,6 +45,7 @@ class Item(db.Model, TimestampMixin):
     tracks_batches: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     block_expired_batches: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     tracks_variants: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    tracks_serial: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category = relationship("Category", back_populates="items")
     creator = relationship("User", foreign_keys=[created_by])
@@ -71,4 +72,9 @@ class Item(db.Model, TimestampMixin):
         back_populates="item",
         cascade="all, delete-orphan",
         order_by="ItemImage.sort_order",
+    )
+    serial_units = relationship(
+        "SerialUnit",
+        back_populates="item",
+        cascade="all, delete-orphan",
     )

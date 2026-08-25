@@ -26,6 +26,7 @@ import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
+import PhoneIphoneOutlinedIcon from '@mui/icons-material/PhoneIphoneOutlined';
 import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
 import {
   AppBar,
@@ -154,6 +155,12 @@ const navItems = [
     icon: <CheckroomOutlinedIcon />,
     module: 'variants',
   },
+  {
+    to: PATHS.ownerSerials,
+    label: 'Serial / IMEI',
+    icon: <PhoneIphoneOutlinedIcon />,
+    module: 'serial_imei',
+  },
   { to: PATHS.ownerReports, label: 'Sales Reports', icon: <AssessmentOutlinedIcon /> },
   { to: PATHS.ownerAi, label: 'AI Assistant', icon: <AutoAwesomeOutlinedIcon /> },
   { to: PATHS.ownerAudit, label: 'Audit & Activity', icon: <HistoryOutlinedIcon /> },
@@ -258,6 +265,10 @@ const titles = {
   [PATHS.ownerVariants]: {
     title: 'Variants',
     subtitle: 'Size, color, and variant stock for clothing and related shops.',
+  },
+  [PATHS.ownerSerials]: {
+    title: 'Serial / IMEI',
+    subtitle: 'Receive unique units and see which IMEIs are still in stock.',
   },
   [PATHS.ownerReports]: {
     title: 'Sales Reports',

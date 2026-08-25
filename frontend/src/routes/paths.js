@@ -44,6 +44,7 @@ export const PATHS = {
   ownerRecipes: '/owner/recipes',
   ownerWastage: '/owner/wastage',
   ownerVariants: '/owner/variants',
+  ownerSerials: '/owner/serials',
   ownerReports: '/owner/reports',
   ownerAi: '/owner/ai',
   ownerAudit: '/owner/audit',

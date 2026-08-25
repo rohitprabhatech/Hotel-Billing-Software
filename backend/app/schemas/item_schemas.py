@@ -22,6 +22,7 @@ class CreateItemSchema(Schema):
     is_veg = fields.Boolean(load_default=None, allow_none=True)
     tracks_batches = fields.Boolean(load_default=False)
     block_expired_batches = fields.Boolean(load_default=True)
+    tracks_serial = fields.Boolean(load_default=False)
 
 
 class UpdateItemSchema(Schema):
@@ -43,6 +44,7 @@ class UpdateItemSchema(Schema):
     is_veg = fields.Boolean(load_default=None, allow_none=True)
     tracks_batches = fields.Boolean(load_default=None, allow_none=True)
     block_expired_batches = fields.Boolean(load_default=None, allow_none=True)
+    tracks_serial = fields.Boolean(load_default=None, allow_none=True)
 
 
 class ItemStatusSchema(Schema):

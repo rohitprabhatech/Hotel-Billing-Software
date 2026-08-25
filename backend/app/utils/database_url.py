@@ -15,6 +15,17 @@ def load_backend_env() -> None:
     load_dotenv(root / ".env")
 
 
+def _ensure_mysql_charset(url: str) -> str:
+    """Prefer utf8mb4 on MySQL/MariaDB URLs for cloud-ready Unicode."""
+    lower = url.lower()
+    if "mysql" not in lower and "mariadb" not in lower:
+        return url
+    if "charset=" in lower:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}charset=utf8mb4"
+
+
 def resolve_database_url() -> str | None:
     """Return a SQLAlchemy URL, or None if neither DATABASE_URL nor MYSQL_* is complete.
 
@@ -23,7 +34,7 @@ def resolve_database_url() -> str | None:
     """
     direct = (os.getenv("DATABASE_URL") or "").strip()
     if direct:
-        return direct
+        return _ensure_mysql_charset(direct)
 
     host = (os.getenv("MYSQL_HOST") or "").strip()
     user = (os.getenv("MYSQL_USER") or "").strip()
@@ -33,7 +44,7 @@ def resolve_database_url() -> str | None:
 
     password = os.getenv("MYSQL_PASSWORD") or ""
     port = (os.getenv("MYSQL_PORT") or "3306").strip() or "3306"
-    return (
+    return _ensure_mysql_charset(
         f"mysql+pymysql://{quote_plus(user)}:{quote_plus(password)}"
         f"@{host}:{port}/{database}"
     )

@@ -79,16 +79,39 @@ class ItemService:
             raise ValidationError("Barcode is required")
         item = ItemRepository.find_by_tenant_and_barcode(ctx.tenant_id, cleaned)
         matched_variant = None
+        matched_serial = None
         if item is None:
             from app.repositories.item_variant_repository import ItemVariantRepository
+            from app.repositories.serial_unit_repository import SerialUnitRepository
+            from app.repositories.tenant_repository import TenantRepository
+            from app.services.module_service import ModuleService
+            from app.services.serial_service import SerialService
+            from app.models.serial_unit import STATUS_IN_STOCK
 
             variant = ItemVariantRepository.find_by_barcode(ctx.tenant_id, cleaned)
-            if variant is None or not variant.is_active:
-                raise NotFoundError("Item not found for barcode")
-            item = ItemRepository.get_by_id_and_tenant(variant.item_id, ctx.tenant_id)
-            if item is None:
-                raise NotFoundError("Item not found for barcode")
-            matched_variant = variant
+            if variant is not None and variant.is_active:
+                item = ItemRepository.get_by_id_and_tenant(variant.item_id, ctx.tenant_id)
+                if item is None:
+                    raise NotFoundError("Item not found for barcode")
+                matched_variant = variant
+            else:
+                tenant = TenantRepository.get_by_id(ctx.tenant_id)
+                if tenant and ModuleService.is_enabled_for_tenant(tenant, "serial_imei"):
+                    try:
+                        serial = SerialService.normalize_serial(cleaned)
+                    except ValidationError:
+                        serial = None
+                    unit = (
+                        SerialUnitRepository.find_by_serial(ctx.tenant_id, serial)
+                        if serial
+                        else None
+                    )
+                    if unit is not None and unit.status == STATUS_IN_STOCK:
+                        item = ItemRepository.get_by_id_and_tenant(unit.item_id, ctx.tenant_id)
+                        if item is not None:
+                            matched_serial = SerialService.serialize(unit, item_name=item.name)
+                if item is None:
+                    raise NotFoundError("Item not found for barcode")
         if active_only and not item.is_active:
             raise NotFoundError("Item not found for barcode")
         data = ItemService.serialize(item)
@@ -109,6 +132,7 @@ class ItemService:
             )
         else:
             data["matched_variant"] = None
+        data["matched_serial"] = matched_serial
         return data
 
     @staticmethod
@@ -129,6 +153,7 @@ class ItemService:
         is_veg=None,
         tracks_batches=False,
         block_expired_batches=True,
+        tracks_serial=False,
     ):
         require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
@@ -160,6 +185,11 @@ class ItemService:
         stock_dec = ItemService._parse_optional_stock(stock_quantity)
         min_stock_dec = ItemService._parse_optional_stock(minimum_stock_level)
         gst_dec = ItemService._parse_gst(gst_percentage)
+        tracks_serial_flag = bool(tracks_serial)
+        if tracks_serial_flag and bool(tracks_batches):
+            raise ValidationError("Serial / IMEI items cannot also track batches")
+        if tracks_serial_flag:
+            stock_dec = Decimal("0")
 
         item = Item(
             id=new_uuid(),
@@ -181,6 +211,7 @@ class ItemService:
             is_veg=is_veg if is_veg is None else bool(is_veg),
             tracks_batches=bool(tracks_batches),
             block_expired_batches=True if block_expired_batches is None else bool(block_expired_batches),
+            tracks_serial=tracks_serial_flag,
         )
         ItemRepository.add(item)
         AuditService.log(
@@ -222,6 +253,8 @@ class ItemService:
         tracks_batches_provided=False,
         block_expired_batches=None,
         block_expired_batches_provided=False,
+        tracks_serial=None,
+        tracks_serial_provided=False,
     ):
         require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
@@ -294,6 +327,12 @@ class ItemService:
             item.gst_percentage = new_gst
 
         if stock_quantity_provided:
+            if getattr(item, "tracks_serial", False) or (
+                tracks_serial_provided and bool(tracks_serial)
+            ):
+                raise ValidationError(
+                    "Serial / IMEI stock is the count of in-stock units. Receive units instead of setting quantity."
+                )
             item.stock_quantity = ItemService._parse_optional_stock(stock_quantity)
             stock_changed = True
 
@@ -311,6 +350,20 @@ class ItemService:
 
         if block_expired_batches_provided:
             item.block_expired_batches = bool(block_expired_batches)
+
+        if tracks_serial_provided:
+            if bool(tracks_serial) and getattr(item, "tracks_variants", False):
+                raise ValidationError("Variant items cannot also track serial / IMEI units")
+            if bool(tracks_serial) and getattr(item, "tracks_batches", False):
+                raise ValidationError("Serial / IMEI items cannot also track batches")
+            item.tracks_serial = bool(tracks_serial)
+            if item.tracks_serial and item.stock_quantity is None:
+                item.stock_quantity = Decimal("0")
+
+        if getattr(item, "tracks_serial", False) and getattr(item, "tracks_variants", False):
+            raise ValidationError("Variant items cannot also track serial / IMEI units")
+        if getattr(item, "tracks_serial", False) and getattr(item, "tracks_batches", False):
+            raise ValidationError("Serial / IMEI items cannot also track batches")
 
         new_data = ItemService.serialize(item)
         AuditService.log(
@@ -440,6 +493,10 @@ class ItemService:
             raise ValidationError(
                 "This item tracks size/color variants. Update stock on the variant matrix."
             )
+        if getattr(item, "tracks_serial", False):
+            raise ValidationError(
+                "This item tracks serial / IMEI units. Receive or sell specific units instead of adjusting quantity."
+            )
 
         previous = Decimal(item.stock_quantity)
         new_stock = previous + change
@@ -506,6 +563,10 @@ class ItemService:
         if getattr(item, "tracks_variants", False):
             raise ValidationError(
                 "This item tracks size/color variants. Update stock on the variant matrix."
+            )
+        if getattr(item, "tracks_serial", False):
+            raise ValidationError(
+                "This item tracks serial / IMEI units. Use POST /serial-units to receive stock."
             )
 
         previous = (
@@ -647,6 +708,7 @@ class ItemService:
             "tracks_batches": bool(getattr(item, "tracks_batches", False)),
             "block_expired_batches": bool(getattr(item, "block_expired_batches", True)),
             "tracks_variants": bool(getattr(item, "tracks_variants", False)),
+            "tracks_serial": bool(getattr(item, "tracks_serial", False)),
             "created_by": item.created_by,
             "created_by_name": item.creator.name if item.creator else None,
             "created_at": item.created_at.isoformat() if item.created_at else None,

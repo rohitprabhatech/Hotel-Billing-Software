@@ -100,20 +100,38 @@ class BillService:
                 raise ValidationError("Customer is required for credit (udhari) bills")
 
         from app.repositories.item_variant_repository import ItemVariantRepository
+        from app.services.serial_service import SerialService
         from app.services.variant_service import VariantService
 
         cart_merged: dict[str, dict] = {}
+        serial_cart: list[dict] = []
         for row in items:
             item_id = (row.get("item_id") or "").strip()
             if not item_id:
                 raise ValidationError("item_id is required for each line")
             variant_id = (row.get("variant_id") or "").strip() or None
+            serial_unit_id = (row.get("serial_unit_id") or "").strip() or None
+            serial = (row.get("serial") or "").strip() or None
             try:
                 quantity = qty(row.get("quantity"))
             except Exception as exc:
                 raise ValidationError("Invalid quantity") from exc
             if quantity <= 0:
                 raise ValidationError("Quantity must be greater than zero")
+            if serial_unit_id or serial:
+                if quantity != Decimal("1.000"):
+                    raise ValidationError("Serialized items must be sold as quantity 1")
+                if variant_id:
+                    raise ValidationError("A serial / IMEI line cannot include a size/color variant")
+                serial_cart.append(
+                    {
+                        "item_id": item_id,
+                        "serial_unit_id": serial_unit_id,
+                        "serial": serial,
+                        "quantity": quantity,
+                    }
+                )
+                continue
             key = f"{item_id}|{variant_id or ''}"
             if key not in cart_merged:
                 cart_merged[key] = {
@@ -126,7 +144,10 @@ class BillService:
         from app.services.recipe_stock_service import RecipeStockService
 
         locked = {}
-        for item_id in sorted({row["item_id"] for row in cart_merged.values()}):
+        for item_id in sorted(
+            {row["item_id"] for row in cart_merged.values()}
+            | {row["item_id"] for row in serial_cart}
+        ):
             item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
             if item is None or not item.is_active:
                 raise ValidationError(f"Item is inactive or not found: {item_id}")
@@ -135,6 +156,8 @@ class BillService:
         parent_sold: dict[str, Decimal] = {}
         for row in cart_merged.values():
             item = locked[row["item_id"]]
+            if SerialService.item_tracks_serial(item):
+                raise ValidationError(f"Select an in-stock serial / IMEI for {item.name}")
             tracks = VariantService.item_tracks_variants(item)
             if tracks:
                 if not row["variant_id"]:
@@ -143,6 +166,13 @@ class BillService:
                 raise ValidationError(f"{item.name} has no size/color variants")
             else:
                 parent_sold[item.id] = parent_sold.get(item.id, Decimal("0")) + row["quantity"]
+
+        for row in serial_cart:
+            item = locked[row["item_id"]]
+            if not SerialService.item_tracks_serial(item):
+                raise ValidationError(f"{item.name} does not track serial / IMEI units")
+            if VariantService.item_tracks_variants(item):
+                raise ValidationError("Variant items cannot also track serial / IMEI units")
 
         merged = RecipeStockService.expand_for_deduction(ctx.tenant_id, parent_sold)
 
@@ -157,6 +187,8 @@ class BillService:
         for item_id, quantity in merged.items():
             item = locked[item_id]
             if VariantService.item_tracks_variants(item):
+                continue
+            if SerialService.item_tracks_serial(item):
                 continue
             if item.stock_quantity is None:
                 continue
@@ -207,6 +239,8 @@ class BillService:
             item = locked[item_id]
             if VariantService.item_tracks_variants(item):
                 continue
+            if SerialService.item_tracks_serial(item):
+                continue
             try:
                 batch_allocations[item_id] = BatchService.assert_sellable_and_allocate(
                     ctx.tenant_id, item, quantity
@@ -230,7 +264,26 @@ class BillService:
             qty_for_price[row["item_id"]] = qty_for_price.get(row["item_id"], Decimal("0")) + row[
                 "quantity"
             ]
+        for row in serial_cart:
+            qty_for_price[row["item_id"]] = qty_for_price.get(row["item_id"], Decimal("0")) + row[
+                "quantity"
+            ]
         unit_prices = BulkPricingService.resolve_many(tenant, locked, qty_for_price)
+        serial_moves = []
+        for row in serial_cart:
+            item = locked[row["item_id"]]
+            previous = Decimal(item.stock_quantity or 0)
+            unit = SerialService.allocate_for_sale(
+                ctx.tenant_id,
+                item,
+                serial_unit_id=row["serial_unit_id"],
+                serial=row["serial"],
+                user_id=ctx.user_id,
+            )
+            row["allocated"] = unit
+            serial_moves.append(
+                (item, previous, Decimal(item.stock_quantity or 0), row["quantity"])
+            )
         for row in cart_merged.values():
             item = locked[row["item_id"]]
             display_name = item.name
@@ -248,6 +301,21 @@ class BillService:
                     "gst_percentage": item.gst_percentage,
                 }
             )
+        for row in serial_cart:
+            item = locked[row["item_id"]]
+            unit = row["allocated"]
+            calc_lines.append(
+                {
+                    "item_id": item.id,
+                    "variant_id": None,
+                    "serial_unit_id": unit.id,
+                    "serial_number": unit.serial,
+                    "item_name": f"{item.name} · {unit.serial}",
+                    "quantity": row["quantity"],
+                    "unit_price": unit_prices[item.id],
+                    "gst_percentage": item.gst_percentage,
+                }
+            )
 
         try:
             calculated = calculate_bill_totals(calc_lines, discount)
@@ -258,6 +326,8 @@ class BillService:
         for item_id, quantity in merged.items():
             item = locked[item_id]
             if VariantService.item_tracks_variants(item):
+                continue
+            if SerialService.item_tracks_serial(item):
                 continue
             if item.stock_quantity is not None:
                 previous = Decimal(item.stock_quantity)
@@ -279,6 +349,8 @@ class BillService:
                 user_id=ctx.user_id,
             )
             stock_moves.append((item, previous, Decimal(item.stock_quantity or 0), row["quantity"]))
+
+        stock_moves.extend(serial_moves)
 
         sequence, bill_number = BillRepository.allocate_bill_number(
             ctx.tenant_id, tenant.bill_number_prefix if tenant else None
@@ -312,13 +384,14 @@ class BillService:
         BillRepository.add_bill(bill)
 
         for line in calculated["lines"]:
-            BillRepository.add_item(
-                BillItem(
+            bill_item = BillItem(
                     id=new_uuid(),
                     tenant_id=ctx.tenant_id,
                     bill_id=bill.id,
                     item_id=line["item_id"],
                     variant_id=line.get("variant_id"),
+                    serial_unit_id=line.get("serial_unit_id"),
+                    serial_number=line.get("serial_number"),
                     item_name=line["item_name"],
                     quantity=line["quantity"],
                     unit_price=line["unit_price"],
@@ -329,7 +402,18 @@ class BillService:
                     sgst_amount=line["sgst_amount"],
                     total=line["total"],
                 )
-            )
+            BillRepository.add_item(bill_item)
+            if line.get("serial_unit_id"):
+                unit = next(
+                    (
+                        row["allocated"]
+                        for row in serial_cart
+                        if row["allocated"].id == line["serial_unit_id"]
+                    ),
+                    None,
+                )
+                if unit is not None:
+                    SerialService.bind_sold_line(unit, bill_id=bill.id, bill_item_id=bill_item.id)
 
         AuditService.log(
             tenant_id=ctx.tenant_id,
@@ -517,12 +601,22 @@ class BillService:
         from app.services.recipe_stock_service import RecipeStockService
         from app.services.variant_service import VariantService
 
-        variant_lines = [line for line in line_items if getattr(line, "variant_id", None)]
-        plain_lines = [line for line in line_items if not getattr(line, "variant_id", None)]
+        variant_lines = [
+            line
+            for line in line_items
+            if getattr(line, "variant_id", None) and not getattr(line, "serial_unit_id", None)
+        ]
+        serial_lines = [line for line in line_items if getattr(line, "serial_unit_id", None)]
+        plain_lines = [
+            line
+            for line in line_items
+            if not getattr(line, "variant_id", None) and not getattr(line, "serial_unit_id", None)
+        ]
         restore_merged = RecipeStockService.expand_from_lines(ctx.tenant_id, plain_lines)
         restore_ids = sorted(
             set(restore_merged.keys())
             | {line.item_id for line in variant_lines if line.item_id}
+            | {line.item_id for line in serial_lines if line.item_id}
         )
         locked = {}
         for item_id in restore_ids:
@@ -531,7 +625,50 @@ class BillService:
                 locked[item_id] = item
 
         from app.services.notification_service import NotificationService
+        from app.services.serial_service import SerialService
         from app.services.stock_movement_service import StockMovementService
+
+        for line in serial_lines:
+            item = locked.get(line.item_id)
+            if item is None:
+                continue
+            previous = Decimal(item.stock_quantity or 0)
+            SerialService.restore(
+                ctx.tenant_id, item, line.serial_unit_id, bill_id=bill.id
+            )
+            new_stock = Decimal(item.stock_quantity or 0)
+            AuditService.log(
+                tenant_id=ctx.tenant_id,
+                action="STOCK_RESTORED",
+                entity_type="ITEM",
+                entity_id=item.id,
+                old_data={"name": item.name, "stock_quantity": float(previous)},
+                new_data={
+                    "name": item.name,
+                    "stock_quantity": float(new_stock),
+                    "quantity": float(line.quantity),
+                    "serial_unit_id": line.serial_unit_id,
+                    "bill_id": bill.id,
+                    "bill_number": bill.bill_number,
+                },
+            )
+            StockMovementService.record(
+                tenant_id=ctx.tenant_id,
+                item_id=item.id,
+                delta=qty(line.quantity),
+                quantity_after=new_stock,
+                source="CANCEL",
+                reason=f"Cancel bill {bill.bill_number}",
+                reference_type="BILL",
+                reference_id=bill.id,
+                created_by=ctx.user_id,
+            )
+            NotificationService.notify_stock_transition(
+                tenant_id=ctx.tenant_id,
+                item=item,
+                previous=previous,
+                new_stock=new_stock,
+            )
 
         for line in variant_lines:
             item = locked.get(line.item_id)
@@ -763,6 +900,8 @@ class BillService:
                     "id": line.id,
                     "item_id": line.item_id,
                     "variant_id": getattr(line, "variant_id", None),
+                    "serial_unit_id": getattr(line, "serial_unit_id", None),
+                    "serial_number": getattr(line, "serial_number", None),
                     "item_name": line.item_name,
                     "quantity": float(line.quantity),
                     "unit_price": float(line.unit_price),

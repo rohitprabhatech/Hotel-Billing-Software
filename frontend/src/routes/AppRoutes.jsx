@@ -64,6 +64,7 @@ const ReturnsPage = lazy(() => import('../pages/owner/ReturnsPage'));
 const PrintKotPage = lazy(() => import('../pages/print/PrintKotPage'));
 
 const VariantsPage = lazy(() => import('../pages/owner/VariantsPage'));
+const SerialUnitsPage = lazy(() => import('../pages/owner/SerialUnitsPage'));
 
 function RouteFallback() {
   return (
@@ -134,6 +135,7 @@ export default function AppRoutes() {
             <Route path="wastage" element={<WastagePage />} />
             <Route path="batches" element={<BatchesPage />} />
             <Route path="variants" element={<VariantsPage />} />
+            <Route path="serials" element={<SerialUnitsPage />} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="item-activity" element={<ItemActivityPage />} />
             <Route path="stock-movements" element={<StockMovementsPage />} />

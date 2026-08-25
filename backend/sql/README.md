@@ -1,29 +1,33 @@
 # SQL & Schema Apply Guide
 
 **Product:** Business Billing · Prabha Technology Pvt. Ltd.  
-**Canonical greenfield schema:** `02_schema.sql` (23 application tables)  
-**Live hosted DB (current):** `u583892242_HotelBillingDB` — **24** objects = 23 app tables + `alembic_version` stamped `20260818_phase8_saas`. Do **not** re-run `02_schema.sql` there.
+**Canonical greenfield schema:** `02_schema.sql` (**53** application tables; aligned with SQLAlchemy models)  
+**Upgrade path (existing / hosted DBs):** Alembic (`flask db upgrade`) — **do not** re-run `02_schema.sql` on live data.
+
+**Alembic head (current):** `20260825_audit_db_hardening`  
+(after `20260825_biz29_serial_units`)
 
 ---
 
-## Application tables (23)
+## Application tables (53)
 
-### Core / tenant-scoped (15)
+### Core / SaaS foundation
 
 `tenants`, `roles`, `users`, `password_reset_tokens`, `email_verification_tokens`, `categories`, `items`, `bill_number_counters`, `bills`, `bill_items`, `notifications`, `tenant_whatsapp_configs`, `bill_deliveries`, `audit_logs`, `stock_movements`
 
-### Phase 8 SaaS / Master control plane (8)
+### Phase 8 SaaS / Master control plane
 
-| Table | Purpose |
-|-------|---------|
-| `master_admins` | Platform operators (no `tenant_id`) |
-| `registration_requests` | Public signup queue |
-| `platform_settings` | Trial defaults singleton |
-| `subscription_plans` | Plan catalog |
-| `subscriptions` | Per-tenant entitlement |
-| `subscription_notices` | Expiry notice idempotency |
-| `platform_notifications` | Master in-app alerts |
-| `platform_audit_logs` | Master action audit |
+`master_admins`, `registration_requests`, `platform_settings`, `subscription_plans`, `subscriptions`, `subscription_notices`, `platform_notifications`, `platform_audit_logs`
+
+### BIZ industry / shared modules
+
+| Area | Tables |
+|------|--------|
+| CRM / procurement | `customers`, `suppliers`, `purchases`, `purchase_items`, `purchase_number_counters`, `expenses`, `party_ledger_entries` |
+| Grocery | `item_price_tiers`, `item_batches` |
+| Clothing | `item_variants`, `item_images`, `sales_returns`, `sales_return_items`, `sales_return_counters` |
+| F&B | `dining_tables`, `orders`, `order_items`, `order_item_addons`, `order_number_counters`, `kots`, `kot_items`, `kot_number_counters`, `recipes`, `recipe_ingredients`, `item_addon_groups`, `item_addons`, `combos`, `combo_items`, `wastage_entries` |
+| Mobile / Electronics (BIZ-29) | `serial_units` (+ `items.tracks_serial`, `bill_items.serial_*`) |
 
 ---
 
@@ -34,15 +38,15 @@
 
 Optional: `python sql/apply_schema.py` if your ops flow uses that helper.
 
+Then stamp or upgrade Alembic so `alembic_version` matches head.
+
 ---
 
 ## Existing / hosted database (upgrade)
 
-Prefer **one** of the paths below. Always **inspect** first.
+Prefer **one** of the paths below. Always **inspect** first. **Do not modify production from this agent run without an explicit ops request.**
 
 ### 0) Inspect first (read-only, required on live)
-
-`inspect_database_schema.py` and `apply_pending_schema.py` load `backend/.env` and accept either `DATABASE_URL` **or** split `MYSQL_HOST` / `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DATABASE` / `MYSQL_PORT`.
 
 ```powershell
 cd backend
@@ -50,66 +54,42 @@ cd backend
 .\.venv\Scripts\python.exe scripts\check_platform_ready.py
 ```
 
-Reports: table inventory, Phase 8 present/missing, `alembic_version`, key row counts (including `master_admins`).
-
-### A) Idempotent Python helpers (operational path for live)
+### A) Alembic (preferred when chain is already stamped)
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe scripts\apply_pending_schema.py
-.\.venv\Scripts\python.exe scripts\stamp_alembic_head.py
+.\.venv\Scripts\python.exe -m flask db upgrade
 ```
 
-`stamp_alembic_head.py` writes `alembic_version = 20260818_phase8_saas` only. It does not drop tables.
+### B) Idempotent Python helpers (legacy hosted path through Phase 8)
 
-Runs helpers in order:
-
-1. `apply_saas_auth_schema.py`
-2. `apply_item_created_by.py`
-3. `apply_bill_payment_method.py`
-4. `apply_tenant_business_type.py`
-5. `apply_schema_relationship_fixes.py`
-6. `apply_item_catalog_fields.py`
-7. `apply_category_parent_key.py`
-8. `apply_bill_report_index.py`
-9. `apply_stock_notifications.py`
-10. `apply_whatsapp_bill_delivery.py`
-11. `apply_users_email_unique.py`
-12. `apply_whatsapp_webhook_statuses.py`
-13. `apply_email_bill_delivery.py`
-14. `apply_stock_movements.py`
-15. `apply_stock_receive.py`
-16. `apply_perf_indexes.py`
-17. `apply_master_admins.py`
-18. `apply_registration_requests.py`
-19. `apply_trial_management.py`
-20. `apply_subscription_plans.py`
-21. `apply_subscription_lifecycle.py`
-22. `apply_expiry_notifications.py`
-23. `apply_platform_audit.py`
+`scripts\apply_pending_schema.py` covers early SaaS helpers. Industry tables (BIZ-04+) are applied via **Alembic** after Phase 8 stamp.
 
 Hostinger is **MariaDB**: CHECK drops use `DROP CONSTRAINT` then `DROP CHECK` via `scripts/schema_helpers.py`.
 
-### B) Alembic
-
-- **Empty DB that never used helpers:** `flask db upgrade` can apply the revision chain (head includes `20260818_phase8_saas`).
-- **Existing hosted DB that already ran helpers:** **stamp**, do **not** `flask db upgrade` from a missing/`empty` `alembic_version`.
-
 ### Master Admin seed (after schema ready)
 
-If `master_admins` count is **0**, set `MASTER_ADMIN_EMAIL` / `MASTER_ADMIN_PASSWORD` in `.env` (do not commit), then:
+If `master_admins` count is **0**, set `MASTER_ADMIN_*` in `.env` (do not commit), then:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\seed_master_admin.py
 ```
 
-Use `.\.venv\Scripts\python.exe` (not bare `scripts\seed_master_admin.py`). Sign in at `/master/login`.
+---
+
+## Cloud MySQL readiness (config only — no cloud upload)
+
+- Charset: `utf8mb4` (URL `charset=utf8mb4` + SQLAlchemy `connect_args`)
+- Pool: `DB_POOL_SIZE`, `DB_POOL_MAX_OVERFLOW`, `DB_POOL_TIMEOUT`, `DB_POOL_RECYCLE`
+- Financial columns: `DECIMAL` / `Numeric`
+- Timezone reports: `REPORT_TIMEZONE` (default `Asia/Kolkata`)
+- Migrations: linear Alembic chain; non-destructive upgrades preferred
 
 ---
 
 ## Obsolete file
 
-`03_saas_auth_alter.sql` — **historical auth-only alter**. Do **not** apply it for upgrades. Use helpers or fresh `02_schema.sql`.
+`03_saas_auth_alter.sql` — **historical auth-only alter**. Do **not** apply it for upgrades.
 
 ---
 
@@ -117,6 +97,6 @@ Use `.\.venv\Scripts\python.exe` (not bare `scripts\seed_master_admin.py`). Sign
 
 - Do **not** re-run `02_schema.sql` on a production DB (it drops tables).
 - Use `02_schema.sql` only for empty/dev rebuilds.
-- Keep `02_schema.sql` as the greenfield source of truth whenever you add or change tables, columns, constraints, or indexes.
+- Keep `02_schema.sql` aligned with models whenever tables/columns/indexes change.
 
-See also: [`docs/database-design.md`](../../docs/database-design.md), [`docs/database-relationships.md`](../../docs/database-relationships.md), [`docs/backup-and-recovery.md`](../../docs/backup-and-recovery.md).
+See also: [`docs/backup-and-recovery.md`](../../docs/backup-and-recovery.md).

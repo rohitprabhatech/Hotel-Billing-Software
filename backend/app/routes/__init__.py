@@ -34,6 +34,7 @@ from app.routes.clothing_routes import clothing_bp
 from app.routes.item_image_routes import item_images_bp
 from app.routes.batch_routes import batches_bp
 from app.routes.sales_return_routes import returns_bp
+from app.routes.serial_unit_routes import serial_units_bp
 from app.routes.wastage_routes import wastage_bp
 from app.routes.user_routes import users_bp
 
@@ -67,6 +68,7 @@ def register_blueprints(app):
     api_v1.register_blueprint(grocery_bp)
     api_v1.register_blueprint(clothing_bp)
     api_v1.register_blueprint(returns_bp)
+    api_v1.register_blueprint(serial_units_bp)
     api_v1.register_blueprint(item_images_bp)
     api_v1.register_blueprint(batches_bp)
     api_v1.register_blueprint(orders_bp)

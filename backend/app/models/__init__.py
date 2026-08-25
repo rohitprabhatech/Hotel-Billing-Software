@@ -15,6 +15,7 @@ from app.models.item_price_tier import ItemPriceTier
 from app.models.item_variant import ItemVariant
 from app.models.item_image import ItemImage
 from app.models.sales_return import SalesReturn, SalesReturnCounter, SalesReturnItem
+from app.models.serial_unit import SerialUnit
 from app.models.kot import Kot, KotItem, KotNumberCounter
 from app.models.order import Order, OrderItem, OrderNumberCounter
 from app.models.supplier import Supplier
@@ -59,6 +60,7 @@ __all__ = [
     "SalesReturn",
     "SalesReturnCounter",
     "SalesReturnItem",
+    "SerialUnit",
     "MasterAdmin",
     "Notification",
     "PasswordResetToken",

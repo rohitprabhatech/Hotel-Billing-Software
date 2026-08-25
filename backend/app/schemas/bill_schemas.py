@@ -13,6 +13,12 @@ class BillLineSchema(Schema):
     variant_id = fields.String(
         load_default=None, allow_none=True, validate=validate.Length(min=1, max=36)
     )
+    serial_unit_id = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(min=1, max=36)
+    )
+    serial = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(min=4, max=64)
+    )
     quantity = fields.Decimal(required=True, as_string=False)
 
 

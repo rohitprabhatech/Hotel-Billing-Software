@@ -69,6 +69,7 @@ def create_item():
         is_veg=payload.get("is_veg"),
         tracks_batches=payload.get("tracks_batches", False),
         block_expired_batches=payload.get("block_expired_batches", True),
+        tracks_serial=payload.get("tracks_serial", False),
     )
     return success_response(data=data, status_code=201)
 
@@ -107,6 +108,8 @@ def update_item(item_id: str):
             payload.get("block_expired_batches") if "block_expired_batches" in raw else None
         ),
         block_expired_batches_provided="block_expired_batches" in raw,
+        tracks_serial=payload.get("tracks_serial") if "tracks_serial" in raw else None,
+        tracks_serial_provided="tracks_serial" in raw,
     )
     return success_response(data=data)
 

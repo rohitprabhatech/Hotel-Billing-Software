@@ -42,6 +42,33 @@ class Item(db.Model, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_menu: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_veg: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    tracks_batches: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    block_expired_batches: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    tracks_variants: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category = relationship("Category", back_populates="items")
     creator = relationship("User", foreign_keys=[created_by])
+    price_tiers = relationship(
+        "ItemPriceTier",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="ItemPriceTier.min_quantity",
+    )
+    batches = relationship(
+        "ItemBatch",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="ItemBatch.expiry_date",
+    )
+    variants = relationship(
+        "ItemVariant",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="ItemVariant.size, ItemVariant.color",
+    )
+    images = relationship(
+        "ItemImage",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="ItemImage.sort_order",
+    )

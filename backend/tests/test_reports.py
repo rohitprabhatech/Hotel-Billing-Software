@@ -48,8 +48,10 @@ def test_owner_summary_includes_sales(client):
     for key in (
         "cash_sales",
         "online_sales",
+        "credit_sales",
         "cash_bill_count",
         "online_bill_count",
+        "credit_bill_count",
         "average_bill",
         "cancelled_bills",
     ):

@@ -106,7 +106,7 @@ BIZ-26
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

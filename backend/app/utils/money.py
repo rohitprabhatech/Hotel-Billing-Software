@@ -67,6 +67,7 @@ def calculate_bill_totals(lines: list[dict], discount_amount, service_charge_amo
         result_lines.append(
             {
                 "item_id": line.get("item_id"),
+                "variant_id": line.get("variant_id"),
                 "item_name": line["item_name"],
                 "quantity": line["quantity"],
                 "unit_price": line["unit_price"],

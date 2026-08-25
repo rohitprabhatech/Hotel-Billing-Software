@@ -37,3 +37,23 @@ export async function receiveItemStock(id, payload) {
   const { data } = await apiClient.post(`/items/${id}/receive-stock`, payload);
   return data;
 }
+
+export async function listItemPriceTiers(itemId) {
+  const { data } = await apiClient.get(`/items/${itemId}/price-tiers`);
+  return data;
+}
+
+export async function replaceItemPriceTiers(itemId, tiers) {
+  const { data } = await apiClient.put(`/items/${itemId}/price-tiers`, { tiers });
+  return data;
+}
+
+export async function createItemPriceTier(itemId, payload) {
+  const { data } = await apiClient.post(`/items/${itemId}/price-tiers`, payload);
+  return data;
+}
+
+export async function deleteItemPriceTier(itemId, tierId) {
+  const { data } = await apiClient.delete(`/items/${itemId}/price-tiers/${tierId}`);
+  return data;
+}

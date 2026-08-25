@@ -23,6 +23,20 @@ import { registerBusinessRequest } from '../../services/authService';
 import { fetchBusinessTypes } from '../../services/tenantService';
 import { homePathForRole, isValidRole } from '../../utils/authRouting';
 
+function formatRegisterError(err) {
+  const payload = err.response?.data?.error;
+  if (!payload) return err.message || 'Unable to register business';
+  const details = payload.details;
+  if (details && typeof details === 'object') {
+    const lines = Object.entries(details).flatMap(([field, messages]) => {
+      const list = Array.isArray(messages) ? messages : [messages];
+      return list.map((msg) => (typeof msg === 'string' ? msg : `${field}: ${JSON.stringify(msg)}`));
+    });
+    if (lines.length) return lines.join(' ');
+  }
+  return payload.message || err.message || 'Unable to register business';
+}
+
 const initial = {
   business_name: '',
   business_type: '',
@@ -51,7 +65,10 @@ export default function RegisterBusinessPage() {
   useEffect(() => {
     fetchBusinessTypes()
       .then((res) => setBusinessTypes(res.data?.business_types || []))
-      .catch(() => setBusinessTypes([]));
+      .catch(() => {
+        setBusinessTypes([]);
+        setError('Could not load business types. Start the backend (port 5003) and refresh.');
+      });
   }, []);
 
   if (isAuthenticated && isValidRole(role)) {
@@ -115,11 +132,7 @@ export default function RegisterBusinessPage() {
           'Your registration request has been submitted successfully. Your account will be activated after approval by Prabha Technology.'
       );
     } catch (err) {
-      setError(
-        err.response?.data?.error?.message ||
-          err.message ||
-          'Unable to register business'
-      );
+      setError(formatRegisterError(err));
     } finally {
       setLoading(false);
     }

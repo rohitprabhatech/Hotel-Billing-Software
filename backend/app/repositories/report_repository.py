@@ -106,6 +106,36 @@ class ReportRepository:
                 ),
                 0,
             ),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Bill.status == "FINALIZED",
+                                Bill.payment_method == "credit",
+                            ),
+                            Bill.grand_total,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Bill.status == "FINALIZED",
+                                Bill.payment_method == "credit",
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
         ).filter(
             Bill.tenant_id == tenant_id,
             Bill.created_at >= start,
@@ -123,6 +153,8 @@ class ReportRepository:
         online_sales = row[6] or 0
         cash_bill_count = int(row[7] or 0)
         online_bill_count = int(row[8] or 0)
+        credit_sales = row[9] or 0
+        credit_bill_count = int(row[10] or 0)
         average = float(sales) / bill_count if bill_count else 0.0
 
         items_query = (
@@ -150,6 +182,8 @@ class ReportRepository:
             "online_sales": float(online_sales),
             "cash_bill_count": cash_bill_count,
             "online_bill_count": online_bill_count,
+            "credit_sales": float(credit_sales),
+            "credit_bill_count": credit_bill_count,
         }
 
     @staticmethod

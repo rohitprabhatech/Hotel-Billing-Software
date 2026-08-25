@@ -11,10 +11,10 @@
 | Unit management (kg, g, L, piece) | Industry | High | Common core + pack |
 | Low-stock alerts | Industry | High | Common core + pack |
 | Stock adjustment | Industry | High | Common core + pack |
-| Customer credit / Udhari | Industry | High | Common core + pack |
-| Customer payment history | Industry | High | Common core + pack |
-| Bulk pricing | Industry | High | Common core + pack |
-| Expiry tracking (generic inventory) | Industry | High | Common core + pack |
+| Customer credit / Udhari | Industry (`customer_credit`) | High | BIZ-09 ledger + BIZ-23 grocery POS — **done** |
+| Customer payment history | Industry (`customer_credit`) | High | BIZ-23 grocery credit page — **done** |
+| Bulk pricing | Industry (`bulk_pricing`) | High | BIZ-21 item_price_tiers — **done** |
+| Expiry tracking (generic inventory) | Industry (`batch_expiry`) | High | BIZ-22 item_batches — **done** |
 | Fast POS billing | Industry (`barcode_pos`) | High | BIZ-08 barcode, BIZ-10 billing — **BIZ-20 done** |
 
 ## Purpose summary

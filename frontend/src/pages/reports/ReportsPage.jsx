@@ -20,7 +20,7 @@ import {
   TextField,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -46,13 +46,48 @@ import {
   fetchMonthlySales,
   fetchWeeklySales,
 } from '../../services/reportService';
-import { PAYMENT_CASH, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
+import { listCategories } from '../../services/categoryService';
+import { fetchClothingSales } from '../../services/clothingService';
+import { fetchGrocerySales } from '../../services/groceryService';
+import { PAYMENT_CASH, PAYMENT_CREDIT, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
 
 function money(v) {
   return `₹${Number(v || 0).toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function DimensionTable({ rows, labelHeader, emptyTitle, emptyDescription }) {
+  return (
+    <TableCard>
+      <Table size="small" sx={{ minWidth: 480 }}>
+        <TableHead>
+          <TableRow>
+            <TableCell>{labelHeader}</TableCell>
+            <TableCell align="right">Qty</TableCell>
+            <TableCell align="right">Bills</TableCell>
+            <TableCell align="right">Revenue</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {(rows || []).map((row) => (
+            <TableRow key={row.label} hover>
+              <TableCell>
+                <TruncateText value={row.label} maxWidth={280} />
+              </TableCell>
+              <TableCell align="right">{row.quantity}</TableCell>
+              <TableCell align="right">{row.bill_count}</TableCell>
+              <TableCell align="right">{money(row.revenue)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {!rows?.length ? (
+        <EmptyState title={emptyTitle} description={emptyDescription} />
+      ) : null}
+    </TableCard>
+  );
 }
 
 function ItemSalesTable({ rows, emptyTitle, emptyDescription }) {
@@ -88,6 +123,8 @@ function ItemSalesTable({ rows, emptyTitle, emptyDescription }) {
 export default function ReportsPage() {
   const theme = useTheme();
   const fbEnabled = useModuleGate('order_channels');
+  const groceryEnabled = useModuleGate('customer_credit');
+  const clothingEnabled = useModuleGate('variants');
   const [view, setView] = useState('sales');
   const [type, setType] = useState('daily');
   const [date, setDate] = useState('');
@@ -96,10 +133,30 @@ export default function ReportsPage() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [month, setMonth] = useState(String(new Date().getMonth() + 1));
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
+  const [sizeFilter, setSizeFilter] = useState('');
+  const [colorFilter, setColorFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [categories, setCategories] = useState([]);
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState('');
+
+  useEffect(() => {
+    if (!clothingEnabled) return undefined;
+    let cancelled = false;
+    listCategories()
+      .then((res) => {
+        if (!cancelled) setCategories(res.data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clothingEnabled]);
 
   const load = async () => {
     setLoading(true);
@@ -113,6 +170,21 @@ export default function ReportsPage() {
         } else {
           res = await fetchFbReport({ ...(date ? { date } : {}) });
         }
+      } else if (view === 'kirana') {
+        res = await fetchGrocerySales({ ...(date ? { date } : {}), ...paymentParams });
+      } else if (view === 'apparel') {
+        const apparelParams = { ...paymentParams };
+        if (type === 'custom') {
+          apparelParams.from = fromDate;
+          apparelParams.to = toDate;
+        } else if (date) {
+          apparelParams.date = date;
+        }
+        if (brandFilter.trim()) apparelParams.brand = brandFilter.trim();
+        if (sizeFilter.trim()) apparelParams.size = sizeFilter.trim();
+        if (colorFilter.trim()) apparelParams.color = colorFilter.trim();
+        if (categoryFilter) apparelParams.category_id = categoryFilter;
+        res = await fetchClothingSales(apparelParams);
       } else if (type === 'daily') {
         res = await fetchDailySales({ ...(date ? { date } : {}), ...paymentParams });
       } else if (type === 'weekly') {
@@ -157,10 +229,19 @@ export default function ReportsPage() {
 
   return (
     <PageShell>
-      {fbEnabled ? (
-        <Tabs value={view} onChange={(_, value) => setView(value)} sx={{ mb: 2 }}>
+      {(fbEnabled || groceryEnabled || clothingEnabled) ? (
+        <Tabs
+          value={view}
+          onChange={(_, value) => {
+            setView(value);
+            if (value === 'kirana' || value === 'apparel') setType('daily');
+          }}
+          sx={{ mb: 2 }}
+        >
           <Tab value="sales" label="Sales" />
-          <Tab value="fb" label="F&B Insights" />
+          {fbEnabled ? <Tab value="fb" label="F&B Insights" /> : null}
+          {groceryEnabled ? <Tab value="kirana" label="Kirana" /> : null}
+          {clothingEnabled ? <Tab value="apparel" label="Apparel" /> : null}
         </Tabs>
       ) : null}
       <FilterBar
@@ -189,7 +270,7 @@ export default function ReportsPage() {
               <MenuItem value="custom">Custom Range</MenuItem>
             </Select>
           </FormControl>
-        ) : (
+        ) : view === 'fb' ? (
           <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
             <InputLabel>Period</InputLabel>
             <Select label="Period" value={type} onChange={(e) => setType(e.target.value)}>
@@ -197,6 +278,18 @@ export default function ReportsPage() {
               <MenuItem value="custom">Custom Range</MenuItem>
             </Select>
           </FormControl>
+        ) : view === 'apparel' ? (
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+            <InputLabel>Period</InputLabel>
+            <Select label="Period" value={type} onChange={(e) => setType(e.target.value)}>
+              <MenuItem value="daily">Daily</MenuItem>
+              <MenuItem value="custom">Custom Range</MenuItem>
+            </Select>
+          </FormControl>
+        ) : (
+          <Alert severity="info" sx={{ py: 0, alignItems: 'center' }}>
+            Daily grocery sales plus outstanding udhari
+          </Alert>
         )}
 
         {type === 'daily' ? (
@@ -258,7 +351,48 @@ export default function ReportsPage() {
           </>
         ) : null}
 
-        {view === 'sales' ? (
+        {view === 'apparel' ? (
+          <>
+            <TextField
+              label="Brand"
+              value={brandFilter}
+              onChange={(e) => setBrandFilter(e.target.value)}
+              placeholder="e.g. Nike"
+              sx={{ minWidth: { xs: '100%', sm: 140 } }}
+            />
+            <TextField
+              label="Size"
+              value={sizeFilter}
+              onChange={(e) => setSizeFilter(e.target.value)}
+              placeholder="e.g. M"
+              sx={{ minWidth: { xs: '100%', sm: 100 } }}
+            />
+            <TextField
+              label="Color"
+              value={colorFilter}
+              onChange={(e) => setColorFilter(e.target.value)}
+              placeholder="e.g. Black"
+              sx={{ minWidth: { xs: '100%', sm: 120 } }}
+            />
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+              <InputLabel>Category</InputLabel>
+              <Select
+                label="Category"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {categories.map((cat) => (
+                  <MenuItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        ) : null}
+
+        {view === 'sales' || view === 'kirana' || view === 'apparel' ? (
           <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
             <InputLabel>Payment Method</InputLabel>
             <Select
@@ -269,12 +403,151 @@ export default function ReportsPage() {
               <MenuItem value="">All</MenuItem>
               <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
               <MenuItem value={PAYMENT_ONLINE}>Online</MenuItem>
+              <MenuItem value={PAYMENT_CREDIT}>Credit</MenuItem>
             </Select>
           </FormControl>
         ) : null}
       </FilterBar>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+
+      {report && view === 'kirana' ? (
+        <>
+          <Section
+            title={report.label}
+            description={
+              report.payment_method
+                ? `Filtered by ${paymentMethodLabel(report.payment_method)} payments`
+                : 'Grocery daily sales and udhari outstanding'
+            }
+          >
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' },
+              }}
+            >
+              <KpiCard title="Total Sales" value={money(metrics.total_sales)} />
+              <KpiCard title="Cash" value={money(metrics.cash_sales)} />
+              <KpiCard title="Online" value={money(metrics.online_sales)} />
+              <KpiCard
+                title="Credit / Udhari"
+                value={money(metrics.credit_sales)}
+                hint={`${metrics.credit_bill_count ?? 0} credit bills`}
+              />
+              <KpiCard
+                title="Outstanding"
+                value={money(report.outstanding?.outstanding_amount)}
+                hint={`${report.outstanding?.customer_count ?? 0} customers`}
+              />
+              <KpiCard title="Items Sold" value={metrics.items_sold ?? '—'} />
+            </Box>
+          </Section>
+          <Section title="Fast-moving items">
+            <ItemSalesTable
+              rows={report.top_items}
+              emptyTitle="No item sales"
+              emptyDescription="No grocery sales in this period."
+            />
+          </Section>
+        </>
+      ) : null}
+
+      {report && view === 'apparel' ? (
+        <>
+          <Section
+            title={report.label}
+            description="Sales by brand, size, color, and category with current variant stock"
+          >
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' },
+              }}
+            >
+              <KpiCard title="Total Sales" value={money(metrics.total_sales)} />
+              <KpiCard title="Bills" value={metrics.bill_count ?? '—'} />
+              <KpiCard title="Items Sold" value={metrics.items_sold ?? '—'} />
+              <KpiCard title="Returns" value={report.returns?.return_count ?? 0} />
+              <KpiCard title="Refunds" value={money(report.returns?.refund_amount)} />
+              <KpiCard title="Exchanges" value={report.returns?.exchange_count ?? 0} />
+            </Box>
+          </Section>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 3,
+              gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+            }}
+          >
+            <Section title="By brand">
+              <DimensionTable
+                rows={report.by_brand}
+                labelHeader="Brand"
+                emptyTitle="No brand sales"
+                emptyDescription="No apparel sales in this period."
+              />
+            </Section>
+            <Section title="By size">
+              <DimensionTable
+                rows={report.by_size}
+                labelHeader="Size"
+                emptyTitle="No size sales"
+                emptyDescription="No apparel sales in this period."
+              />
+            </Section>
+            <Section title="By color">
+              <DimensionTable
+                rows={report.by_color}
+                labelHeader="Color"
+                emptyTitle="No color sales"
+                emptyDescription="No apparel sales in this period."
+              />
+            </Section>
+            <Section title="By category">
+              <DimensionTable
+                rows={report.by_category}
+                labelHeader="Category"
+                emptyTitle="No category sales"
+                emptyDescription="No apparel sales in this period."
+              />
+            </Section>
+          </Box>
+          <Section title="Variant stock">
+            <TableCard>
+              <Table size="small" sx={{ minWidth: 560 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Item</TableCell>
+                    <TableCell>Size</TableCell>
+                    <TableCell>Color</TableCell>
+                    <TableCell>Brand</TableCell>
+                    <TableCell align="right">Stock</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(report.variant_stock || []).map((row) => (
+                    <TableRow key={row.variant_id} hover>
+                      <TableCell>
+                        <TruncateText value={row.item_name} maxWidth={220} />
+                      </TableCell>
+                      <TableCell>{row.size}</TableCell>
+                      <TableCell>{row.color}</TableCell>
+                      <TableCell>{row.brand || '—'}</TableCell>
+                      <TableCell align="right">{row.stock_quantity}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {!report.variant_stock?.length ? (
+                <EmptyState title="No variants" description="Add size/color rows on Items to see stock here." />
+              ) : null}
+            </TableCard>
+          </Section>
+        </>
+      ) : null}
 
       {report && view === 'fb' ? (
         <>
@@ -422,6 +695,11 @@ export default function ReportsPage() {
                 title="Online Sales"
                 value={money(metrics.online_sales)}
                 hint={`${metrics.online_bill_count ?? 0} online bills`}
+              />
+              <KpiCard
+                title="Credit Sales"
+                value={money(metrics.credit_sales)}
+                hint={`${metrics.credit_bill_count ?? 0} udhari bills`}
               />
               <KpiCard title="Items Sold" value={metrics.items_sold ?? '—'} />
               <KpiCard title="Discount" value={money(metrics.total_discount)} />

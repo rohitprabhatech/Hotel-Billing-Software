@@ -20,6 +20,8 @@ class CreateItemSchema(Schema):
     minimum_stock_level = fields.Decimal(load_default=None, allow_none=True, as_string=False)
     is_menu = fields.Boolean(load_default=False)
     is_veg = fields.Boolean(load_default=None, allow_none=True)
+    tracks_batches = fields.Boolean(load_default=False)
+    block_expired_batches = fields.Boolean(load_default=True)
 
 
 class UpdateItemSchema(Schema):
@@ -39,6 +41,8 @@ class UpdateItemSchema(Schema):
     minimum_stock_level = fields.Decimal(load_default=None, allow_none=True, as_string=False)
     is_menu = fields.Boolean(load_default=None, allow_none=True)
     is_veg = fields.Boolean(load_default=None, allow_none=True)
+    tracks_batches = fields.Boolean(load_default=None, allow_none=True)
+    block_expired_batches = fields.Boolean(load_default=None, allow_none=True)
 
 
 class ItemStatusSchema(Schema):

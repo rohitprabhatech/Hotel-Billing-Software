@@ -6,8 +6,10 @@ import KitchenOutlinedIcon from '@mui/icons-material/KitchenOutlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
+import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
+import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
@@ -17,7 +19,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
-import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
+import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import {
   AppBar,
   Box,
@@ -100,6 +102,24 @@ const billingNav = [
     icon: <ShoppingCartOutlinedIcon />,
     module: 'barcode_pos',
   },
+  {
+    to: PATHS.billingClothing,
+    label: 'Clothing POS',
+    icon: <CheckroomOutlinedIcon />,
+    module: 'variants',
+  },
+  {
+    to: PATHS.billingReturns,
+    label: 'Returns / Exchange',
+    icon: <AssignmentReturnOutlinedIcon />,
+    module: 'returns_exchange',
+  },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
   { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
 ];
 
@@ -179,7 +199,25 @@ function pageMeta(pathname) {
   if (pathname.startsWith(PATHS.billingGrocery)) {
     return {
       title: 'Grocery POS',
-      subtitle: 'Scan-first billing with barcode lookup and weight quantities.',
+      subtitle: 'Scan-first billing with barcode lookup, weight quantities, and udhari.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingClothing)) {
+    return {
+      title: 'Clothing POS',
+      subtitle: 'Pick size and color from live variant stock.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingReturns)) {
+    return {
+      title: 'Returns / Exchange',
+      subtitle: 'Look up a bill to see return history. Owner or manager processes new returns.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingCredit)) {
+    return {
+      title: 'Credit / Udhari',
+      subtitle: 'Outstanding balances, collections, and payment history.',
     };
   }
   if (pathname.startsWith(PATHS.billingOrdersNew)) {

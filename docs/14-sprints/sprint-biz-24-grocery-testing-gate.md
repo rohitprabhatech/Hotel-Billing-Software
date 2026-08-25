@@ -102,7 +102,7 @@ BIZ-23
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

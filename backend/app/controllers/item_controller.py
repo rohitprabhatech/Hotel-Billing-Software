@@ -67,6 +67,8 @@ def create_item():
         minimum_stock_level=payload.get("minimum_stock_level"),
         is_menu=payload.get("is_menu", False),
         is_veg=payload.get("is_veg"),
+        tracks_batches=payload.get("tracks_batches", False),
+        block_expired_batches=payload.get("block_expired_batches", True),
     )
     return success_response(data=data, status_code=201)
 
@@ -99,6 +101,12 @@ def update_item(item_id: str):
         is_menu_provided="is_menu" in raw,
         is_veg=payload.get("is_veg") if "is_veg" in raw else None,
         is_veg_provided="is_veg" in raw,
+        tracks_batches=payload.get("tracks_batches") if "tracks_batches" in raw else None,
+        tracks_batches_provided="tracks_batches" in raw,
+        block_expired_batches=(
+            payload.get("block_expired_batches") if "block_expired_batches" in raw else None
+        ),
+        block_expired_batches_provided="block_expired_batches" in raw,
     )
     return success_response(data=data)
 

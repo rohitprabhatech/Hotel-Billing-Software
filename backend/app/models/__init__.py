@@ -10,6 +10,11 @@ from app.models.customer import Customer
 from app.models.dining_table import DiningTable
 from app.models.expense import Expense
 from app.models.item import Item
+from app.models.item_batch import ItemBatch
+from app.models.item_price_tier import ItemPriceTier
+from app.models.item_variant import ItemVariant
+from app.models.item_image import ItemImage
+from app.models.sales_return import SalesReturn, SalesReturnCounter, SalesReturnItem
 from app.models.kot import Kot, KotItem, KotNumberCounter
 from app.models.order import Order, OrderItem, OrderNumberCounter
 from app.models.supplier import Supplier
@@ -47,6 +52,13 @@ __all__ = [
     "Item",
     "ItemAddon",
     "ItemAddonGroup",
+    "ItemBatch",
+    "ItemPriceTier",
+    "ItemVariant",
+    "ItemImage",
+    "SalesReturn",
+    "SalesReturnCounter",
+    "SalesReturnItem",
     "MasterAdmin",
     "Notification",
     "PasswordResetToken",

@@ -105,7 +105,7 @@ BIZ-21
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

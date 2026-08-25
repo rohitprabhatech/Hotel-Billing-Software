@@ -19,6 +19,7 @@ from app.repositories.bill_repository import BillRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
+from app.services.bulk_pricing_service import BulkPricingService
 from app.services.notification_service import NotificationService
 from app.utils.exceptions import InsufficientStockError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
@@ -98,27 +99,56 @@ class BillService:
             if linked_customer is None:
                 raise ValidationError("Customer is required for credit (udhari) bills")
 
-        # Merge duplicate item_ids from cart
-        merged: dict[str, Decimal] = {}
+        from app.repositories.item_variant_repository import ItemVariantRepository
+        from app.services.variant_service import VariantService
+
+        cart_merged: dict[str, dict] = {}
         for row in items:
             item_id = (row.get("item_id") or "").strip()
             if not item_id:
                 raise ValidationError("item_id is required for each line")
+            variant_id = (row.get("variant_id") or "").strip() or None
             try:
                 quantity = qty(row.get("quantity"))
             except Exception as exc:
                 raise ValidationError("Invalid quantity") from exc
             if quantity <= 0:
                 raise ValidationError("Quantity must be greater than zero")
-            merged[item_id] = merged.get(item_id, Decimal("0")) + quantity
+            key = f"{item_id}|{variant_id or ''}"
+            if key not in cart_merged:
+                cart_merged[key] = {
+                    "item_id": item_id,
+                    "variant_id": variant_id,
+                    "quantity": Decimal("0"),
+                }
+            cart_merged[key]["quantity"] += quantity
 
         from app.services.recipe_stock_service import RecipeStockService
 
-        merged = RecipeStockService.expand_for_deduction(ctx.tenant_id, merged)
-
-        # Lock items in stable order, validate all stock, then deduct (atomic with bill).
         locked = {}
+        for item_id in sorted({row["item_id"] for row in cart_merged.values()}):
+            item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
+            if item is None or not item.is_active:
+                raise ValidationError(f"Item is inactive or not found: {item_id}")
+            locked[item_id] = item
+
+        parent_sold: dict[str, Decimal] = {}
+        for row in cart_merged.values():
+            item = locked[row["item_id"]]
+            tracks = VariantService.item_tracks_variants(item)
+            if tracks:
+                if not row["variant_id"]:
+                    raise ValidationError(f"Select a size/color variant for {item.name}")
+            elif row["variant_id"]:
+                raise ValidationError(f"{item.name} has no size/color variants")
+            else:
+                parent_sold[item.id] = parent_sold.get(item.id, Decimal("0")) + row["quantity"]
+
+        merged = RecipeStockService.expand_for_deduction(ctx.tenant_id, parent_sold)
+
         for item_id in sorted(merged.keys()):
+            if item_id in locked:
+                continue
             item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
             if item is None or not item.is_active:
                 raise ValidationError(f"Item is inactive or not found: {item_id}")
@@ -126,6 +156,8 @@ class BillService:
 
         for item_id, quantity in merged.items():
             item = locked[item_id]
+            if VariantService.item_tracks_variants(item):
+                continue
             if item.stock_quantity is None:
                 continue
             available = Decimal(item.stock_quantity)
@@ -168,15 +200,51 @@ class BillService:
                     },
                 )
 
-        calc_lines = []
+        from app.services.batch_service import BatchService
+
+        batch_allocations = {}
         for item_id, quantity in merged.items():
             item = locked[item_id]
+            if VariantService.item_tracks_variants(item):
+                continue
+            try:
+                batch_allocations[item_id] = BatchService.assert_sellable_and_allocate(
+                    ctx.tenant_id, item, quantity
+                )
+            except InsufficientStockError as exc:
+                NotificationService.notify_insufficient_attempt(
+                    tenant_id=ctx.tenant_id,
+                    item_name=item.name,
+                    item_id=item.id,
+                    available=Decimal(str((exc.details or {}).get("available", 0))),
+                    requested=quantity,
+                    user_id=ctx.user_id,
+                )
+                db.session.commit()
+                raise
+
+        calc_lines = []
+        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        qty_for_price: dict[str, Decimal] = {}
+        for row in cart_merged.values():
+            qty_for_price[row["item_id"]] = qty_for_price.get(row["item_id"], Decimal("0")) + row[
+                "quantity"
+            ]
+        unit_prices = BulkPricingService.resolve_many(tenant, locked, qty_for_price)
+        for row in cart_merged.values():
+            item = locked[row["item_id"]]
+            display_name = item.name
+            if row["variant_id"]:
+                variant = ItemVariantRepository.get_by_id(ctx.tenant_id, row["variant_id"])
+                if variant and variant.item_id == item.id:
+                    display_name = f"{item.name} ({variant.size}/{variant.color})"
             calc_lines.append(
                 {
                     "item_id": item.id,
-                    "item_name": item.name,
-                    "quantity": quantity,
-                    "unit_price": item.price,
+                    "variant_id": row["variant_id"],
+                    "item_name": display_name,
+                    "quantity": row["quantity"],
+                    "unit_price": unit_prices[item.id],
                     "gst_percentage": item.gst_percentage,
                 }
             )
@@ -189,13 +257,29 @@ class BillService:
         stock_moves = []
         for item_id, quantity in merged.items():
             item = locked[item_id]
+            if VariantService.item_tracks_variants(item):
+                continue
             if item.stock_quantity is not None:
                 previous = Decimal(item.stock_quantity)
                 new_stock = previous - quantity
                 item.stock_quantity = new_stock
                 stock_moves.append((item, previous, new_stock, quantity))
+            BatchService.apply_allocations(batch_allocations.get(item_id) or [])
 
-        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        for row in cart_merged.values():
+            item = locked[row["item_id"]]
+            if not VariantService.item_tracks_variants(item):
+                continue
+            previous = Decimal(item.stock_quantity or 0)
+            VariantService.deduct(
+                ctx.tenant_id,
+                item,
+                row["variant_id"],
+                row["quantity"],
+                user_id=ctx.user_id,
+            )
+            stock_moves.append((item, previous, Decimal(item.stock_quantity or 0), row["quantity"]))
+
         sequence, bill_number = BillRepository.allocate_bill_number(
             ctx.tenant_id, tenant.bill_number_prefix if tenant else None
         )
@@ -234,6 +318,7 @@ class BillService:
                     tenant_id=ctx.tenant_id,
                     bill_id=bill.id,
                     item_id=line["item_id"],
+                    variant_id=line.get("variant_id"),
                     item_name=line["item_name"],
                     quantity=line["quantity"],
                     unit_price=line["unit_price"],
@@ -429,11 +514,16 @@ class BillService:
 
         # Restore stock for tracked items (same transaction as cancel).
         line_items = list(bill.items or [])
-        restore_ids = sorted({line.item_id for line in line_items if line.item_id})
         from app.services.recipe_stock_service import RecipeStockService
+        from app.services.variant_service import VariantService
 
-        restore_merged = RecipeStockService.expand_from_lines(ctx.tenant_id, line_items)
-        restore_ids = sorted(restore_merged.keys())
+        variant_lines = [line for line in line_items if getattr(line, "variant_id", None)]
+        plain_lines = [line for line in line_items if not getattr(line, "variant_id", None)]
+        restore_merged = RecipeStockService.expand_from_lines(ctx.tenant_id, plain_lines)
+        restore_ids = sorted(
+            set(restore_merged.keys())
+            | {line.item_id for line in variant_lines if line.item_id}
+        )
         locked = {}
         for item_id in restore_ids:
             item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
@@ -442,6 +532,46 @@ class BillService:
 
         from app.services.notification_service import NotificationService
         from app.services.stock_movement_service import StockMovementService
+
+        for line in variant_lines:
+            item = locked.get(line.item_id)
+            if item is None:
+                continue
+            previous = Decimal(item.stock_quantity or 0)
+            VariantService.restore(ctx.tenant_id, item, line.variant_id, qty(line.quantity))
+            new_stock = Decimal(item.stock_quantity or 0)
+            AuditService.log(
+                tenant_id=ctx.tenant_id,
+                action="STOCK_RESTORED",
+                entity_type="ITEM",
+                entity_id=item.id,
+                old_data={"name": item.name, "stock_quantity": float(previous)},
+                new_data={
+                    "name": item.name,
+                    "stock_quantity": float(new_stock),
+                    "quantity": float(line.quantity),
+                    "variant_id": line.variant_id,
+                    "bill_id": bill.id,
+                    "bill_number": bill.bill_number,
+                },
+            )
+            StockMovementService.record(
+                tenant_id=ctx.tenant_id,
+                item_id=item.id,
+                delta=qty(line.quantity),
+                quantity_after=new_stock,
+                source="CANCEL",
+                reason=f"Cancel bill {bill.bill_number}",
+                reference_type="BILL",
+                reference_id=bill.id,
+                created_by=ctx.user_id,
+            )
+            NotificationService.notify_stock_transition(
+                tenant_id=ctx.tenant_id,
+                item=item,
+                previous=previous,
+                new_stock=new_stock,
+            )
 
         for item_id, restored_qty in restore_merged.items():
             item = locked.get(item_id)
@@ -562,6 +692,8 @@ class BillService:
             "online_sales": float(money(summary["online_sales"])),
             "cash_bill_count": int(summary["cash_bill_count"]),
             "online_bill_count": int(summary["online_bill_count"]),
+            "credit_sales": float(money(summary.get("credit_sales") or 0)),
+            "credit_bill_count": int(summary.get("credit_bill_count") or 0),
         }
 
     @staticmethod
@@ -630,6 +762,7 @@ class BillService:
                 {
                     "id": line.id,
                     "item_id": line.item_id,
+                    "variant_id": getattr(line, "variant_id", None),
                     "item_name": line.item_name,
                     "quantity": float(line.quantity),
                     "unit_price": float(line.unit_price),

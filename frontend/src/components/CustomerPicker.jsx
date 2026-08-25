@@ -82,6 +82,9 @@ export default function CustomerPicker({
             </Typography>
             <Typography variant="caption" color="text.secondary" noWrap>
               {[option.phone_masked, option.email_masked].filter(Boolean).join(' · ') || 'No contact'}
+              {Number(option.balance || 0) > 0
+                ? ` · Due ₹${Number(option.balance).toFixed(2)}`
+                : ''}
             </Typography>
           </Box>
         </Box>

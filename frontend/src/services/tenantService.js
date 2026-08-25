@@ -1,5 +1,10 @@
 import apiClient from './apiClient';
 
+export async function fetchBusinessTypes() {
+  const { data } = await apiClient.get('/tenants/business-types');
+  return data;
+}
+
 export async function fetchMyTenant() {
   const { data } = await apiClient.get('/tenants/me');
   return data;

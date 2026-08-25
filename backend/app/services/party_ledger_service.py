@@ -109,6 +109,16 @@ class PartyLedgerService:
                 "bill_number": bill_number,
             },
         )
+        from app.services.notification_service import NotificationService
+
+        NotificationService.notify_credit_due(
+            tenant_id=tenant_id,
+            customer_id=customer.id,
+            customer_name=customer.name,
+            amount=amount_value,
+            balance_after=balance_after,
+            bill_number=bill_number,
+        )
         return entry
 
     @staticmethod
@@ -268,6 +278,12 @@ class PartyLedgerService:
                 "total": total,
             },
         )
+
+    @staticmethod
+    def outstanding_summary():
+        require_permission(PERM_CUSTOMERS_READ)
+        ctx = require_request_context()
+        return PartyLedgerRepository.outstanding_summary(ctx.tenant_id)
 
     @staticmethod
     def serialize_entry(entry: PartyLedgerEntry):

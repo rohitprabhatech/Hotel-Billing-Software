@@ -2,12 +2,14 @@
 
 ## Industry reports
 
-- Daily sales
-- Fast-moving products
-- Low stock
-- Expiry / near-expiry
-- Customer credit outstanding
-- Purchase vs sales
+- Daily sales (common reports + grocery `GET /grocery/sales`)
+- Fast-moving products (`top_items` on sales / Kirana tab)
+- Low stock (common inventory health)
+- Expiry / near-expiry (BIZ-22)
+- Customer credit outstanding (`GET /grocery/outstanding`, Kirana report `outstanding`)
+- Purchase vs sales (common purchases + sales)
+
+Credit mix: `metrics.credit_sales` / `credit_bill_count` on daily sales and dashboard.
 
 ## Common reports reused
 

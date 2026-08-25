@@ -32,8 +32,10 @@ METRIC_LABELS = {
     "cancelled_bills": "Cancelled Bills",
     "cash_sales": "Cash Sales",
     "online_sales": "Online Sales",
+    "credit_sales": "Credit Sales",
     "cash_bill_count": "Cash Bills",
     "online_bill_count": "Online Bills",
+    "credit_bill_count": "Credit Bills",
 }
 
 TOP_ITEMS_LIMIT = 5
@@ -63,7 +65,7 @@ class ReportService:
         try:
             return normalize_payment_method(payment_method)
         except ValueError as exc:
-            raise ValidationError("payment_method must be cash or online") from exc
+            raise ValidationError("payment_method must be cash, online, or credit") from exc
 
     @staticmethod
     def _serialize_bills(bills):

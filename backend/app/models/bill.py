@@ -115,6 +115,9 @@ class BillItem(db.Model):
     item_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("items.id", ondelete="SET NULL")
     )
+    variant_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("item_variants.id", ondelete="SET NULL"), index=True
+    )
     item_name: Mapped[str] = mapped_column(String(200), nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

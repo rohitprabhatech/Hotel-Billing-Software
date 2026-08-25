@@ -103,7 +103,7 @@ BIZ-20
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

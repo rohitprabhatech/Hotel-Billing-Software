@@ -11,6 +11,24 @@
 
 **Services:** `frontend/src/services/groceryService.js` → `GET /grocery/pos-catalog`; barcode lookup reuses `getItemByBarcode`.
 
+## Bulk pricing (BIZ-21)
+
+| UI | Module gate | Purpose |
+|----|-------------|---------|
+| Items page → “Bulk price tiers” icon | `bulk_pricing` | Owner/staff with `items.write` edit min-qty → unit-price table |
+| Grocery POS cart | `barcode_pos` (+ tiers when `bulk_pricing`) | Line unit price updates as qty crosses tiers; bill server re-resolves |
+| `/owner/batches` Batches / Expiry | `batch_expiry` | Receive dated batches, expiry report, adjust with required reason |
+
+## Credit / udhari (BIZ-23)
+
+| UI | Module gate | Purpose |
+|----|-------------|---------|
+| Grocery POS cart | `customer_credit` | Customer picker, cash/online/credit toggle, confirm dialog on udhari |
+| `/owner/credit`, `/billing/credit` | `customer_credit` | Outstanding list, collect payment, ledger history |
+| Sales Reports → Kirana tab | `barcode_pos` | Daily sales mix + outstanding totals |
+
+**Services:** `frontend/src/services/groceryService.js` — outstanding, credit ledger, pay, sales.
+
 ## Other conceptual routes
 
 | Page | Purpose | Roles | Components | API deps | UX |

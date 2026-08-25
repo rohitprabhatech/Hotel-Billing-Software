@@ -164,6 +164,18 @@ export default function BillingHomePage() {
             }
             hint="Today's online sales"
           />
+          <KpiCard
+            title="Credit"
+            value={
+              loading
+                ? '—'
+                : `₹${Number(summary.credit_sales || 0).toLocaleString('en-IN', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+            }
+            hint="Today's udhari sales"
+          />
         </Box>
 
         <Section

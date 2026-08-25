@@ -40,7 +40,9 @@ import {
 } from '../../services/billService';
 import { listCategories } from '../../services/categoryService';
 import { getItemByBarcode, listItems } from '../../services/itemService';
-import { uomLabel } from '../../utils/uom';
+import { listItemVariants } from '../../services/variantService';
+import { useModuleGate } from '../../context/ModulesContext';
+import VariantStockGrid from '../../components/VariantStockGrid';
 import {
   DEFAULT_PAYMENT_METHOD,
   PAYMENT_CASH,
@@ -78,6 +80,7 @@ function sortCategoriesHierarchically(categories) {
 }
 
 export default function NewBillPage() {
+  const variantsEnabled = useModuleGate('variants');
   const [q, setQ] = useState('');
   const [barcode, setBarcode] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -109,6 +112,7 @@ export default function NewBillPage() {
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
   const [phoneDraftCc, setPhoneDraftCc] = useState('91');
   const [phoneDraft, setPhoneDraft] = useState('');
+  const [variantPick, setVariantPick] = useState(null);
 
   const search = async (term = q, cat = categoryId) => {
     setError('');
@@ -125,7 +129,7 @@ export default function NewBillPage() {
       setCart((prev) =>
         prev.map((line) => {
           const fresh = (res.data || []).find((i) => i.id === line.item_id);
-          if (!fresh) return line;
+          if (!fresh || line.variant_id) return line;
           const tracked =
             fresh.stock_quantity !== null && fresh.stock_quantity !== undefined;
           return {
@@ -190,17 +194,27 @@ export default function NewBillPage() {
     [categories],
   );
 
-  const addItem = (item) => {
-    const tracked =
-      item.stock_quantity !== null && item.stock_quantity !== undefined;
-    const available = tracked ? Number(item.stock_quantity) : null;
+  const addLine = (item, variant = null) => {
+    const lineKey = variant ? `${item.id}:${variant.id}` : item.id;
+    const tracked = variant
+      ? true
+      : item.stock_quantity !== null && item.stock_quantity !== undefined;
+    const available = variant
+      ? Number(variant.stock_quantity)
+      : tracked
+        ? Number(item.stock_quantity)
+        : null;
     if (tracked && available <= 0) {
-      setError(`Item is out of stock: ${item.name}`);
+      setError(
+        variant
+          ? `Out of stock: ${item.name} (${variant.size}/${variant.color})`
+          : `Item is out of stock: ${item.name}`,
+      );
       return;
     }
     setError('');
     setCart((prev) => {
-      const existing = prev.find((line) => line.item_id === item.id);
+      const existing = prev.find((line) => line.line_key === lineKey);
       if (existing) {
         const nextQty = existing.quantity + 1;
         if (tracked && nextQty > available) {
@@ -210,14 +224,16 @@ export default function NewBillPage() {
           return prev;
         }
         return prev.map((line) =>
-          line.item_id === item.id ? { ...line, quantity: nextQty } : line,
+          line.line_key === lineKey ? { ...line, quantity: nextQty } : line,
         );
       }
       return [
         ...prev,
         {
+          line_key: lineKey,
           item_id: item.id,
-          name: item.name,
+          variant_id: variant?.id || null,
+          name: variant ? `${item.name} (${variant.size}/${variant.color})` : item.name,
           price: Number(item.price),
           gst_percentage: Number(item.gst_percentage),
           quantity: 1,
@@ -226,6 +242,29 @@ export default function NewBillPage() {
         },
       ];
     });
+  };
+
+  const addItem = async (item, preselectedVariant = null) => {
+    const matched = preselectedVariant || item.matched_variant || null;
+    if (variantsEnabled && item.tracks_variants && !matched) {
+      try {
+        const res = await listItemVariants(item.id);
+        const variants = (res.data || []).filter((row) => row.is_active);
+        if (!variants.length) {
+          setError(`No size/color variants configured for ${item.name}.`);
+          return;
+        }
+        if (variants.length === 1) {
+          addLine(item, variants[0]);
+          return;
+        }
+        setVariantPick({ item, variants });
+      } catch (err) {
+        setError(err.response?.data?.error?.message || 'Could not load variants.');
+      }
+      return;
+    }
+    addLine(item, matched);
   };
 
   const scanBarcode = async () => {
@@ -245,15 +284,15 @@ export default function NewBillPage() {
     }
   };
 
-  const setQty = (itemId, quantity) => {
+  const setQty = (lineKey, quantity) => {
     const qty = Number(quantity);
     if (!Number.isFinite(qty) || qty <= 0) {
-      setCart((prev) => prev.filter((line) => line.item_id !== itemId));
+      setCart((prev) => prev.filter((line) => line.line_key !== lineKey));
       setError('');
       return;
     }
     setCart((prev) => {
-      const line = prev.find((row) => row.item_id === itemId);
+      const line = prev.find((row) => row.line_key === lineKey);
       if (
         line?.stock_tracked &&
         line.stock_quantity != null &&
@@ -266,13 +305,13 @@ export default function NewBillPage() {
       }
       setError('');
       return prev.map((row) =>
-        row.item_id === itemId ? { ...row, quantity: qty } : row,
+        row.line_key === lineKey ? { ...row, quantity: qty } : row,
       );
     });
   };
 
-  const removeLine = (itemId) => {
-    setCart((prev) => prev.filter((line) => line.item_id !== itemId));
+  const removeLine = (lineKey) => {
+    setCart((prev) => prev.filter((line) => line.line_key !== lineKey));
   };
 
   const clearCart = () => {
@@ -313,6 +352,7 @@ export default function NewBillPage() {
         customer_id: selectedCustomer?.id || null,
         items: cart.map((line) => ({
           item_id: line.item_id,
+          variant_id: line.variant_id || undefined,
           quantity: line.quantity,
         })),
       });
@@ -663,7 +703,7 @@ export default function NewBillPage() {
               <Stack spacing={1.5} sx={{ mb: 2.5, minHeight: 120 }}>
                 {cart.map((line) => (
                   <Box
-                    key={line.item_id}
+                    key={line.line_key || line.item_id}
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -690,7 +730,7 @@ export default function NewBillPage() {
                           size="small"
                           label="Qty"
                           value={line.quantity}
-                          onChange={(e) => setQty(line.item_id, e.target.value)}
+                          onChange={(e) => setQty(line.line_key, e.target.value)}
                           inputProps={{ min: 0.001, step: '1' }}
                           sx={{ width: 88 }}
                         />
@@ -709,7 +749,7 @@ export default function NewBillPage() {
                       <IconButton
                         size="small"
                         aria-label={`Remove ${line.name} from bill`}
-                        onClick={() => removeLine(line.item_id)}
+                        onClick={() => removeLine(line.line_key)}
                       >
                         <DeleteOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -979,6 +1019,30 @@ export default function NewBillPage() {
           >
             {emailSending ? 'Sending…' : 'Send'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(variantPick)}
+        onClose={() => setVariantPick(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Select size / color</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {variantPick?.item?.name}. Numbers are stock for that combination.
+          </Typography>
+          <VariantStockGrid
+            variants={variantPick?.variants || []}
+            onSelect={(chosen) => {
+              addLine(variantPick.item, chosen);
+              setVariantPick(null);
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVariantPick(null)}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </>

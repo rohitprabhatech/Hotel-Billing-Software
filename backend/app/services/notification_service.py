@@ -16,6 +16,9 @@ TYPE_WHATSAPP_DELIVERY_FAILED = "WHATSAPP_DELIVERY_FAILED"
 TYPE_EMAIL_DELIVERY_FAILED = "EMAIL_DELIVERY_FAILED"
 TYPE_SUBSCRIPTION_EXPIRING = "SUBSCRIPTION_EXPIRING"
 TYPE_SUBSCRIPTION_EXPIRED = "SUBSCRIPTION_EXPIRED"
+TYPE_BATCH_EXPIRING = "BATCH_EXPIRING"
+TYPE_BATCH_EXPIRED = "BATCH_EXPIRED"
+TYPE_CREDIT_DUE = "CREDIT_DUE"
 
 
 class NotificationService:
@@ -163,6 +166,56 @@ class NotificationService:
                 )
 
     @staticmethod
+    def notify_variant_stock(
+        *,
+        tenant_id: str,
+        item,
+        variant,
+        previous: Decimal | None,
+        new_stock: Decimal | None,
+    ):
+        """LOW_STOCK / OUT_OF_STOCK for a size/color row (BIZ-25)."""
+        if previous is None or new_stock is None:
+            return
+        label = f"{item.name} ({variant.size}/{variant.color})"
+        entity_id = variant.id
+        NotificationService.resolve_stock_alerts_if_recovered(
+            tenant_id=tenant_id, item=item, new_stock=Decimal(item.stock_quantity or 0)
+        )
+        if previous > 0 and new_stock <= 0:
+            if not NotificationRepository.has_open_stock_alert(
+                tenant_id, notification_type=TYPE_OUT_OF_STOCK, entity_id=entity_id
+            ):
+                NotificationService.create_tenant_notification(
+                    tenant_id=tenant_id,
+                    notification_type=TYPE_OUT_OF_STOCK,
+                    title="Out of stock",
+                    message=f"Out of stock: {label} is currently unavailable.",
+                    entity_type="ITEM_VARIANT",
+                    entity_id=entity_id,
+                )
+            return
+        minimum = item.minimum_stock_level
+        if minimum is None:
+            return
+        minimum = Decimal(minimum)
+        if previous > minimum and new_stock <= minimum and new_stock > 0:
+            if not NotificationRepository.has_open_stock_alert(
+                tenant_id, notification_type=TYPE_LOW_STOCK, entity_id=entity_id
+            ):
+                NotificationService.create_tenant_notification(
+                    tenant_id=tenant_id,
+                    notification_type=TYPE_LOW_STOCK,
+                    title="Low stock",
+                    message=(
+                        f"Low stock: {label} has only {float(new_stock):g} units remaining "
+                        f"(minimum {float(minimum):g})."
+                    ),
+                    entity_type="ITEM_VARIANT",
+                    entity_id=entity_id,
+                )
+
+    @staticmethod
     def notify_insufficient_attempt(
         *,
         tenant_id: str,
@@ -213,6 +266,30 @@ class NotificationService:
             message=f"Bill #{label}{phone}: {reason}",
             entity_type="BILL_DELIVERY",
             entity_id=delivery_id,
+        )
+
+    @staticmethod
+    def notify_credit_due(
+        *,
+        tenant_id: str,
+        customer_id: str,
+        customer_name: str,
+        amount,
+        balance_after,
+        bill_number: str | None = None,
+    ):
+        label = bill_number or ""
+        bill_part = f" Bill #{label}." if label else ""
+        NotificationService.create_tenant_notification(
+            tenant_id=tenant_id,
+            notification_type=TYPE_CREDIT_DUE,
+            title="Credit sale (udhari)",
+            message=(
+                f"{customer_name}: ₹{float(amount):.2f} on credit.{bill_part} "
+                f"Outstanding now ₹{float(balance_after):.2f}."
+            ),
+            entity_type="CUSTOMER",
+            entity_id=customer_id,
         )
 
     @staticmethod

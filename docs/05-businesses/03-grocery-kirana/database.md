@@ -11,8 +11,9 @@
 | Role | COMMON ENTITY | Reused |
 | Category | COMMON ENTITY | Reused |
 | Product / Item | COMMON ENTITY | Reused |
-| Customer | COMMON ENTITY | Reused |
-| Bill | COMMON ENTITY | Reused |
+| Customer | COMMON ENTITY | Reused (`balance`, `credit_limit`) |
+| PartyLedgerEntry | COMMON ENTITY | BIZ-09 udhari ledger reused by grocery |
+| Bill | COMMON ENTITY | Reused (`payment_method=credit`) |
 | BillItem | COMMON ENTITY | Reused |
 | Payment | COMMON ENTITY | Reused |
 | StockMovement | COMMON ENTITY | Reused |
@@ -22,12 +23,12 @@
 
 ## BUSINESS-SPECIFIC ENTITIES
 
+Grocery credit does **not** add a separate credit-account table. Outstanding is `customers.balance` plus `party_ledger_entries` (BIZ-09).
+
 | Entity | Class | Purpose |
 |--------|-------|---------|
-| CustomerCreditAccount | BUSINESS-SPECIFIC | Udhari balance |
-| CustomerCreditLedger | BUSINESS-SPECIFIC | Credit/payment history |
-| BulkPriceTier | BUSINESS-SPECIFIC | Qty-based pricing |
-| ProductBarcode | BUSINESS-SPECIFIC | Barcode → product map |
+| BulkPriceTier | BUSINESS-SPECIFIC | Qty-based pricing (BIZ-21 `item_price_tiers`) |
+| ItemBatch | BUSINESS-SPECIFIC | Expiry lots (BIZ-22 `item_batches`) |
 
 ## Relationships (summary)
 

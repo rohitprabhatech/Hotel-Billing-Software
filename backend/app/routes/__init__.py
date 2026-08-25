@@ -30,6 +30,10 @@ from app.routes.module_stub_routes import variants_bp
 from app.routes.tenant_routes import tenants_bp
 from app.routes.whatsapp_webhook_routes import whatsapp_webhook_bp
 from app.routes.grocery_routes import grocery_bp
+from app.routes.clothing_routes import clothing_bp
+from app.routes.item_image_routes import item_images_bp
+from app.routes.batch_routes import batches_bp
+from app.routes.sales_return_routes import returns_bp
 from app.routes.wastage_routes import wastage_bp
 from app.routes.user_routes import users_bp
 
@@ -61,6 +65,10 @@ def register_blueprints(app):
     api_v1.register_blueprint(cafe_bp)
     api_v1.register_blueprint(wastage_bp)
     api_v1.register_blueprint(grocery_bp)
+    api_v1.register_blueprint(clothing_bp)
+    api_v1.register_blueprint(returns_bp)
+    api_v1.register_blueprint(item_images_bp)
+    api_v1.register_blueprint(batches_bp)
     api_v1.register_blueprint(orders_bp)
     api_v1.register_blueprint(kots_bp)
     api_v1.register_blueprint(recipes_bp)

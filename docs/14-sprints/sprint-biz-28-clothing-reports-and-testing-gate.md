@@ -99,11 +99,12 @@ BIZ-27
 
 ## Definition of Done
 
-- Gate doc
+- Apparel reports API + UI filters
+- Clothing testing gate doc signed
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

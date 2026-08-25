@@ -14,7 +14,19 @@ from app.utils.ids import new_uuid
 from app.utils.periods import parse_date, to_utc_naive
 from app.utils.request_context import require_request_context
 
-_ALLOWED_SOURCES = {"BILL", "CANCEL", "ADJUST", "ITEM_UPDATE", "RECEIVE", "PURCHASE", "PURCHASE_CANCEL", "RECIPE", "WASTAGE"}
+_ALLOWED_SOURCES = {
+    "BILL",
+    "CANCEL",
+    "ADJUST",
+    "ITEM_UPDATE",
+    "RECEIVE",
+    "PURCHASE",
+    "PURCHASE_CANCEL",
+    "RECIPE",
+    "WASTAGE",
+    "RETURN",
+    "EXCHANGE",
+}
 
 
 class StockMovementService:

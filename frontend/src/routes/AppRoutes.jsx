@@ -48,7 +48,6 @@ const MasterAuditPage = lazy(() => import('../pages/master/MasterAuditPage'));
 const SettingsPage = lazy(() => import('../pages/owner/SettingsPage'));
 const UsersPage = lazy(() => import('../pages/owner/UsersPage'));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage'));
-const ModulePlaceholderPage = lazy(() => import('../pages/modules/ModulePlaceholderPage'));
 const MenuPage = lazy(() => import('../pages/modules/MenuPage'));
 const OrdersPage = lazy(() => import('../pages/modules/OrdersPage'));
 const NewOrderPage = lazy(() => import('../pages/modules/NewOrderPage'));
@@ -57,18 +56,14 @@ const KitchenPage = lazy(() => import('../pages/modules/KitchenPage'));
 const RecipesPage = lazy(() => import('../pages/owner/RecipesPage'));
 const CafePosPage = lazy(() => import('../pages/modules/CafePosPage'));
 const WastagePage = lazy(() => import('../pages/owner/WastagePage'));
+const BatchesPage = lazy(() => import('../pages/owner/BatchesPage'));
+const GroceryCreditPage = lazy(() => import('../pages/owner/GroceryCreditPage'));
 const GroceryPosPage = lazy(() => import('../pages/modules/GroceryPosPage'));
+const ClothingPosPage = lazy(() => import('../pages/modules/ClothingPosPage'));
+const ReturnsPage = lazy(() => import('../pages/owner/ReturnsPage'));
 const PrintKotPage = lazy(() => import('../pages/print/PrintKotPage'));
 
-function VariantsModulePage() {
-  return (
-    <ModulePlaceholderPage
-      moduleCode="variants"
-      title="Variants"
-      description="Manage size, color, and variant stock for clothing and related shops."
-    />
-  );
-}
+const VariantsPage = lazy(() => import('../pages/owner/VariantsPage'));
 
 function RouteFallback() {
   return (
@@ -82,7 +77,14 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/"
+          element={
+            <RouteErrorBoundary>
+              <HomePage />
+            </RouteErrorBoundary>
+          }
+        />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
 
@@ -125,9 +127,13 @@ export default function AppRoutes() {
             <Route path="kitchen" element={<KitchenPage />} />
             <Route path="cafe" element={<CafePosPage />} />
             <Route path="grocery" element={<GroceryPosPage />} />
+            <Route path="clothing" element={<ClothingPosPage />} />
+            <Route path="returns" element={<ReturnsPage />} />
+            <Route path="credit" element={<GroceryCreditPage />} />
             <Route path="recipes" element={<RecipesPage />} />
             <Route path="wastage" element={<WastagePage />} />
-            <Route path="variants" element={<VariantsModulePage />} />
+            <Route path="batches" element={<BatchesPage />} />
+            <Route path="variants" element={<VariantsPage />} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="item-activity" element={<ItemActivityPage />} />
             <Route path="stock-movements" element={<StockMovementsPage />} />
@@ -160,6 +166,9 @@ export default function AppRoutes() {
             <Route path="kitchen" element={<KitchenPage />} />
             <Route path="cafe" element={<CafePosPage />} />
             <Route path="grocery" element={<GroceryPosPage />} />
+            <Route path="clothing" element={<ClothingPosPage />} />
+            <Route path="returns" element={<ReturnsPage />} />
+            <Route path="credit" element={<GroceryCreditPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="stock-movements" element={<StockMovementsPage />} />
             <Route path="profile" element={<ProfilePage />} />

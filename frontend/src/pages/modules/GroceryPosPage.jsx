@@ -6,8 +6,18 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
   IconButton,
+  Radio,
+  RadioGroup,
   Stack,
   Table,
   TableBody,
@@ -18,14 +28,23 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
 import TruncateText from '../../components/TruncateText';
 import { useModuleGate } from '../../context/ModulesContext';
 import { createBill } from '../../services/billService';
+import { getCustomer } from '../../services/customerService';
 import { fetchGroceryPosCatalog } from '../../services/groceryService';
 import { getItemByBarcode } from '../../services/itemService';
-import { DEFAULT_PAYMENT_METHOD } from '../../utils/paymentMethod';
+import {
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_CASH,
+  PAYMENT_CREDIT,
+  PAYMENT_ONLINE,
+  paymentMethodLabel,
+} from '../../utils/paymentMethod';
 import { defaultScanQty, qtyStepForUom, uomLabel } from '../../utils/uom';
+import { resolveTierUnitPrice } from '../../utils/bulkPricing';
 
 function money(value) {
   return `₹${Number(value || 0).toFixed(2)}`;
@@ -35,8 +54,14 @@ function lineTotal(line) {
   return Number(line.price || 0) * Number(line.quantity || 0);
 }
 
+function applyTierPrice(line) {
+  const price = resolveTierUnitPrice(line.base_price, line.quantity, line.price_tiers);
+  return { ...line, price };
+}
+
 export default function GroceryPosPage() {
   const moduleEnabled = useModuleGate('barcode_pos');
+  const creditEnabled = useModuleGate('customer_credit');
   const barcodeRef = useRef(null);
   const [barcode, setBarcode] = useState('');
   const [cart, setCart] = useState([]);
@@ -45,6 +70,9 @@ export default function GroceryPosPage() {
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [recentScans, setRecentScans] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const focusScan = useCallback(() => {
     window.requestAnimationFrame(() => barcodeRef.current?.focus());
@@ -82,25 +110,33 @@ export default function GroceryPosPage() {
       }
       if (existing) {
         return prev.map((line) =>
-          line.item_id === item.id ? { ...line, quantity: nextQty } : line,
+          line.item_id === item.id
+            ? applyTierPrice({
+                ...line,
+                quantity: nextQty,
+                price_tiers: item.price_tiers || line.price_tiers || [],
+                base_price: Number(item.price ?? line.base_price),
+              })
+            : line,
         );
       }
       return [
         ...prev,
-        {
+        applyTierPrice({
           item_id: item.id,
           name: item.name,
           barcode: item.barcode,
+          base_price: Number(item.price),
           price: Number(item.price),
           gst_percentage: Number(item.gst_percentage || 0),
           quantity: Number(increment),
           uom,
           stock_quantity: available,
           stock_tracked: tracked,
-        },
+          price_tiers: item.price_tiers || [],
+        }),
       ];
     });
-
     if (blocked) {
       setError(`Insufficient stock for ${item.name}. Available: ${available}.`);
       return false;
@@ -140,32 +176,64 @@ export default function GroceryPosPage() {
         return prev;
       }
       setError('');
-      return prev.map((row) => (row.item_id === itemId ? { ...row, quantity: parsed } : row));
+      return prev.map((row) =>
+        row.item_id === itemId ? applyTierPrice({ ...row, quantity: parsed }) : row,
+      );
     });
   };
-
-  const checkout = async () => {
+  const checkout = async ({ confirmed = false } = {}) => {
     if (!cart.length) {
       setError('Scan items to build the bill.');
       return;
+    }
+    if (paymentMethod === PAYMENT_CREDIT) {
+      if (!creditEnabled) {
+        setError('Credit / udhari is not enabled for this business.');
+        return;
+      }
+      if (!selectedCustomer?.id) {
+        setError('Select a customer for credit (udhari) bills.');
+        return;
+      }
+      if (!confirmed) {
+        setConfirmOpen(true);
+        return;
+      }
     }
     setSaving(true);
     setError('');
     setSuccess('');
     try {
       const res = await createBill({
-        payment_method: DEFAULT_PAYMENT_METHOD,
+        payment_method: paymentMethod,
+        customer_id: selectedCustomer?.id || null,
         items: cart.map((line) => ({
           item_id: line.item_id,
           quantity: line.quantity,
         })),
       });
       const bill = res.data;
-      setSuccess(`Bill ${bill.bill_number} — ${money(bill.grand_total)}`);
+      let extra = '';
+      if (bill.payment_method === PAYMENT_CREDIT && selectedCustomer?.id) {
+        try {
+          const detail = await getCustomer(selectedCustomer.id);
+          const next = detail.data;
+          setSelectedCustomer(next);
+          extra = ` · Outstanding ${money(next.balance)}`;
+        } catch {
+          extra = ' · Credit posted';
+        }
+      }
+      setSuccess(
+        `Bill ${bill.bill_number} — ${money(bill.grand_total)} (${paymentMethodLabel(bill.payment_method)})${extra}`,
+      );
       setCart([]);
+      setPaymentMethod(DEFAULT_PAYMENT_METHOD);
+      setConfirmOpen(false);
       focusScan();
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Could not create bill.');
+      setConfirmOpen(false);
     } finally {
       setSaving(false);
     }
@@ -294,10 +362,64 @@ export default function GroceryPosPage() {
                   </Table>
                 </Box>
                 <Divider sx={{ my: 2 }} />
+                {creditEnabled ? (
+                  <Stack spacing={1.5} sx={{ mb: 2 }}>
+                    <CustomerPicker
+                      label="Customer (required for udhari)"
+                      value={selectedCustomer}
+                      onChange={(customer) => setSelectedCustomer(customer)}
+                      onClear={() => {
+                        setSelectedCustomer(null);
+                        if (paymentMethod === PAYMENT_CREDIT) {
+                          setPaymentMethod(PAYMENT_CASH);
+                        }
+                      }}
+                    />
+                    {selectedCustomer ? (
+                      <Chip
+                        size="small"
+                        color={Number(selectedCustomer.balance || 0) > 0 ? 'warning' : 'default'}
+                        label={
+                          Number(selectedCustomer.balance || 0) > 0
+                            ? `Outstanding ${money(selectedCustomer.balance)}`
+                            : 'No outstanding'
+                        }
+                        sx={{ alignSelf: 'flex-start' }}
+                      />
+                    ) : null}
+                    <FormControl>
+                      <FormLabel>Payment</FormLabel>
+                      <RadioGroup
+                        row
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                      >
+                        <FormControlLabel value={PAYMENT_CASH} control={<Radio size="small" />} label="Cash" />
+                        <FormControlLabel value={PAYMENT_ONLINE} control={<Radio size="small" />} label="Online" />
+                        <FormControlLabel
+                          value={PAYMENT_CREDIT}
+                          control={<Radio size="small" />}
+                          label="Credit (Udhari)"
+                          disabled={!selectedCustomer}
+                        />
+                      </RadioGroup>
+                    </FormControl>
+                  </Stack>
+                ) : null}
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Typography variant="h6">{money(cartTotal)}</Typography>
-                  <Button variant="contained" size="large" onClick={checkout} disabled={saving}>
-                    {saving ? 'Billing…' : 'Bill now (Cash)'}
+                  <Button
+                    variant="contained"
+                    size="large"
+                    color={paymentMethod === PAYMENT_CREDIT ? 'warning' : 'primary'}
+                    onClick={() => checkout()}
+                    disabled={saving}
+                  >
+                    {saving
+                      ? 'Billing…'
+                      : paymentMethod === PAYMENT_CREDIT
+                        ? 'Bill on credit'
+                        : `Bill now (${paymentMethodLabel(paymentMethod)})`}
                   </Button>
                 </Stack>
               </>
@@ -305,6 +427,33 @@ export default function GroceryPosPage() {
           </CardContent>
         </Card>
       </Stack>
+
+      <Dialog open={confirmOpen} onClose={() => !saving && setConfirmOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Confirm credit (udhari)</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Alert severity="warning">
+              This adds {money(cartTotal)} to {selectedCustomer?.name || 'the customer'}&apos;s outstanding
+              balance. Check the customer before confirming.
+            </Alert>
+            {selectedCustomer ? (
+              <Typography variant="body2">
+                Current due: <strong>{money(selectedCustomer.balance)}</strong>
+                <br />
+                After this bill: <strong>{money(Number(selectedCustomer.balance || 0) + cartTotal)}</strong>
+              </Typography>
+            ) : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button variant="contained" color="warning" onClick={() => checkout({ confirmed: true })} disabled={saving}>
+            {saving ? 'Billing…' : 'Confirm udhari'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageShell>
   );
 }

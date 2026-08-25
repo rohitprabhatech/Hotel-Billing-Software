@@ -1,7 +1,5 @@
 # Clothing Shops — Database
 
-> Conceptual only. No tables created in documentation phase.
-
 ## COMMON ENTITIES reused
 
 | Entity | Class | Notes |
@@ -10,32 +8,32 @@
 | User | COMMON ENTITY | Reused |
 | Role | COMMON ENTITY | Reused |
 | Category | COMMON ENTITY | Reused |
-| Product / Item | COMMON ENTITY | Reused |
+| Product / Item | COMMON ENTITY | `tracks_variants`; parent stock = sum of variants |
 | Customer | COMMON ENTITY | Reused |
 | Bill | COMMON ENTITY | Reused |
-| BillItem | COMMON ENTITY | Reused |
+| BillItem | COMMON ENTITY | Optional `variant_id` |
 | Payment | COMMON ENTITY | Reused |
 | StockMovement | COMMON ENTITY | Reused |
-| Notification | COMMON ENTITY | Reused |
-| AuditLog | COMMON ENTITY | Reused |
+| Notification | COMMON ENTITY | Low / out of stock on variant rows |
+| AuditLog | COMMON ENTITY | CREATE/UPDATE/DELETE/REPLACE variants |
 | BusinessSettings | COMMON ENTITY | Reused |
 
 ## BUSINESS-SPECIFIC ENTITIES
 
 | Entity | Class | Purpose |
 |--------|-------|---------|
-| Size | BUSINESS-SPECIFIC | Size master |
-| Color | BUSINESS-SPECIFIC | Color master |
-| Brand | BUSINESS-SPECIFIC | Brand master |
-| ProductVariant | BUSINESS-SPECIFIC | Size+color+SKU stock |
-| ProductImage | BUSINESS-SPECIFIC | Image refs |
-| ExchangeReturn | BUSINESS-SPECIFIC | Exchange/return header |
+| ItemVariant | BUSINESS-SPECIFIC | Size + color + optional brand, SKU, barcode, stock (`item_variants`) |
+| ItemImage | BUSINESS-SPECIFIC | URL metadata + optional local `storage_key` (`item_images`) |
+| SalesReturn | BUSINESS-SPECIFIC | Return/exchange header linked to original `Bill` |
+| SalesReturnItem | BUSINESS-SPECIFIC | Qty returned + optional exchange variant |
+
+Size/color/brand are attributes on `item_variants` in BIZ-25 (no separate master tables yet).
 
 ## Relationships (summary)
 
-- All specific entities carry `tenant_id` (RESTRICT to Tenant).
-- Prefer FK to `Bill` / `Product` / `Customer` rather than duplicating money columns.
-- Serial/IMEI uniqueness is **per tenant**.
+- `item_variants.tenant_id` RESTRICT to Tenant; `item_id` CASCADE to Item.
+- Unique `(tenant_id, item_id, size, color)`; unique tenant SKU/barcode when present.
+- `bill_items.variant_id` SET NULL on variant delete.
 
 ## See also
 

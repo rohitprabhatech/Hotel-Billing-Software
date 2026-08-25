@@ -2,10 +2,14 @@ import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined';
+import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
 import SwapVertOutlinedIcon from '@mui/icons-material/SwapVertOutlined';
 import {
   Alert,
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -48,11 +52,20 @@ import { listCategories } from '../../services/categoryService';
 import {
   adjustItemStock,
   createItem,
+  listItemPriceTiers,
   listItems,
   receiveItemStock,
+  replaceItemPriceTiers,
   setItemStatus,
   updateItem,
 } from '../../services/itemService';
+import { listItemVariants, replaceItemVariants } from '../../services/variantService';
+import {
+  createItemImage,
+  deleteItemImage,
+  listItemImages,
+  uploadItemImage,
+} from '../../services/itemImageService';
 import { DEFAULT_UOM, UOM_OPTIONS } from '../../utils/uom';
 import { formatCategoryPath } from '../../utils/categoryHierarchy';
 
@@ -70,6 +83,8 @@ const emptyForm = {
   minimum_stock_level: '',
   is_menu: false,
   is_veg: '',
+  tracks_batches: false,
+  block_expired_batches: true,
 };
 
 const PAGE_SIZE = 25;
@@ -82,6 +97,10 @@ function money(value) {
 export default function ItemsPage() {
   const { role } = useAuth();
   const restaurantMenuEnabled = useModuleGate('restaurant_menu');
+  const bulkPricingEnabled = useModuleGate('bulk_pricing');
+  const batchExpiryEnabled = useModuleGate('batch_expiry');
+  const variantsEnabled = useModuleGate('variants');
+  const productImagesEnabled = useModuleGate('product_images');
   const { canWriteItems, canStockItems, canAudit, canStockMovements } = usePermissions();
   const movementsPath = stockMovementsPath(role);
   const [searchParams] = useSearchParams();
@@ -113,6 +132,21 @@ export default function ItemsPage() {
   const [receiveQty, setReceiveQty] = useState('');
   const [receiveReason, setReceiveReason] = useState('');
   const [receiving, setReceiving] = useState(false);
+  const [tiersTarget, setTiersTarget] = useState(null);
+  const [tierRows, setTierRows] = useState([{ min_quantity: '', unit_price: '' }]);
+  const [tiersLoading, setTiersLoading] = useState(false);
+  const [tiersSaving, setTiersSaving] = useState(false);
+  const [variantsTarget, setVariantsTarget] = useState(null);
+  const [variantRows, setVariantRows] = useState([
+    { size: '', color: '', brand: '', sku: '', barcode: '', stock_quantity: '' },
+  ]);
+  const [variantsLoading, setVariantsLoading] = useState(false);
+  const [variantsSaving, setVariantsSaving] = useState(false);
+  const [imagesTarget, setImagesTarget] = useState(null);
+  const [imageRows, setImageRows] = useState([]);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imagesLoading, setImagesLoading] = useState(false);
+  const [imagesSaving, setImagesSaving] = useState(false);
 
   const load = async (nextPage = page) => {
     setError('');
@@ -170,8 +204,185 @@ export default function ItemsPage() {
       minimum_stock_level: item.minimum_stock_level ?? '',
       is_menu: Boolean(item.is_menu),
       is_veg: item.is_veg === true ? 'true' : item.is_veg === false ? 'false' : '',
+      tracks_batches: Boolean(item.tracks_batches),
+      block_expired_batches: item.block_expired_batches !== false,
     });
     setOpen(true);
+  };
+
+  const openTiers = async (item) => {
+    setTiersTarget(item);
+    setTierRows([{ min_quantity: '', unit_price: '' }]);
+    setTiersLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await listItemPriceTiers(item.id);
+      const rows = res.data || [];
+      setTierRows(
+        rows.length
+          ? rows.map((row) => ({
+              min_quantity: String(row.min_quantity),
+              unit_price: String(row.unit_price),
+            }))
+          : [{ min_quantity: '', unit_price: '' }],
+      );
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not load price tiers.');
+      setTiersTarget(null);
+    } finally {
+      setTiersLoading(false);
+    }
+  };
+
+  const saveTiers = async () => {
+    if (!tiersTarget) return;
+    const cleaned = tierRows
+      .map((row) => ({
+        min_quantity: Number(row.min_quantity),
+        unit_price: Number(row.unit_price),
+        is_active: true,
+      }))
+      .filter((row) => Number.isFinite(row.min_quantity) && row.min_quantity > 0 && Number.isFinite(row.unit_price) && row.unit_price >= 0);
+
+    setTiersSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await replaceItemPriceTiers(tiersTarget.id, cleaned);
+      setSuccess(`Bulk price tiers saved for ${tiersTarget.name}.`);
+      setTiersTarget(null);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not save price tiers.');
+    } finally {
+      setTiersSaving(false);
+    }
+  };
+
+  const openVariants = async (item) => {
+    setVariantsTarget(item);
+    setVariantRows([{ size: '', color: '', brand: '', sku: '', barcode: '', stock_quantity: '' }]);
+    setVariantsLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await listItemVariants(item.id);
+      const rows = res.data || [];
+      setVariantRows(
+        rows.length
+          ? rows.map((row) => ({
+              size: row.size || '',
+              color: row.color || '',
+              brand: row.brand || '',
+              sku: row.sku || '',
+              barcode: row.barcode || '',
+              stock_quantity: String(row.stock_quantity ?? ''),
+            }))
+          : [{ size: '', color: '', brand: '', sku: '', barcode: '', stock_quantity: '' }],
+      );
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not load variants.');
+      setVariantsTarget(null);
+    } finally {
+      setVariantsLoading(false);
+    }
+  };
+
+  const saveVariants = async () => {
+    if (!variantsTarget) return;
+    const cleaned = variantRows
+      .map((row) => ({
+        size: (row.size || '').trim(),
+        color: (row.color || '').trim(),
+        brand: (row.brand || '').trim() || null,
+        sku: (row.sku || '').trim() || null,
+        barcode: (row.barcode || '').trim() || null,
+        stock_quantity: Number(row.stock_quantity || 0),
+        is_active: true,
+      }))
+      .filter((row) => row.size && row.color);
+    setVariantsSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await replaceItemVariants(variantsTarget.id, cleaned);
+      setSuccess(`Variants saved for ${variantsTarget.name}.`);
+      setVariantsTarget(null);
+      await load(page);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not save variants.');
+    } finally {
+      setVariantsSaving(false);
+    }
+  };
+
+  const openImages = async (item) => {
+    setImagesTarget(item);
+    setImageUrl('');
+    setImagesLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await listItemImages(item.id);
+      setImageRows(res.data || []);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not load images.');
+      setImagesTarget(null);
+    } finally {
+      setImagesLoading(false);
+    }
+  };
+
+  const addImageUrl = async () => {
+    if (!imagesTarget || !imageUrl.trim()) return;
+    setImagesSaving(true);
+    setError('');
+    try {
+      await createItemImage(imagesTarget.id, {
+        image_url: imageUrl.trim(),
+        is_primary: imageRows.length === 0,
+      });
+      setImageUrl('');
+      const res = await listItemImages(imagesTarget.id);
+      setImageRows(res.data || []);
+      setSuccess(`Image saved for ${imagesTarget.name}.`);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not save image URL.');
+    } finally {
+      setImagesSaving(false);
+    }
+  };
+
+  const onUploadImage = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !imagesTarget) return;
+    setImagesSaving(true);
+    setError('');
+    try {
+      await uploadItemImage(imagesTarget.id, file, { is_primary: imageRows.length === 0 });
+      const res = await listItemImages(imagesTarget.id);
+      setImageRows(res.data || []);
+      setSuccess(`Image uploaded for ${imagesTarget.name}.`);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not upload image.');
+    } finally {
+      setImagesSaving(false);
+    }
+  };
+
+  const removeImage = async (imageId) => {
+    if (!imagesTarget) return;
+    setImagesSaving(true);
+    try {
+      await deleteItemImage(imagesTarget.id, imageId);
+      const res = await listItemImages(imagesTarget.id);
+      setImageRows(res.data || []);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not delete image.');
+    } finally {
+      setImagesSaving(false);
+    }
   };
 
   const onSave = async () => {
@@ -203,6 +414,10 @@ export default function ItemsPage() {
     if (restaurantMenuEnabled) {
       payload.is_menu = Boolean(form.is_menu);
       payload.is_veg = form.is_veg === '' ? null : form.is_veg === 'true';
+    }
+    if (batchExpiryEnabled) {
+      payload.tracks_batches = Boolean(form.tracks_batches);
+      payload.block_expired_batches = Boolean(form.block_expired_batches);
     }
     try {
       if (editing) {
@@ -426,7 +641,7 @@ export default function ItemsPage() {
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        {canStockItems ? (
+                        {canStockItems && !item.tracks_variants ? (
                           <Tooltip title="Receive stock">
                             <IconButton
                               size="small"
@@ -444,6 +659,7 @@ export default function ItemsPage() {
                           </Tooltip>
                         ) : null}
                         {canStockItems &&
+                        !item.tracks_variants &&
                         item.stock_quantity !== null &&
                         item.stock_quantity !== undefined ? (
                           <Tooltip title="Adjust stock">
@@ -459,6 +675,39 @@ export default function ItemsPage() {
                               }}
                             >
                               <Inventory2OutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        {canWriteItems && productImagesEnabled ? (
+                          <Tooltip title="Product images">
+                            <IconButton
+                              size="small"
+                              aria-label={`Images for ${item.name}`}
+                              onClick={() => openImages(item)}
+                            >
+                              <ImageOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        {canWriteItems && variantsEnabled ? (
+                          <Tooltip title="Size / color variants">
+                            <IconButton
+                              size="small"
+                              aria-label={`Variants for ${item.name}`}
+                              onClick={() => openVariants(item)}
+                            >
+                              <CheckroomOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        {canWriteItems && bulkPricingEnabled ? (
+                          <Tooltip title="Bulk price tiers">
+                            <IconButton
+                              size="small"
+                              aria-label={`Price tiers for ${item.name}`}
+                              onClick={() => openTiers(item)}
+                            >
+                              <LocalOfferOutlinedIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         ) : null}
@@ -652,6 +901,27 @@ export default function ItemsPage() {
                 </FormControl>
               </>
             ) : null}
+            {batchExpiryEnabled ? (
+              <>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ gridColumn: { sm: '1 / -1' } }}>
+                  <Switch
+                    checked={Boolean(form.tracks_batches)}
+                    onChange={(e) => setForm((f) => ({ ...f, tracks_batches: e.target.checked }))}
+                  />
+                  <Typography variant="body2">Tracks batches / expiry</Typography>
+                </Stack>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ gridColumn: { sm: '1 / -1' } }}>
+                  <Switch
+                    checked={Boolean(form.block_expired_batches)}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, block_expired_batches: e.target.checked }))
+                    }
+                    disabled={!form.tracks_batches}
+                  />
+                  <Typography variant="body2">Block selling expired batch stock (FEFO)</Typography>
+                </Stack>
+              </>
+            ) : null}
             <TextField
               label="Description"
               value={form.description}
@@ -724,10 +994,11 @@ export default function ItemsPage() {
               autoFocus
             />
             <TextField
-              label="Reason (optional)"
+              label={batchExpiryEnabled ? 'Reason (required)' : 'Reason (optional)'}
               value={adjustReason}
               onChange={(e) => setAdjustReason(e.target.value)}
               fullWidth
+              required={batchExpiryEnabled}
             />
           </Stack>
         </DialogContent>
@@ -737,9 +1008,18 @@ export default function ItemsPage() {
           </Button>
           <Button
             variant="contained"
-            disabled={adjusting || !adjustDelta || Number(adjustDelta) === 0}
+            disabled={
+              adjusting ||
+              !adjustDelta ||
+              Number(adjustDelta) === 0 ||
+              (batchExpiryEnabled && !adjustReason.trim())
+            }
             onClick={async () => {
               if (!adjustTarget) return;
+              if (batchExpiryEnabled && !adjustReason.trim()) {
+                setError('Adjustment reason is required.');
+                return;
+              }
               setAdjusting(true);
               setError('');
               setSuccess('');
@@ -831,6 +1111,278 @@ export default function ItemsPage() {
             }}
           >
             {receiving ? 'Saving...' : 'Receive'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(tiersTarget)}
+        onClose={() => (!tiersSaving ? setTiersTarget(null) : null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Bulk price tiers — {tiersTarget?.name}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Base price ₹{Number(tiersTarget?.price || 0).toFixed(2)} / {tiersTarget?.uom || DEFAULT_UOM}.
+            Highest matching min qty wins (e.g. buy ≥10 at a lower unit rate).
+          </Typography>
+          {tiersLoading ? (
+            <LoadingBlock />
+          ) : (
+            <Stack spacing={1.5}>
+              {tierRows.map((row, index) => (
+                <Stack key={`tier-${index}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  <TextField
+                    label="Min quantity"
+                    type="number"
+                    size="small"
+                    value={row.min_quantity}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTierRows((prev) =>
+                        prev.map((r, i) => (i === index ? { ...r, min_quantity: value } : r)),
+                      );
+                    }}
+                    inputProps={{ min: 0.001, step: 'any' }}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Unit price (₹)"
+                    type="number"
+                    size="small"
+                    value={row.unit_price}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTierRows((prev) =>
+                        prev.map((r, i) => (i === index ? { ...r, unit_price: value } : r)),
+                      );
+                    }}
+                    inputProps={{ min: 0, step: '0.01' }}
+                    fullWidth
+                  />
+                  <Button
+                    color="inherit"
+                    disabled={tierRows.length <= 1}
+                    onClick={() => setTierRows((prev) => prev.filter((_, i) => i !== index))}
+                  >
+                    Remove
+                  </Button>
+                </Stack>
+              ))}
+              <Button
+                startIcon={<AddOutlinedIcon />}
+                onClick={() => setTierRows((prev) => [...prev, { min_quantity: '', unit_price: '' }])}
+              >
+                Add tier
+              </Button>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTiersTarget(null)} disabled={tiersSaving}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={saveTiers} disabled={tiersSaving || tiersLoading}>
+            {tiersSaving ? 'Saving…' : 'Save tiers'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(variantsTarget)}
+        onClose={() => (!variantsSaving ? setVariantsTarget(null) : null)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>Size / color variants — {variantsTarget?.name}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Each size and color combination has its own stock. Parent item stock becomes the sum of
+            these rows. Unique size + color per item.
+          </Typography>
+          {variantsLoading ? (
+            <LoadingBlock />
+          ) : (
+            <Stack spacing={1.5}>
+              {variantRows.map((row, index) => (
+                <Stack key={`variant-${index}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  <TextField
+                    label="Size"
+                    size="small"
+                    value={row.size}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVariantRows((prev) =>
+                        prev.map((r, i) => (i === index ? { ...r, size: value } : r)),
+                      );
+                    }}
+                    placeholder="M"
+                    sx={{ minWidth: 80 }}
+                  />
+                  <TextField
+                    label="Color"
+                    size="small"
+                    value={row.color}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVariantRows((prev) =>
+                        prev.map((r, i) => (i === index ? { ...r, color: value } : r)),
+                      );
+                    }}
+                    placeholder="Blue"
+                    sx={{ minWidth: 100 }}
+                  />
+                  <TextField
+                    label="Brand"
+                    size="small"
+                    value={row.brand}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVariantRows((prev) =>
+                        prev.map((r, i) => (i === index ? { ...r, brand: value } : r)),
+                      );
+                    }}
+                    sx={{ minWidth: 100 }}
+                  />
+                  <TextField
+                    label="SKU"
+                    size="small"
+                    value={row.sku}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVariantRows((prev) =>
+                        prev.map((r, i) => (i === index ? { ...r, sku: value } : r)),
+                      );
+                    }}
+                  />
+                  <TextField
+                    label="Barcode"
+                    size="small"
+                    value={row.barcode}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVariantRows((prev) =>
+                        prev.map((r, i) => (i === index ? { ...r, barcode: value } : r)),
+                      );
+                    }}
+                  />
+                  <TextField
+                    label="Stock"
+                    type="number"
+                    size="small"
+                    value={row.stock_quantity}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVariantRows((prev) =>
+                        prev.map((r, i) => (i === index ? { ...r, stock_quantity: value } : r)),
+                      );
+                    }}
+                    inputProps={{ min: 0, step: '1' }}
+                    sx={{ minWidth: 90 }}
+                  />
+                  <Button
+                    color="inherit"
+                    disabled={variantRows.length <= 1}
+                    onClick={() => setVariantRows((prev) => prev.filter((_, i) => i !== index))}
+                  >
+                    Remove
+                  </Button>
+                </Stack>
+              ))}
+              <Button
+                startIcon={<AddOutlinedIcon />}
+                onClick={() =>
+                  setVariantRows((prev) => [
+                    ...prev,
+                    { size: '', color: '', brand: '', sku: '', barcode: '', stock_quantity: '' },
+                  ])
+                }
+              >
+                Add variant
+              </Button>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVariantsTarget(null)} disabled={variantsSaving}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={saveVariants}
+            disabled={variantsSaving || variantsLoading}
+          >
+            {variantsSaving ? 'Saving…' : 'Save variants'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(imagesTarget)}
+        onClose={() => (!imagesSaving ? setImagesTarget(null) : null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Product images — {imagesTarget?.name}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Store an https URL or upload a JPEG/PNG/WEBP/GIF (max 2 MB). The first image is used on
+            Clothing POS.
+          </Typography>
+          {imagesLoading ? (
+            <LoadingBlock />
+          ) : (
+            <Stack spacing={2}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                {imageRows.map((row) => (
+                  <Box key={row.id} sx={{ position: 'relative', width: 96 }}>
+                    <Box
+                      component="img"
+                      src={row.image_url}
+                      alt={row.alt_text || imagesTarget?.name}
+                      sx={{
+                        width: 96,
+                        height: 96,
+                        objectFit: 'cover',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: row.is_primary ? 'primary.main' : 'divider',
+                      }}
+                    />
+                    <Button
+                      size="small"
+                      color="error"
+                      disabled={imagesSaving}
+                      onClick={() => removeImage(row.id)}
+                    >
+                      Remove
+                    </Button>
+                  </Box>
+                ))}
+              </Stack>
+              <TextField
+                label="Image URL"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                fullWidth
+                placeholder="https://..."
+              />
+              <Stack direction="row" spacing={1}>
+                <Button variant="outlined" onClick={addImageUrl} disabled={imagesSaving || !imageUrl.trim()}>
+                  Save URL
+                </Button>
+                <Button variant="contained" component="label" disabled={imagesSaving}>
+                  Upload file
+                  <input hidden type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={onUploadImage} />
+                </Button>
+              </Stack>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImagesTarget(null)} disabled={imagesSaving}>
+            Close
           </Button>
         </DialogActions>
       </Dialog>

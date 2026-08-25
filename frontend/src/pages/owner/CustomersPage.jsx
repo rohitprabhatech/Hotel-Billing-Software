@@ -35,6 +35,7 @@ import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { PageActions } from '../../context/PageActionsContext';
+import { useModuleGate } from '../../context/ModulesContext';
 import { filterControlWideSx } from '../../layouts/shell';
 import {
   createCustomer,
@@ -47,6 +48,7 @@ import {
   setCustomerStatus,
   updateCustomer,
 } from '../../services/customerService';
+import { fetchClothingCustomerHistory } from '../../services/clothingService';
 import { PAYMENT_CASH, PAYMENT_ONLINE } from '../../utils/paymentMethod';
 
 const emptyForm = {
@@ -66,6 +68,7 @@ function money(value) {
 }
 
 export default function CustomersPage() {
+  const clothingEnabled = useModuleGate('variants');
   const [customers, setCustomers] = useState([]);
   const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [q, setQ] = useState('');
@@ -187,8 +190,13 @@ export default function CustomersPage() {
     setHistoryBills([]);
     setHistoryLoading(true);
     try {
-      const res = await listCustomerBills(customer.id, { per_page: 20 });
-      setHistoryBills(res.data || []);
+      if (clothingEnabled) {
+        const res = await fetchClothingCustomerHistory(customer.id, { per_page: 20 });
+        setHistoryBills(res.data?.bills || []);
+      } else {
+        const res = await listCustomerBills(customer.id, { per_page: 20 });
+        setHistoryBills(res.data || []);
+      }
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to load purchase history.');
     } finally {
@@ -482,6 +490,7 @@ export default function CustomersPage() {
                 <TableRow>
                   <TableCell>Bill #</TableCell>
                   <TableCell>Date</TableCell>
+                  <TableCell>Items</TableCell>
                   <TableCell align="right">Total</TableCell>
                   <TableCell>Status</TableCell>
                 </TableRow>
@@ -492,6 +501,11 @@ export default function CustomersPage() {
                     <TableCell>{bill.bill_number}</TableCell>
                     <TableCell>
                       {bill.created_at ? new Date(bill.created_at).toLocaleString() : '—'}
+                    </TableCell>
+                    <TableCell>
+                      {bill.items?.length
+                        ? bill.items.map((line) => line.item_name).join(', ')
+                        : '—'}
                     </TableCell>
                     <TableCell align="right">₹{Number(bill.grand_total).toFixed(2)}</TableCell>
                     <TableCell>{bill.status}</TableCell>

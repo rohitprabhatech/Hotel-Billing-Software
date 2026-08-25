@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from app.extensions import db
 from app.models.customer import Customer
@@ -96,3 +96,26 @@ class PartyLedgerRepository:
             .all()
         )
         return rows, int(total)
+
+    @staticmethod
+    def outstanding_summary(tenant_id: str) -> dict:
+        row = (
+            db.session.query(
+                func.coalesce(
+                    func.sum(
+                        case((Customer.balance > Decimal("0.00"), Customer.balance), else_=0)
+                    ),
+                    0,
+                ),
+                func.coalesce(
+                    func.sum(case((Customer.balance > Decimal("0.00"), 1), else_=0)),
+                    0,
+                ),
+            )
+            .filter(Customer.tenant_id == tenant_id, Customer.is_active.is_(True))
+            .one()
+        )
+        return {
+            "outstanding_amount": float(row[0] or 0),
+            "customer_count": int(row[1] or 0),
+        }

@@ -78,11 +78,38 @@ class ItemService:
         if not cleaned:
             raise ValidationError("Barcode is required")
         item = ItemRepository.find_by_tenant_and_barcode(ctx.tenant_id, cleaned)
+        matched_variant = None
         if item is None:
-            raise NotFoundError("Item not found for barcode")
+            from app.repositories.item_variant_repository import ItemVariantRepository
+
+            variant = ItemVariantRepository.find_by_barcode(ctx.tenant_id, cleaned)
+            if variant is None or not variant.is_active:
+                raise NotFoundError("Item not found for barcode")
+            item = ItemRepository.get_by_id_and_tenant(variant.item_id, ctx.tenant_id)
+            if item is None:
+                raise NotFoundError("Item not found for barcode")
+            matched_variant = variant
         if active_only and not item.is_active:
             raise NotFoundError("Item not found for barcode")
-        return ItemService.serialize(item)
+        data = ItemService.serialize(item)
+        from app.repositories.tenant_repository import TenantRepository
+        from app.services.bulk_pricing_service import BulkPricingService
+        from app.services.module_service import ModuleService
+        from app.services.variant_service import VariantService
+
+        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        if tenant and ModuleService.is_enabled_for_tenant(tenant, "bulk_pricing"):
+            tiers = BulkPricingService.serialize_tiers_for_items(ctx.tenant_id, [item.id])
+            data["price_tiers"] = tiers.get(item.id) or []
+        else:
+            data["price_tiers"] = []
+        if matched_variant is not None:
+            data["matched_variant"] = VariantService.serialize(
+                matched_variant, item_name=item.name
+            )
+        else:
+            data["matched_variant"] = None
+        return data
 
     @staticmethod
     def create_item(
@@ -100,6 +127,8 @@ class ItemService:
         minimum_stock_level=None,
         is_menu=False,
         is_veg=None,
+        tracks_batches=False,
+        block_expired_batches=True,
     ):
         require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
@@ -150,6 +179,8 @@ class ItemService:
             is_active=True,
             is_menu=bool(is_menu),
             is_veg=is_veg if is_veg is None else bool(is_veg),
+            tracks_batches=bool(tracks_batches),
+            block_expired_batches=True if block_expired_batches is None else bool(block_expired_batches),
         )
         ItemRepository.add(item)
         AuditService.log(
@@ -187,6 +218,10 @@ class ItemService:
         is_menu_provided=False,
         is_veg=None,
         is_veg_provided=False,
+        tracks_batches=None,
+        tracks_batches_provided=False,
+        block_expired_batches=None,
+        block_expired_batches_provided=False,
     ):
         require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
@@ -270,6 +305,12 @@ class ItemService:
 
         if is_veg_provided:
             item.is_veg = None if is_veg is None else bool(is_veg)
+
+        if tracks_batches_provided:
+            item.tracks_batches = bool(tracks_batches)
+
+        if block_expired_batches_provided:
+            item.block_expired_batches = bool(block_expired_batches)
 
         new_data = ItemService.serialize(item)
         AuditService.log(
@@ -386,6 +427,20 @@ class ItemService:
         if change == 0:
             raise ValidationError("Adjustment amount cannot be zero.")
 
+        from app.services.module_service import ModuleService
+        from app.repositories.tenant_repository import TenantRepository
+
+        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        reason_text = (reason or "").strip() or None
+        if tenant and ModuleService.is_enabled_for_tenant(tenant, "batch_expiry"):
+            if not reason_text:
+                raise ValidationError("Adjustment reason is required.")
+
+        if getattr(item, "tracks_variants", False):
+            raise ValidationError(
+                "This item tracks size/color variants. Update stock on the variant matrix."
+            )
+
         previous = Decimal(item.stock_quantity)
         new_stock = previous + change
         if new_stock < 0:
@@ -394,7 +449,6 @@ class ItemService:
             )
 
         item.stock_quantity = new_stock
-        reason_text = (reason or "").strip() or None
         AuditService.log(
             tenant_id=ctx.tenant_id,
             action="STOCK_ADJUSTED",
@@ -444,6 +498,15 @@ class ItemService:
             raise ValidationError("Invalid receive quantity.") from exc
         if qty <= 0:
             raise ValidationError("Receive quantity must be greater than zero.")
+
+        if getattr(item, "tracks_batches", False):
+            raise ValidationError(
+                "This item tracks batches. Use POST /batches with expiry_date to receive stock."
+            )
+        if getattr(item, "tracks_variants", False):
+            raise ValidationError(
+                "This item tracks size/color variants. Update stock on the variant matrix."
+            )
 
         previous = (
             Decimal(item.stock_quantity) if item.stock_quantity is not None else None
@@ -581,6 +644,9 @@ class ItemService:
             "is_active": item.is_active,
             "is_menu": item.is_menu,
             "is_veg": item.is_veg,
+            "tracks_batches": bool(getattr(item, "tracks_batches", False)),
+            "block_expired_batches": bool(getattr(item, "block_expired_batches", True)),
+            "tracks_variants": bool(getattr(item, "tracks_variants", False)),
             "created_by": item.created_by,
             "created_by_name": item.creator.name if item.creator else None,
             "created_at": item.created_at.isoformat() if item.created_at else None,

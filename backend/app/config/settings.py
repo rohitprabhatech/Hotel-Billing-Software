@@ -1,6 +1,7 @@
 """Environment-based application configuration."""
 
 import os
+import tempfile
 from datetime import timedelta
 
 from dotenv import load_dotenv
@@ -79,6 +80,12 @@ class BaseConfig:
 
     JSON_SORT_KEYS = False
     PROPAGATE_EXCEPTIONS = False
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(3 * 1024 * 1024)))
+    MAX_ITEM_IMAGE_BYTES = int(os.getenv("MAX_ITEM_IMAGE_BYTES", str(2 * 1024 * 1024)))
+    ITEM_IMAGE_UPLOAD_DIR = os.getenv(
+        "ITEM_IMAGE_UPLOAD_DIR",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "item-images"),
+    )
 
 
 class DevelopmentConfig(BaseConfig):
@@ -112,6 +119,7 @@ class TestingConfig(BaseConfig):
     WHATSAPP_TOKEN_ENCRYPTION_KEY = "test-whatsapp-encryption-key-32b!"
     WHATSAPP_WEBHOOK_VERIFY_TOKEN = "test-verify-token"
     WHATSAPP_APP_SECRET = "test-app-secret"
+    ITEM_IMAGE_UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "hbs-test-item-images")
 
 
 class ProductionConfig(BaseConfig):

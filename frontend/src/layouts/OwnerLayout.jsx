@@ -23,7 +23,10 @@ import KitchenOutlinedIcon from '@mui/icons-material/KitchenOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
+import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
 import {
   AppBar,
   Box,
@@ -108,6 +111,30 @@ const navItems = [
     label: 'Grocery POS',
     icon: <ShoppingCartOutlinedIcon />,
     module: 'barcode_pos',
+  },
+  {
+    to: PATHS.ownerClothing,
+    label: 'Clothing POS',
+    icon: <CheckroomOutlinedIcon />,
+    module: 'variants',
+  },
+  {
+    to: PATHS.ownerReturns,
+    label: 'Returns / Exchange',
+    icon: <AssignmentReturnOutlinedIcon />,
+    module: 'returns_exchange',
+  },
+  {
+    to: PATHS.ownerCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  {
+    to: PATHS.ownerBatches,
+    label: 'Batches / Expiry',
+    icon: <EventAvailableOutlinedIcon />,
+    module: 'batch_expiry',
   },
   {
     to: PATHS.ownerRecipes,
@@ -202,7 +229,23 @@ const titles = {
   },
   [PATHS.ownerGrocery]: {
     title: 'Grocery POS',
-    subtitle: 'Scan-first billing with barcode lookup and weight quantities.',
+    subtitle: 'Scan-first billing with barcode lookup, weight quantities, and udhari.',
+  },
+  [PATHS.ownerClothing]: {
+    title: 'Clothing POS',
+    subtitle: 'Pick size and color from live variant stock. Product images appear as thumbnails.',
+  },
+  [PATHS.ownerReturns]: {
+    title: 'Returns / Exchange',
+    subtitle: 'Restock the original size/color or swap into another variant against a finalized bill.',
+  },
+  [PATHS.ownerCredit]: {
+    title: 'Credit / Udhari',
+    subtitle: 'Outstanding balances, collections, and payment history.',
+  },
+  [PATHS.ownerBatches]: {
+    title: 'Batches / Expiry',
+    subtitle: 'Receive dated batches and review near-expiry stock.',
   },
   [PATHS.ownerRecipes]: {
     title: 'Recipes',

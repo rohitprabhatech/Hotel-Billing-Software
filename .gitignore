@@ -31,5 +31,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Uploaded product images (local disk, BIZ-26)
+backend/uploads/
+
 # Live DB dumps (contain hashes / PII — do not commit)
 backend/backups/

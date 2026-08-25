@@ -323,6 +323,11 @@ export default function OwnerDashboardPage() {
             hint={`${current.online_bill_count ?? 0} online bills`}
           />
           <KpiCard
+            title="Credit"
+            value={money(current.credit_sales)}
+            hint={`${current.credit_bill_count ?? 0} udhari bills`}
+          />
+          <KpiCard
             title="Cancelled"
             value={current.cancelled_bills ?? '—'}
             hint="Excluded from sales totals"

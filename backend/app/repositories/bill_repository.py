@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import and_, case, func
-from sqlalchemy.orm import joinedload, noload
+from sqlalchemy.orm import joinedload, noload, selectinload
 
 from app.extensions import db
 from app.models.bill import Bill, BillItem, BillNumberCounter
@@ -17,6 +17,18 @@ class BillRepository:
             db.session.query(Bill)
             .options(joinedload(Bill.items), joinedload(Bill.creator))
             .filter(Bill.id == bill_id, Bill.tenant_id == tenant_id)
+            .first()
+        )
+
+    @staticmethod
+    def get_by_number_and_tenant(bill_number: str, tenant_id: str) -> Bill | None:
+        cleaned = (bill_number or "").strip()
+        if not cleaned:
+            return None
+        return (
+            db.session.query(Bill)
+            .options(joinedload(Bill.items), joinedload(Bill.creator))
+            .filter(Bill.tenant_id == tenant_id, func.lower(Bill.bill_number) == cleaned.lower())
             .first()
         )
 
@@ -35,6 +47,7 @@ class BillRepository:
         customer_id: str | None = None,
         page: int = 1,
         per_page: int = 50,
+        load_items: bool = False,
     ) -> tuple[list[Bill], int]:
         query = db.session.query(Bill).filter(Bill.tenant_id == tenant_id)
         if status:
@@ -123,8 +136,9 @@ class BillRepository:
         )
         page = max(page, 1)
         per_page = min(max(per_page, 1), 100)
+        item_opt = selectinload(Bill.items) if load_items else noload(Bill.items)
         bills = (
-            query.options(noload(Bill.items), joinedload(Bill.creator))
+            query.options(item_opt, joinedload(Bill.creator))
             .order_by(Bill.created_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
@@ -206,6 +220,16 @@ class BillRepository:
                     func.sum(case((Bill.payment_method == "online", 1), else_=0)),
                     0,
                 ),
+                func.coalesce(
+                    func.sum(
+                        case((Bill.payment_method == "credit", Bill.grand_total), else_=0)
+                    ),
+                    0,
+                ),
+                func.coalesce(
+                    func.sum(case((Bill.payment_method == "credit", 1), else_=0)),
+                    0,
+                ),
             )
             .filter(
                 Bill.tenant_id == tenant_id,
@@ -222,4 +246,6 @@ class BillRepository:
             "online_sales": row[3],
             "cash_bill_count": int(row[4] or 0),
             "online_bill_count": int(row[5] or 0),
+            "credit_sales": row[6],
+            "credit_bill_count": int(row[7] or 0),
         }

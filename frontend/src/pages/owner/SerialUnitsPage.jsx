@@ -59,6 +59,7 @@ export default function SerialUnitsPage() {
   const [catalog, setCatalog] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [serial, setSerial] = useState('');
+  const [warrantyMonths, setWarrantyMonths] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -87,6 +88,7 @@ export default function SerialUnitsPage() {
   const openReceive = async () => {
     setSelectedItem(null);
     setSerial('');
+    setWarrantyMonths('');
     setReceiveOpen(true);
     setError('');
     try {
@@ -114,7 +116,11 @@ export default function SerialUnitsPage() {
     setError('');
     setSuccess('');
     try {
-      await receiveSerialUnit({ item_id: selectedItem.id, serial: serial.trim() });
+      await receiveSerialUnit({
+        item_id: selectedItem.id,
+        serial: serial.trim(),
+        warranty_months: warrantyMonths === '' ? null : Number(warrantyMonths),
+      });
       setSuccess(`Received ${serial.trim().toUpperCase()} for ${selectedItem.name}.`);
       setReceiveOpen(false);
       await load();
@@ -234,6 +240,14 @@ export default function SerialUnitsPage() {
               onChange={(e) => setSerial(e.target.value)}
               autoFocus
               inputProps={{ style: { textTransform: 'uppercase' } }}
+            />
+            <TextField
+              label="Warranty override (months, optional)"
+              type="number"
+              value={warrantyMonths}
+              onChange={(e) => setWarrantyMonths(e.target.value)}
+              inputProps={{ min: 0, max: 120, step: 1 }}
+              helperText="Uses item default when blank"
             />
             <Typography variant="caption" color="text.secondary">
               Letters and digits only. Duplicate IMEIs are blocked for this business.

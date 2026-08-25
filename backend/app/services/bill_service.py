@@ -102,6 +102,11 @@ class BillService:
         from app.repositories.item_variant_repository import ItemVariantRepository
         from app.services.serial_service import SerialService
         from app.services.variant_service import VariantService
+        from app.services.recipe_stock_service import RecipeStockService
+        from app.utils.warranty import resolve_warranty_months, warranty_until_date
+        from app.utils.tokens import utc_now_naive
+
+        sale_at = utc_now_naive()
 
         cart_merged: dict[str, dict] = {}
         serial_cart: list[dict] = []
@@ -304,12 +309,15 @@ class BillService:
         for row in serial_cart:
             item = locked[row["item_id"]]
             unit = row["allocated"]
+            months = resolve_warranty_months(item=item, serial_unit=unit)
+            until = warranty_until_date(sale_at, months)
             calc_lines.append(
                 {
                     "item_id": item.id,
                     "variant_id": None,
                     "serial_unit_id": unit.id,
                     "serial_number": unit.serial,
+                    "warranty_until": until,
                     "item_name": f"{item.name} · {unit.serial}",
                     "quantity": row["quantity"],
                     "unit_price": unit_prices[item.id],
@@ -392,6 +400,7 @@ class BillService:
                     variant_id=line.get("variant_id"),
                     serial_unit_id=line.get("serial_unit_id"),
                     serial_number=line.get("serial_number"),
+                    warranty_until=line.get("warranty_until"),
                     item_name=line["item_name"],
                     quantity=line["quantity"],
                     unit_price=line["unit_price"],
@@ -902,6 +911,11 @@ class BillService:
                     "variant_id": getattr(line, "variant_id", None),
                     "serial_unit_id": getattr(line, "serial_unit_id", None),
                     "serial_number": getattr(line, "serial_number", None),
+                    "warranty_until": (
+                        line.warranty_until.isoformat()
+                        if getattr(line, "warranty_until", None)
+                        else None
+                    ),
                     "item_name": line.item_name,
                     "quantity": float(line.quantity),
                     "unit_price": float(line.unit_price),

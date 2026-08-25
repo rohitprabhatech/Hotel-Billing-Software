@@ -68,7 +68,7 @@ Start at [`docs/README.md`](docs/README.md) — single structured system:
 
 `00-project-foundation` · `01-requirements` · `02-architecture` · `03-database` · `04-common-modules` · **`05-businesses` (14 packs)** · `06-master-admin` · `07-api` · `08-ui-ux` · `09-subscription` · `10-testing` · `11-user-manual` · `12-testing-guides` · `13-phases` · `14-sprints` · `archive/`
 
-Status: [`docs/documentation-status.md`](docs/documentation-status.md) · Tracker: [`docs/14-sprints/sprint-tracker.md`](docs/14-sprints/sprint-tracker.md)
+Status: [`docs/software-status.md`](docs/software-status.md) (living code progress) · [`docs/documentation-status.md`](docs/documentation-status.md) · Tracker: [`docs/14-sprints/sprint-tracker.md`](docs/14-sprints/sprint-tracker.md)
 
 Historical Phase/Sprint reports: [`docs/archive/`](docs/archive/).
 

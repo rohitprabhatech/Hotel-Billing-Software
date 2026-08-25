@@ -87,6 +87,7 @@ const emptyForm = {
   tracks_batches: false,
   block_expired_batches: true,
   tracks_serial: false,
+  warranty_months: '',
 };
 
 const PAGE_SIZE = 25;
@@ -103,6 +104,7 @@ export default function ItemsPage() {
   const batchExpiryEnabled = useModuleGate('batch_expiry');
   const variantsEnabled = useModuleGate('variants');
   const serialImeiEnabled = useModuleGate('serial_imei');
+  const warrantyEnabled = useModuleGate('warranty');
   const productImagesEnabled = useModuleGate('product_images');
   const { canWriteItems, canStockItems, canAudit, canStockMovements } = usePermissions();
   const movementsPath = stockMovementsPath(role);
@@ -209,6 +211,8 @@ export default function ItemsPage() {
       is_veg: item.is_veg === true ? 'true' : item.is_veg === false ? 'false' : '',
       tracks_batches: Boolean(item.tracks_batches),
       block_expired_batches: item.block_expired_batches !== false,
+      tracks_serial: Boolean(item.tracks_serial),
+      warranty_months: item.warranty_months != null ? String(item.warranty_months) : '',
     });
     setOpen(true);
   };
@@ -421,6 +425,12 @@ export default function ItemsPage() {
     if (batchExpiryEnabled) {
       payload.tracks_batches = Boolean(form.tracks_batches);
       payload.block_expired_batches = Boolean(form.block_expired_batches);
+    }
+    if (serialImeiEnabled) {
+      payload.tracks_serial = Boolean(form.tracks_serial);
+    }
+    if (warrantyEnabled) {
+      payload.warranty_months = form.warranty_months === '' ? null : form.warranty_months;
     }
     try {
       if (editing) {
@@ -924,6 +934,26 @@ export default function ItemsPage() {
                   <Typography variant="body2">Block selling expired batch stock (FEFO)</Typography>
                 </Stack>
               </>
+            ) : null}
+            {serialImeiEnabled ? (
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ gridColumn: { sm: '1 / -1' } }}>
+                <Switch
+                  checked={Boolean(form.tracks_serial)}
+                  onChange={(e) => setForm((f) => ({ ...f, tracks_serial: e.target.checked }))}
+                />
+                <Typography variant="body2">Track serial / IMEI units (receive units separately)</Typography>
+              </Stack>
+            ) : null}
+            {warrantyEnabled ? (
+              <TextField
+                label="Default warranty (months)"
+                type="number"
+                value={form.warranty_months}
+                onChange={(e) => setForm((f) => ({ ...f, warranty_months: e.target.value }))}
+                fullWidth
+                inputProps={{ min: 0, max: 120, step: 1 }}
+                helperText="Shown on invoice for serialized sales (optional)"
+              />
             ) : null}
             <TextField
               label="Description"

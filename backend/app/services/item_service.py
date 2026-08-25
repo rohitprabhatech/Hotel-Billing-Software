@@ -154,6 +154,7 @@ class ItemService:
         tracks_batches=False,
         block_expired_batches=True,
         tracks_serial=False,
+        warranty_months=None,
     ):
         require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
@@ -212,6 +213,7 @@ class ItemService:
             tracks_batches=bool(tracks_batches),
             block_expired_batches=True if block_expired_batches is None else bool(block_expired_batches),
             tracks_serial=tracks_serial_flag,
+            warranty_months=ItemService._parse_warranty_months(warranty_months),
         )
         ItemRepository.add(item)
         AuditService.log(
@@ -255,6 +257,8 @@ class ItemService:
         block_expired_batches_provided=False,
         tracks_serial=None,
         tracks_serial_provided=False,
+        warranty_months=None,
+        warranty_months_provided=False,
     ):
         require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
@@ -364,6 +368,9 @@ class ItemService:
             raise ValidationError("Variant items cannot also track serial / IMEI units")
         if getattr(item, "tracks_serial", False) and getattr(item, "tracks_batches", False):
             raise ValidationError("Serial / IMEI items cannot also track batches")
+
+        if warranty_months_provided:
+            item.warranty_months = ItemService._parse_warranty_months(warranty_months)
 
         new_data = ItemService.serialize(item)
         AuditService.log(
@@ -664,6 +671,18 @@ class ItemService:
         return qty.quantize(Decimal("0.001"))
 
     @staticmethod
+    def _parse_warranty_months(value) -> int | None:
+        if value is None or value == "":
+            return None
+        try:
+            months = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("Invalid warranty months") from exc
+        if months < 0 or months > 120:
+            raise ValidationError("Warranty months must be between 0 and 120")
+        return months if months > 0 else None
+
+    @staticmethod
     def _parse_gst(value) -> Decimal:
         try:
             gst = Decimal(str(value if value is not None else "0"))
@@ -709,6 +728,7 @@ class ItemService:
             "block_expired_batches": bool(getattr(item, "block_expired_batches", True)),
             "tracks_variants": bool(getattr(item, "tracks_variants", False)),
             "tracks_serial": bool(getattr(item, "tracks_serial", False)),
+            "warranty_months": getattr(item, "warranty_months", None),
             "created_by": item.created_by,
             "created_by_name": item.creator.name if item.creator else None,
             "created_at": item.created_at.isoformat() if item.created_at else None,

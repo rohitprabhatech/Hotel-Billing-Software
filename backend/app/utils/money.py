@@ -70,6 +70,7 @@ def calculate_bill_totals(lines: list[dict], discount_amount, service_charge_amo
                 "variant_id": line.get("variant_id"),
                 "serial_unit_id": line.get("serial_unit_id"),
                 "serial_number": line.get("serial_number"),
+                "warranty_until": line.get("warranty_until"),
                 "item_name": line["item_name"],
                 "quantity": line["quantity"],
                 "unit_price": line["unit_price"],

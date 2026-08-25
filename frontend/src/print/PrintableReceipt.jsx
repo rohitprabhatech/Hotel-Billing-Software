@@ -83,13 +83,20 @@ export default function PrintableReceipt({ bill, width = '80' }) {
       <div className="receipt__divider" />
 
       {items.map((line) => (
-        <div className="receipt__cols" key={line.id}>
-          <span className="c-name">{line.item_name}</span>
-          <span className="c-qty">{Number(line.quantity)}</span>
-          <span className="c-rate">{formatMoney(line.unit_price)}</span>
-          <span className="c-amt">
-            {formatMoney(Number(line.unit_price) * Number(line.quantity))}
-          </span>
+        <div key={line.id}>
+          <div className="receipt__cols">
+            <span className="c-name">{line.item_name}</span>
+            <span className="c-qty">{Number(line.quantity)}</span>
+            <span className="c-rate">{formatMoney(line.unit_price)}</span>
+            <span className="c-amt">
+              {formatMoney(Number(line.unit_price) * Number(line.quantity))}
+            </span>
+          </div>
+          {line.warranty_until ? (
+            <div className="receipt__center" style={{ fontSize: '0.85em', marginBottom: 4 }}>
+              Warranty until {line.warranty_until}
+            </div>
+          ) : null}
         </div>
       ))}
 

@@ -40,8 +40,9 @@
 | Sprints 00–14 (platform foundation plan) | Sprints | COMPLETED (docs; much already in code) |
 | Business Gap Analysis | Sprints | COMPLETED |
 | Business Development Phases 01–14 | Sprints | COMPLETED |
-| Business Sprints BIZ-01–68 | Sprints | COMPLETED (planning; all NOT STARTED) |
+| Business Sprints BIZ-01–68 | Sprints | COMPLETED (planning docs); code progress in software-status.md |
 | Sprint Tracker (BIZ) | Sprints | COMPLETED |
+| Software Status (living code progress) | Sprints / Ops | IN PROGRESS — update after every sprint |
 | Privacy / Terms | Legal | NEEDS REVIEW |
 | Deployment / Backup (archived originals) | Ops | NEEDS REVIEW |
 

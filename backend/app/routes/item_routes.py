@@ -4,6 +4,7 @@ from flask import Blueprint
 
 from app.constants.permissions import PERM_ITEMS_READ, PERM_ITEMS_STOCK, PERM_ITEMS_WRITE
 from app.controllers import (
+    item_accessory_controller,
     item_controller,
     item_image_controller,
     item_price_tier_controller,
@@ -142,6 +143,22 @@ def upload_item_image(item_id):
 @permission_required(PERM_ITEMS_WRITE)
 def delete_item_image(item_id, image_id):
     return item_image_controller.delete_item_image(item_id, image_id)
+
+
+@items_bp.get("/<item_id>/accessories")
+@roles_required(*_STAFF)
+@module_required("warranty")
+@permission_required(PERM_ITEMS_READ)
+def list_item_accessories(item_id):
+    return item_accessory_controller.list_item_accessories(item_id)
+
+
+@items_bp.put("/<item_id>/accessories")
+@roles_required(*_STAFF)
+@module_required("warranty")
+@permission_required(PERM_ITEMS_WRITE)
+def replace_item_accessories(item_id):
+    return item_accessory_controller.replace_item_accessories(item_id)
 
 
 @items_bp.get("/<item_id>")

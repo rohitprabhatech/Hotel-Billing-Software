@@ -29,7 +29,7 @@ This folder is the **single structured documentation system** for the product.
 13. [Phases](./13-phases/project-roadmap.md)
 14. [Sprints](./14-sprints/sprint-tracker.md)
 
-Also: [Documentation Status](./documentation-status.md) · [Requirements Traceability](./00-project-foundation/07-requirements-traceability.md) · [Full Audit Report](./DOCUMENTATION_AUDIT_REPORT.md) · [Business Sprint Plan](./14-sprints/business-sprint-plan-overview.md) · [Module Feature Matrix](./00-project-foundation/09-module-feature-matrix.md)
+Also: **[Software Status](./software-status.md)** (living code progress — update after every sprint) · [Documentation Status](./documentation-status.md) · [Requirements Traceability](./00-project-foundation/07-requirements-traceability.md) · [Full Audit Report](./DOCUMENTATION_AUDIT_REPORT.md) · [Business Sprint Plan](./14-sprints/business-sprint-plan-overview.md) · [Module Feature Matrix](./00-project-foundation/09-module-feature-matrix.md)
 
 ---
 
@@ -73,6 +73,7 @@ docs/
 ├── 13-phases/
 ├── 14-sprints/
 ├── archive/
+├── software-status.md          # Living: % done, businesses, all BIZ sprints
 ├── documentation-status.md
 └── README.md
 ```

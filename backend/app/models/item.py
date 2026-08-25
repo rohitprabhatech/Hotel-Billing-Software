@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -46,6 +46,7 @@ class Item(db.Model, TimestampMixin):
     block_expired_batches: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     tracks_variants: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     tracks_serial: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    warranty_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     category = relationship("Category", back_populates="items")
     creator = relationship("User", foreign_keys=[created_by])
@@ -77,4 +78,11 @@ class Item(db.Model, TimestampMixin):
         "SerialUnit",
         back_populates="item",
         cascade="all, delete-orphan",
+    )
+    accessory_links = relationship(
+        "ItemAccessory",
+        foreign_keys="ItemAccessory.item_id",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="ItemAccessory.sort_order",
     )

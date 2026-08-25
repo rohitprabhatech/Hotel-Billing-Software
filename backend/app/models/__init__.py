@@ -13,7 +13,7 @@ from app.models.item import Item
 from app.models.item_batch import ItemBatch
 from app.models.item_price_tier import ItemPriceTier
 from app.models.item_variant import ItemVariant
-from app.models.item_image import ItemImage
+from app.models.item_accessory import ItemAccessory
 from app.models.sales_return import SalesReturn, SalesReturnCounter, SalesReturnItem
 from app.models.serial_unit import SerialUnit
 from app.models.kot import Kot, KotItem, KotNumberCounter
@@ -57,6 +57,7 @@ __all__ = [
     "ItemPriceTier",
     "ItemVariant",
     "ItemImage",
+    "ItemAccessory",
     "SalesReturn",
     "SalesReturnCounter",
     "SalesReturnItem",

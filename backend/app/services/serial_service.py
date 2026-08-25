@@ -51,6 +51,7 @@ class SerialService:
             "item_name": item_name or (unit.item.name if unit.item else None),
             "serial": unit.serial,
             "status": unit.status,
+            "warranty_months": unit.warranty_months,
             "sold_bill_id": unit.sold_bill_id,
             "sold_bill_item_id": unit.sold_bill_item_id,
             "sold_at": unit.sold_at.isoformat() if unit.sold_at else None,
@@ -99,7 +100,7 @@ class SerialService:
         return SerialService.serialize(unit)
 
     @staticmethod
-    def receive(*, item_id: str, serial: str):
+    def receive(*, item_id: str, serial: str, warranty_months=None):
         require_permission(PERM_ITEMS_STOCK)
         ctx, _ = SerialService._require_module()
         item = ItemRepository.lock_by_id_and_tenant(item_id, ctx.tenant_id)
@@ -112,12 +113,15 @@ class SerialService:
         if existing is not None:
             raise ConflictError("This serial / IMEI is already registered")
 
+        from app.services.item_service import ItemService
+
         unit = SerialUnit(
             id=new_uuid(),
             tenant_id=ctx.tenant_id,
             item_id=item.id,
             serial=cleaned,
             status=STATUS_IN_STOCK,
+            warranty_months=ItemService._parse_warranty_months(warranty_months),
             received_at=utc_now_naive(),
         )
         SerialUnitRepository.add(unit)

@@ -24,5 +24,9 @@ def get_by_serial(serial: str):
 
 def receive():
     payload = receive_serial_schema.load(request.get_json() or {})
-    data = SerialService.receive(item_id=payload["item_id"], serial=payload["serial"])
+    data = SerialService.receive(
+        item_id=payload["item_id"],
+        serial=payload["serial"],
+        warranty_months=payload.get("warranty_months"),
+    )
     return success_response(data=data, status_code=201)

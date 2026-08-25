@@ -1,9 +1,10 @@
 """Bill and bill line models + per-tenant bill number counter."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -129,6 +130,7 @@ class BillItem(db.Model):
         index=True,
     )
     serial_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    warranty_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     item_name: Mapped[str] = mapped_column(String(200), nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

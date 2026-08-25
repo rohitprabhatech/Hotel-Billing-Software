@@ -41,6 +41,8 @@ import {
 import { listCategories } from '../../services/categoryService';
 import { getItemByBarcode, listItems } from '../../services/itemService';
 import { listItemVariants } from '../../services/variantService';
+import { getSerialUnitBySerial, listSerialUnits } from '../../services/serialService';
+import { listItemAccessories } from '../../services/itemService';
 import { useModuleGate } from '../../context/ModulesContext';
 import VariantStockGrid from '../../components/VariantStockGrid';
 import {
@@ -81,6 +83,8 @@ function sortCategoriesHierarchically(categories) {
 
 export default function NewBillPage() {
   const variantsEnabled = useModuleGate('variants');
+  const serialImeiEnabled = useModuleGate('serial_imei');
+  const warrantyEnabled = useModuleGate('warranty');
   const [q, setQ] = useState('');
   const [barcode, setBarcode] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -113,6 +117,11 @@ export default function NewBillPage() {
   const [phoneDraftCc, setPhoneDraftCc] = useState('91');
   const [phoneDraft, setPhoneDraft] = useState('');
   const [variantPick, setVariantPick] = useState(null);
+  const [serialPick, setSerialPick] = useState(null);
+  const [serialUnits, setSerialUnits] = useState([]);
+  const [serialUnitsLoading, setSerialUnitsLoading] = useState(false);
+  const [serialDraft, setSerialDraft] = useState('');
+  const [accessorySuggestions, setAccessorySuggestions] = useState([]);
 
   const search = async (term = q, cat = categoryId) => {
     setError('');
@@ -194,6 +203,40 @@ export default function NewBillPage() {
     [categories],
   );
 
+  const addSerialLine = (item, serialUnit) => {
+    if (!serialUnit?.id || !serialUnit?.serial) {
+      setError('Select an in-stock serial / IMEI.');
+      return;
+    }
+    const lineKey = `${item.id}:serial:${serialUnit.id}`;
+    if (cart.some((line) => line.serial_unit_id === serialUnit.id)) {
+      setError('This serial / IMEI is already in the cart.');
+      return;
+    }
+    setError('');
+    setCart((prev) => [
+      ...prev,
+      {
+        line_key: lineKey,
+        item_id: item.id,
+        variant_id: null,
+        serial_unit_id: serialUnit.id,
+        serial: serialUnit.serial,
+        name: `${item.name} · ${serialUnit.serial}`,
+        price: Number(item.price),
+        gst_percentage: Number(item.gst_percentage),
+        quantity: 1,
+        stock_quantity: 1,
+        stock_tracked: true,
+      },
+    ]);
+    if (warrantyEnabled) {
+      listItemAccessories(item.id)
+        .then((res) => setAccessorySuggestions(res.data || []))
+        .catch(() => setAccessorySuggestions([]));
+    }
+  };
+
   const addLine = (item, variant = null) => {
     const lineKey = variant ? `${item.id}:${variant.id}` : item.id;
     const tracked = variant
@@ -244,8 +287,34 @@ export default function NewBillPage() {
     });
   };
 
-  const addItem = async (item, preselectedVariant = null) => {
+  const addItem = async (item, preselectedVariant = null, preselectedSerial = null) => {
     const matched = preselectedVariant || item.matched_variant || null;
+    const matchedSerial = preselectedSerial || item.matched_serial || null;
+
+    if (serialImeiEnabled && item.tracks_serial) {
+      if (matchedSerial?.id) {
+        addSerialLine(item, matchedSerial);
+        return;
+      }
+      setSerialDraft('');
+      setSerialPick({ item });
+      setSerialUnitsLoading(true);
+      try {
+        const res = await listSerialUnits({
+          item_id: item.id,
+          status: 'IN_STOCK',
+          per_page: 100,
+        });
+        setSerialUnits(res.data || []);
+      } catch (err) {
+        setError(err.response?.data?.error?.message || 'Could not load serial units.');
+        setSerialPick(null);
+      } finally {
+        setSerialUnitsLoading(false);
+      }
+      return;
+    }
+
     if (variantsEnabled && item.tracks_variants && !matched) {
       try {
         const res = await listItemVariants(item.id);
@@ -285,6 +354,11 @@ export default function NewBillPage() {
   };
 
   const setQty = (lineKey, quantity) => {
+    const line = cart.find((row) => row.line_key === lineKey);
+    if (line?.serial_unit_id) {
+      setError('Serialized items are sold one unit at a time.');
+      return;
+    }
     const qty = Number(quantity);
     if (!Number.isFinite(qty) || qty <= 0) {
       setCart((prev) => prev.filter((line) => line.line_key !== lineKey));
@@ -319,6 +393,26 @@ export default function NewBillPage() {
     setDiscount('0');
     setReference('');
     setPaymentMethod(DEFAULT_PAYMENT_METHOD);
+    setAccessorySuggestions([]);
+  };
+
+  const lookupSerialDraft = async () => {
+    const code = serialDraft.trim();
+    if (!code || !serialPick?.item) return;
+    setError('');
+    try {
+      const res = await getSerialUnitBySerial(code);
+      const unit = res.data;
+      if (unit.status !== 'IN_STOCK' || unit.item_id !== serialPick.item.id) {
+        setError('Serial / IMEI is not in stock for this item.');
+        return;
+      }
+      addSerialLine(serialPick.item, unit);
+      setSerialPick(null);
+      setSerialDraft('');
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Serial / IMEI not found.');
+    }
   };
 
   const finalize = async () => {
@@ -353,6 +447,8 @@ export default function NewBillPage() {
         items: cart.map((line) => ({
           item_id: line.item_id,
           variant_id: line.variant_id || undefined,
+          serial_unit_id: line.serial_unit_id || undefined,
+          serial: line.serial || undefined,
           quantity: line.quantity,
         })),
       });
@@ -700,6 +796,26 @@ export default function NewBillPage() {
                 helperText="For email PDF bill"
               />
 
+              {warrantyEnabled && accessorySuggestions.length ? (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Suggested accessories for the last serialized item:
+                  </Typography>
+                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                    {accessorySuggestions.map((acc) => (
+                      <Button
+                        key={acc.id}
+                        size="small"
+                        variant="outlined"
+                        onClick={() => addItem(acc)}
+                      >
+                        + {acc.name}
+                      </Button>
+                    ))}
+                  </Stack>
+                </Alert>
+              ) : null}
+
               <Stack spacing={1.5} sx={{ mb: 2.5, minHeight: 120 }}>
                 {cart.map((line) => (
                   <Box
@@ -733,6 +849,7 @@ export default function NewBillPage() {
                           onChange={(e) => setQty(line.line_key, e.target.value)}
                           inputProps={{ min: 0.001, step: '1' }}
                           sx={{ width: 88 }}
+                          disabled={Boolean(line.serial_unit_id)}
                         />
                         <Typography variant="caption" color="text.secondary">
                           × ₹{line.price.toFixed(2)}
@@ -1019,6 +1136,63 @@ export default function NewBillPage() {
           >
             {emailSending ? 'Sending…' : 'Send'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(serialPick)}
+        onClose={() => setSerialPick(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Select serial / IMEI</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {serialPick?.item?.name} — choose an in-stock unit or scan/type IMEI.
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
+            <TextField
+              label="Scan or type IMEI"
+              value={serialDraft}
+              onChange={(e) => setSerialDraft(e.target.value)}
+              fullWidth
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  lookupSerialDraft();
+                }
+              }}
+            />
+            <Button variant="outlined" onClick={lookupSerialDraft} sx={{ flexShrink: 0 }}>
+              Use IMEI
+            </Button>
+          </Stack>
+          {serialUnitsLoading ? (
+            <CircularProgress size={24} />
+          ) : (
+            <Stack spacing={1}>
+              {(serialUnits || []).map((unit) => (
+                <Button
+                  key={unit.id}
+                  variant="outlined"
+                  onClick={() => {
+                    addSerialLine(serialPick.item, unit);
+                    setSerialPick(null);
+                  }}
+                >
+                  {unit.serial}
+                </Button>
+              ))}
+              {!serialUnits.length ? (
+                <Typography variant="body2" color="text.secondary">
+                  No in-stock units. Receive stock from Owner → Serial / IMEI.
+                </Typography>
+              ) : null}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSerialPick(null)}>Cancel</Button>
         </DialogActions>
       </Dialog>
 

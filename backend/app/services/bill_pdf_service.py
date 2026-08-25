@@ -73,6 +73,12 @@ class BillPdfService:
                 size=9,
                 gap=13,
             )
+            if getattr(item, "warranty_until", None):
+                line(
+                    f"  Warranty valid until: {item.warranty_until.isoformat()}",
+                    size=8,
+                    gap=12,
+                )
         line("----------------------------------------------", size=9, gap=14)
         line(f"Subtotal: {float(bill.subtotal):.2f}")
         line(f"Discount: {float(bill.discount):.2f}")

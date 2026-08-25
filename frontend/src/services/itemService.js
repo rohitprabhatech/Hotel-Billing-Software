@@ -57,3 +57,15 @@ export async function deleteItemPriceTier(itemId, tierId) {
   const { data } = await apiClient.delete(`/items/${itemId}/price-tiers/${tierId}`);
   return data;
 }
+
+export async function listItemAccessories(itemId) {
+  const { data } = await apiClient.get(`/items/${itemId}/accessories`);
+  return data;
+}
+
+export async function replaceItemAccessories(itemId, accessoryItemIds) {
+  const { data } = await apiClient.put(`/items/${itemId}/accessories`, {
+    accessory_item_ids: accessoryItemIds,
+  });
+  return data;
+}

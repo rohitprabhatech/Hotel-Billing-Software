@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -27,6 +27,7 @@ class SerialUnit(db.Model, TimestampMixin):
         String(36), ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True
     )
     serial: Mapped[str] = mapped_column(String(64), nullable=False)
+    warranty_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default=STATUS_IN_STOCK)
     sold_bill_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("bills.id", ondelete="SET NULL"), nullable=True, index=True

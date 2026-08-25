@@ -23,6 +23,7 @@ class CreateItemSchema(Schema):
     tracks_batches = fields.Boolean(load_default=False)
     block_expired_batches = fields.Boolean(load_default=True)
     tracks_serial = fields.Boolean(load_default=False)
+    warranty_months = fields.Integer(load_default=None, allow_none=True, validate=validate.Range(min=0, max=120))
 
 
 class UpdateItemSchema(Schema):
@@ -45,6 +46,7 @@ class UpdateItemSchema(Schema):
     tracks_batches = fields.Boolean(load_default=None, allow_none=True)
     block_expired_batches = fields.Boolean(load_default=None, allow_none=True)
     tracks_serial = fields.Boolean(load_default=None, allow_none=True)
+    warranty_months = fields.Integer(load_default=None, allow_none=True, validate=validate.Range(min=0, max=120))
 
 
 class ItemStatusSchema(Schema):

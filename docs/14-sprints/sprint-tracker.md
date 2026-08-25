@@ -2,6 +2,8 @@
 
 **Active plan:** Business-specific development (BIZ-01 … BIZ-68).
 
+**Living software progress (update after every sprint):** [../software-status.md](../software-status.md)
+
 Platform foundation files sprint-00…sprint-14 are retained for history; much of that baseline is **already implemented in code**. Do not treat them as the industry backlog.
 
 Status values: NOT STARTED · IN PROGRESS · BLOCKED · COMPLETED
@@ -38,8 +40,8 @@ Approval rule: development for a sprint starts only after **APPROVED SPRINT BIZ-
 | BIZ-26 | Phase 04 – Clothing | Clothing Shops | Product images + POS variant picker; size/color-wise stock display. | BIZ-25 | COMPLETED | [sprint-biz-26-clothing-images-and-variant-stock-pos.md](./sprint-biz-26-clothing-images-and-variant-stock-pos.md) |
 | BIZ-27 | Phase 04 – Clothing | Clothing Shops | Return/exchange flows restocking variants and linking original bill. | BIZ-26 | COMPLETED | [sprint-biz-27-clothing-exchange-and-return.md](./sprint-biz-27-clothing-exchange-and-return.md) |
 | BIZ-28 | Phase 04 – Clothing | Clothing Shops | Sales by brand/category/size; customer history; testing gate. | BIZ-27 | COMPLETED | [sprint-biz-28-clothing-reports-and-testing-gate.md](./sprint-biz-28-clothing-reports-and-testing-gate.md) |
-| BIZ-29 | Phase 05 – Mobile / Electronics | Mobile Shops + Electronics (shared) | Serialized inventory units (IMEI/serial) unique per tenant; sell specific unit. | BIZ-10 | IN PROGRESS (backend + receive UI + bill binding; POS serial capture UI / tests incomplete — freeze for manual test) | [sprint-biz-29-shared-serial-imei-unit-stock.md](./sprint-biz-29-shared-serial-imei-unit-stock.md) |
-| BIZ-30 | Phase 05 – Mobile / Electronics | Mobile + Electronics | Warranty period on serial/sale; accessories as related items. | BIZ-29 | NOT STARTED | [sprint-biz-30-warranty-and-accessories.md](./sprint-biz-30-warranty-and-accessories.md) |
+| **BIZ-29** | Phase 05 – Mobile / Electronics | Mobile Shops + Electronics (shared) | Serialized inventory units (IMEI/serial) unique per tenant; sell specific unit. | BIZ-10 | COMPLETED | [sprint-biz-29-shared-serial-imei-unit-stock.md](./sprint-biz-29-shared-serial-imei-unit-stock.md) |
+| BIZ-30 | Phase 05 – Mobile / Electronics | Mobile + Electronics | Warranty period on serial/sale; accessories as related items. | BIZ-29 | COMPLETED | [sprint-biz-30-warranty-and-accessories.md](./sprint-biz-30-warranty-and-accessories.md) |
 | BIZ-31 | Phase 05 – Mobile / Electronics | Mobile + Electronics | Exchange/return for serial goods; repair tickets. | BIZ-30, BIZ-27 | NOT STARTED | [sprint-biz-31-exchange-return-and-repair-service-tracking.md](./sprint-biz-31-exchange-return-and-repair-service-tracking.md) |
 | BIZ-32 | Phase 05 – Mobile / Electronics | Mobile Shops | Mobile-specific model/brand fields and purchase history UX. | BIZ-31 | NOT STARTED | [sprint-biz-32-mobile-shop-pack-completion.md](./sprint-biz-32-mobile-shop-pack-completion.md) |
 | BIZ-33 | Phase 05 – Mobile / Electronics | Electronics Shops | Installation tracking linked to serial sales. | BIZ-32 | NOT STARTED | [sprint-biz-33-electronics-pack-installation.md](./sprint-biz-33-electronics-pack-installation.md) |

@@ -29,6 +29,7 @@ import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { filterControlSx } from '../../layouts/shell';
+import { getApiErrorMessage } from '../../utils/apiError';
 import {
   createTable,
   listTables,
@@ -95,7 +96,7 @@ export default function TablesPage() {
       const response = await listTables(params);
       setTables(response.data || []);
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Unable to load tables.');
+      setError(getApiErrorMessage(err, 'Unable to load tables.'));
     } finally {
       setLoading(false);
     }
@@ -143,7 +144,7 @@ export default function TablesPage() {
       setSuccess('Table added.');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Unable to save table.');
+      setError(getApiErrorMessage(err, 'Unable to save table.'));
     } finally {
       setSaving(false);
     }
@@ -157,7 +158,7 @@ export default function TablesPage() {
       setSuccess('Table status updated.');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Invalid status change.');
+      setError(getApiErrorMessage(err, 'Invalid status change.'));
     }
   };
 
@@ -169,7 +170,7 @@ export default function TablesPage() {
       setSuccess('Tables unmerged.');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Unable to unmerge tables.');
+      setError(getApiErrorMessage(err, 'Unable to unmerge tables.'));
     }
   };
 
@@ -192,7 +193,7 @@ export default function TablesPage() {
       setSuccess('Tables merged.');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Unable to merge tables.');
+      setError(getApiErrorMessage(err, 'Unable to merge tables.'));
     } finally {
       setSaving(false);
     }

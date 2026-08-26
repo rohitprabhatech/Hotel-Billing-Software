@@ -1,6 +1,6 @@
 """Dining table data access — tenant scoped."""
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from app.extensions import db
 from app.models.dining_table import DiningTable
@@ -47,7 +47,12 @@ class DiningTableRepository:
             query = query.filter(DiningTable.status == status)
         if not include_merged_children:
             query = query.filter(DiningTable.merged_into_id.is_(None))
-        return query.order_by(DiningTable.section.asc().nullsfirst(), DiningTable.code.asc()).all()
+        # MySQL does not support NULLS FIRST/LAST — use CASE instead.
+        return query.order_by(
+            case((DiningTable.section.is_(None), 0), else_=1),
+            DiningTable.section.asc(),
+            DiningTable.code.asc(),
+        ).all()
 
     @staticmethod
     def list_merged_children(tenant_id: str, primary_table_id: str) -> list[DiningTable]:

@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import or_
+from sqlalchemy import case, or_
 
 from app.extensions import db
 from app.models.item_batch import ItemBatch
@@ -20,7 +20,8 @@ class ItemBatchRepository:
         if active_only:
             query = query.filter(ItemBatch.is_active.is_(True), ItemBatch.quantity > 0)
         return query.order_by(
-            ItemBatch.expiry_date.asc().nullslast(),
+            case((ItemBatch.expiry_date.is_(None), 1), else_=0),
+            ItemBatch.expiry_date.asc(),
             ItemBatch.created_at.asc(),
         ).all()
 
@@ -69,7 +70,8 @@ class ItemBatchRepository:
         per_page = min(max(int(per_page or 50), 1), 200)
         rows = (
             query.order_by(
-                ItemBatch.expiry_date.asc().nullslast(),
+                case((ItemBatch.expiry_date.is_(None), 1), else_=0),
+                ItemBatch.expiry_date.asc(),
                 ItemBatch.created_at.asc(),
             )
             .offset((page - 1) * per_page)
@@ -92,7 +94,8 @@ class ItemBatchRepository:
                 )
             )
             .order_by(
-                ItemBatch.expiry_date.asc().nullslast(),
+                case((ItemBatch.expiry_date.is_(None), 1), else_=0),
+                ItemBatch.expiry_date.asc(),
                 ItemBatch.created_at.asc(),
             )
             .all()
@@ -112,7 +115,8 @@ class ItemBatchRepository:
             ItemBatch.query.filter_by(tenant_id=tenant_id, item_id=item_id, is_active=True)
             .filter(ItemBatch.quantity > 0)
             .order_by(
-                ItemBatch.expiry_date.asc().nullslast(),
+                case((ItemBatch.expiry_date.is_(None), 1), else_=0),
+                ItemBatch.expiry_date.asc(),
                 ItemBatch.created_at.asc(),
             )
             .all()

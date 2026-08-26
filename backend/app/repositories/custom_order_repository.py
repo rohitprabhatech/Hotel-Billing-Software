@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
@@ -52,7 +52,8 @@ class CustomOrderRepository:
         rows = (
             query.options(joinedload(CustomProductOrder.payments))
             .order_by(
-                CustomProductOrder.delivery_at.asc().nullslast(),
+                case((CustomProductOrder.delivery_at.is_(None), 1), else_=0),
+                CustomProductOrder.delivery_at.asc(),
                 CustomProductOrder.created_at.desc(),
             )
             .offset((page - 1) * per_page)

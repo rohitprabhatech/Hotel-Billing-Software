@@ -21,6 +21,7 @@ import {
 import { NAV_LINKS } from './landing/constants';
 import HeroSection from './landing/HeroSection';
 import LandingNav from './landing/LandingNav';
+import ProductPreviewSection from './landing/ProductPreviewSection';
 import {
   ContactSection,
   FinalCtaSection,
@@ -144,6 +145,7 @@ export default function HomePage() {
       ) : null}
 
       <HeroSection isDark={isDark} scrollToHash={scrollToHash} plans={publicPlans} />
+      <ProductPreviewSection />
       <CapabilityStrip />
       <FeaturesSection />
       <WorkflowSection />

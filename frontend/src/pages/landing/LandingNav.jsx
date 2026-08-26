@@ -33,8 +33,14 @@ export default function LandingNav({
     fontSize: '0.88rem',
     fontWeight: 600,
     whiteSpace: 'nowrap',
-    color: activeHash === href ? 'primary.main' : 'text.primary',
-    opacity: activeHash === href ? 1 : 0.78,
+    color: scrolled
+      ? activeHash === href
+        ? 'primary.main'
+        : 'text.primary'
+      : activeHash === href
+        ? '#FFFFFF'
+        : 'rgba(244,248,250,0.82)',
+    opacity: scrolled ? (activeHash === href ? 1 : 0.78) : 1,
     px: 0.4,
     py: 0.5,
     transition: 'color 0.15s ease, opacity 0.15s ease',
@@ -46,12 +52,12 @@ export default function LandingNav({
       bottom: -2,
       height: 2,
       borderRadius: 1,
-      bgcolor: 'primary.main',
+      bgcolor: scrolled ? 'primary.main' : '#F4F8FA',
       transform: activeHash === href ? 'scaleX(1)' : 'scaleX(0)',
       transition: 'transform 0.18s ease',
     },
     '&:hover': {
-      color: 'primary.main',
+      color: scrolled ? 'primary.main' : '#FFFFFF',
       opacity: 1,
       '&::after': { transform: 'scaleX(1)' },
     },
@@ -67,14 +73,15 @@ export default function LandingNav({
         flexShrink: 0,
         display: 'grid',
         placeItems: 'center',
-        bgcolor: 'primary.main',
-        color: 'primary.contrastText',
+        bgcolor: scrolled ? 'primary.main' : '#F4F8FA',
+        color: scrolled ? 'primary.contrastText' : '#123A48',
         fontFamily: DISPLAY_FONT,
         fontWeight: 700,
         fontSize: size > 32 ? '0.78rem' : '0.7rem',
         letterSpacing: '-0.05em',
-        boxShadow: (t) =>
-          t.palette.mode === 'dark' ? 'none' : '0 4px 12px rgba(31,78,95,0.22)',
+        boxShadow: scrolled
+          ? (t) => (t.palette.mode === 'dark' ? 'none' : '0 4px 12px rgba(31,78,95,0.22)')
+          : 'none',
       }}
     >
       BB
@@ -90,15 +97,40 @@ export default function LandingNav({
           top: 0,
           zIndex: 40,
           borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: isDark ? 'rgba(12, 18, 24, 0.88)' : 'rgba(255, 255, 255, 0.88)',
-          backdropFilter: 'blur(16px) saturate(1.2)',
+          borderColor: scrolled
+            ? 'divider'
+            : isDark
+              ? 'rgba(255,255,255,0.08)'
+              : 'rgba(18,58,72,0.12)',
+          bgcolor: scrolled
+            ? isDark
+              ? 'rgba(12, 18, 24, 0.92)'
+              : 'rgba(255, 255, 255, 0.92)'
+            : isDark
+              ? 'rgba(10, 16, 22, 0.55)'
+              : 'rgba(18, 58, 72, 0.28)',
+          backdropFilter: 'blur(16px) saturate(1.15)',
+          color: scrolled ? 'text.primary' : '#F4F8FA',
           boxShadow: scrolled
             ? isDark
               ? '0 8px 24px rgba(0,0,0,0.35)'
               : '0 8px 24px rgba(15, 36, 44, 0.07)'
             : 'none',
-          transition: 'box-shadow 0.22s ease, background-color 0.22s ease',
+          transition: 'box-shadow 0.22s ease, background-color 0.22s ease, color 0.22s ease',
+          '& .MuiButton-text, & .MuiIconButton-root': {
+            color: 'inherit',
+          },
+          '& .MuiButton-outlined': {
+            borderColor: scrolled ? undefined : 'rgba(244,248,250,0.45)',
+            color: scrolled ? undefined : '#F4F8FA',
+          },
+          '& .MuiButton-contained': scrolled
+            ? undefined
+            : {
+                bgcolor: '#F4F8FA',
+                color: '#123A48',
+                '&:hover': { bgcolor: '#FFFFFF' },
+              },
         }}
       >
         <Box
@@ -133,14 +165,18 @@ export default function LandingNav({
                   letterSpacing: '-0.03em',
                   lineHeight: 1.1,
                   whiteSpace: 'nowrap',
+                  color: 'inherit',
                 }}
               >
                 {COMPANY.productName}
               </Typography>
               <Typography
                 variant="caption"
-                color="text.secondary"
-                sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
+                sx={{
+                  display: { xs: 'none', sm: 'block' },
+                  lineHeight: 1.2,
+                  color: scrolled ? 'text.secondary' : 'rgba(244,248,250,0.7)',
+                }}
               >
                 by Prabha Technology
               </Typography>

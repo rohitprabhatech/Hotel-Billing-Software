@@ -34,6 +34,7 @@ def create_purchase():
         invoice_number=payload.get("invoice_number"),
         notes=payload.get("notes"),
         items=payload["items"],
+        payment_method=payload.get("payment_method") or "cash",
     )
     return success_response(data=data, status_code=201)
 

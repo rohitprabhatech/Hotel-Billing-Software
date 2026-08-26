@@ -25,10 +25,10 @@
 | Entity | Class | Purpose |
 |--------|-------|---------|
 | SerialUnit | BUSINESS-SPECIFIC | Serial instance |
-| Warranty | BUSINESS-SPECIFIC | Warranty record |
-| RepairTicket | BUSINESS-SPECIFIC | Service job |
-| InstallationJob | BUSINESS-SPECIFIC | Install scheduling |
-| ExchangeReturn | BUSINESS-SPECIFIC | Returns |
+| Item.brand / Item.model_name | BUSINESS-SPECIFIC attrs | Catalog brand & model |
+| RepairOrder | BUSINESS-SPECIFIC | Service job |
+| InstallationOrder | BUSINESS-SPECIFIC | Install scheduling linked to serial/bill (BIZ-33) |
+| SalesReturn | BUSINESS-SPECIFIC | Returns / exchanges |
 
 ## Relationships (summary)
 

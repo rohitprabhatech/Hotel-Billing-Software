@@ -1,13 +1,13 @@
 # Phase 10 – Production Readiness
 
-## 1. Phase objective
+Industry program closed via **BIZ-67** (ops runbook) and **BIZ-68** (go-live checklist).
 
-Deploy, backup, go-live checklist
+- [`../14-sprints/biz-68-industry-go-live-checklist.md`](../14-sprints/biz-68-industry-go-live-checklist.md)
+- [`../03-database/10-industry-modules-ops-runbook.md`](../03-database/10-industry-modules-ops-runbook.md)
+- [`../14-sprints/biz-68-production-readiness-gate-report.md`](../14-sprints/biz-68-production-readiness-gate-report.md)
 
-## 2. Scope
+Medical Store / pharmacy remains out of scope.
 
-In scope: deliverables listed below for this phase only.  
-Out of scope: Medical Store / pharmacy features; coding until documentation is approved.
 
 ## 3. Prerequisites
 

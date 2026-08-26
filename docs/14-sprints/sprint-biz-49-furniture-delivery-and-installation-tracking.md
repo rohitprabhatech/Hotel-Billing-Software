@@ -8,103 +8,47 @@ Delivery management + installation tracking for furniture orders.
 
 Furniture Shops
 
-## Why This Sprint Is Required
+## Status
 
-Special.
+**COMPLETED** (2026-08-26)
 
-## Existing Functionality
+## What shipped
 
-Electronics installation; challans.
+### Backend
 
-## Missing Functionality
+- `delivery_jobs` + `delivery_number_counters` (DL-#####)
+- `/api/v1/deliveries` CRUD + PATCH status (`delivery_tracking` module)
+- `/api/v1/furniture/deliveries` aliases
+- Furniture orders cannot be marked DELIVERED directly when `delivery_tracking` is on — use delivery board
+- `installation_orders.custom_order_id` — schedule install from ready furniture custom order
+- `/api/v1/furniture/installations` alias
+- Notifications: `DELIVERY_OUT_FOR_DELIVERY`, `DELIVERY_COMPLETED`
 
-Furniture delivery schedule UX.
+### Frontend
 
-## Scope
+- Owner **Deliveries** board at `/owner/deliveries` (Scheduled → Out for delivery → Delivered)
+- Furniture Orders: no direct “Mark delivered” when delivery module on
+- Installations: furniture mode picks ready custom orders instead of serial units
 
-### Backend Tasks
+### Database
 
-- Delivery status on orders
-- Reuse installation optionally
+- Alembic: `20260826_biz49_furniture_delivery_tracking`
 
-### Frontend Tasks
+### Tests
 
-- Delivery board
-
-### Database Tasks
-
-- delivery fields
-
-### API Tasks
-
-- patch status
-
-### UI/UX Tasks
-
-- Board
-
-### Testing Tasks
-
-- Statuses
-
-### Documentation Tasks
-
-- delivery
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- order delivery fields
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- orders
-
-## Frontend Pages
-
-- Deliveries
-
-## User Roles
-
-Manager/Owner.
-
-## Tenant Isolation
-
-Standard.
-
-## Audit Requirements
-
-Status changes.
-
-## Notifications
-
-Out for delivery / delivered.
+- `backend/tests/test_biz49_furniture_delivery_installation.py` (5 passed)
 
 ## Acceptance Criteria
 
-- Delivery statuses
+- [x] Delivery statuses on dedicated jobs
+- [x] Delivery board live (API + UI)
+- [x] Out for delivery / delivered notifications
+- [x] Reuse installation for furniture custom orders
 
 ## Dependencies
 
 BIZ-48, BIZ-33
 
-## Risks
+## Next
 
-- None
-
-## Definition of Done
-
-- Board live
-
-## Status
-
-NOT STARTED
-
-## Phase
-
-Phase 09 – Furniture
+BIZ-50 — furniture quotations + Phase 09 testing gate

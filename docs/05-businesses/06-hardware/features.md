@@ -15,14 +15,18 @@ Uses: [`../../04-common-modules/billing.md`](../../04-common-modules/billing.md)
 
 ## BUSINESS-SPECIFIC FEATURES
 
-- Unit management
-- Weight / length based products
-- Bulk quantity
+- Unit management (pcs, kg, m, ft, sqm, sqft, …)
+- Length / weight / area selling with decimal quantities (BIZ-35)
+- Separate stock UoM vs sale UoM (`items.sale_uom`)
+- Hardware POS with live line quote
+- Customer quotations convertible to bills (BIZ-36)
+- Delivery challans with PDF print (BIZ-36)
+- Bulk quantity / tiers (when `bulk_pricing` on)
 - Brand management
 - Product variants
 - Low-stock alerts
 - Customer / supplier credit
-- Price history
+- Price history (planned later sprints)
 
 ## Explicitly NOT enabled (examples)
 

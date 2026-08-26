@@ -103,7 +103,15 @@ BIZ-44
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Columns on `items`: `isbn` (unique per tenant), `author`, `publisher`
+- Migration: `20260826_biz45_book_store_metadata`
+- Search: `/items?q=` matches ISBN/author/publisher; `/items?isbn=` exact; `/books/catalog`, `/books/by-isbn/<isbn>`
+- UI: Items form + list + search label gated by `book_metadata`
+- Tests: `test_biz45_book_store_metadata.py` (5 passed)
 
 ## Phase
 

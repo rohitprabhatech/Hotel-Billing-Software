@@ -1,6 +1,6 @@
 # Book Stores — Database
 
-> Conceptual only. No tables created in documentation phase.
+> Implemented in BIZ-45 as columns on common `items` (not a separate BookMetadata table).
 
 ## COMMON ENTITIES reused
 
@@ -10,28 +10,20 @@
 | User | COMMON ENTITY | Reused |
 | Role | COMMON ENTITY | Reused |
 | Category | COMMON ENTITY | Reused |
-| Product / Item | COMMON ENTITY | Reused |
-| Customer | COMMON ENTITY | Reused |
-| Bill | COMMON ENTITY | Reused |
-| BillItem | COMMON ENTITY | Reused |
-| Payment | COMMON ENTITY | Reused |
-| StockMovement | COMMON ENTITY | Reused |
-| Notification | COMMON ENTITY | Reused |
-| AuditLog | COMMON ENTITY | Reused |
-| BusinessSettings | COMMON ENTITY | Reused |
+| Product / Item | COMMON ENTITY | Extended with book fields |
+| Customer / Bill / Payment / StockMovement / AuditLog | COMMON ENTITY | Reused |
 
-## BUSINESS-SPECIFIC ENTITIES
+## BUSINESS-SPECIFIC (on `items`)
 
-| Entity | Class | Purpose |
-|--------|-------|---------|
-| BookMetadata | BUSINESS-SPECIFIC | ISBN, author, publisher, edition |
-| BookReturn | BUSINESS-SPECIFIC | Returns |
+| Column | Type | Notes |
+|--------|------|-------|
+| `isbn` | String(32), nullable | Unique per tenant (`uq_items_tenant_isbn`); stored without hyphens/spaces |
+| `author` | String(160), nullable | Indexed with tenant for search |
+| `publisher` | String(160), nullable | Free text |
 
-## Relationships (summary)
+Migration: `20260826_biz45_book_store_metadata`
 
-- All specific entities carry `tenant_id` (RESTRICT to Tenant).
-- Prefer FK to `Bill` / `Product` / `Customer` rather than duplicating money columns.
-- Serial/IMEI uniqueness is **per tenant**.
+Returns remain on shared returns module (BIZ-46).
 
 ## See also
 

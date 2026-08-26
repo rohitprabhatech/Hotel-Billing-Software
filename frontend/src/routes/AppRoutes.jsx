@@ -48,6 +48,7 @@ const MasterAuditPage = lazy(() => import('../pages/master/MasterAuditPage'));
 const SettingsPage = lazy(() => import('../pages/owner/SettingsPage'));
 const UsersPage = lazy(() => import('../pages/owner/UsersPage'));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage'));
+const OutstandingReportPage = lazy(() => import('../pages/reports/OutstandingReportPage'));
 const MenuPage = lazy(() => import('../pages/modules/MenuPage'));
 const OrdersPage = lazy(() => import('../pages/modules/OrdersPage'));
 const NewOrderPage = lazy(() => import('../pages/modules/NewOrderPage'));
@@ -56,11 +57,28 @@ const KitchenPage = lazy(() => import('../pages/modules/KitchenPage'));
 const RecipesPage = lazy(() => import('../pages/owner/RecipesPage'));
 const CafePosPage = lazy(() => import('../pages/modules/CafePosPage'));
 const WastagePage = lazy(() => import('../pages/owner/WastagePage'));
+const ProductionPage = lazy(() => import('../pages/owner/ProductionPage'));
+const CakeOrdersPage = lazy(() => import('../pages/owner/CakeOrdersPage'));
+const FurnitureOrdersPage = lazy(() => import('../pages/owner/FurnitureOrdersPage'));
 const BatchesPage = lazy(() => import('../pages/owner/BatchesPage'));
 const GroceryCreditPage = lazy(() => import('../pages/owner/GroceryCreditPage'));
 const GroceryPosPage = lazy(() => import('../pages/modules/GroceryPosPage'));
+const StationeryPosPage = lazy(() => import('../pages/modules/StationeryPosPage'));
+const HardwarePosPage = lazy(() => import('../pages/modules/HardwarePosPage'));
 const ClothingPosPage = lazy(() => import('../pages/modules/ClothingPosPage'));
 const ReturnsPage = lazy(() => import('../pages/owner/ReturnsPage'));
+const RepairsPage = lazy(() => import('../pages/owner/RepairsPage'));
+const InstallationsPage = lazy(() => import('../pages/owner/InstallationsPage'));
+const DeliveriesPage = lazy(() => import('../pages/owner/DeliveriesPage'));
+const QuotationsPage = lazy(() => import('../pages/owner/QuotationsPage'));
+const PriceListsPage = lazy(() => import('../pages/owner/PriceListsPage'));
+const SalesOrdersPage = lazy(() => import('../pages/owner/SalesOrdersPage'));
+const PurchaseOrdersPage = lazy(() => import('../pages/owner/PurchaseOrdersPage'));
+const ChallansPage = lazy(() => import('../pages/owner/ChallansPage'));
+const WarehousesPage = lazy(() => import('../pages/owner/WarehousesPage'));
+const TourPackagesPage = lazy(() => import('../pages/owner/TourPackagesPage'));
+const TravelBookingsPage = lazy(() => import('../pages/owner/TravelBookingsPage'));
+const TravelAgentsPage = lazy(() => import('../pages/owner/TravelAgentsPage'));
 const PrintKotPage = lazy(() => import('../pages/print/PrintKotPage'));
 
 const VariantsPage = lazy(() => import('../pages/owner/VariantsPage'));
@@ -128,14 +146,32 @@ export default function AppRoutes() {
             <Route path="kitchen" element={<KitchenPage />} />
             <Route path="cafe" element={<CafePosPage />} />
             <Route path="grocery" element={<GroceryPosPage />} />
+            <Route path="stationery" element={<StationeryPosPage />} />
+            <Route path="hardware" element={<HardwarePosPage />} />
             <Route path="clothing" element={<ClothingPosPage />} />
             <Route path="returns" element={<ReturnsPage />} />
             <Route path="credit" element={<GroceryCreditPage />} />
+            <Route path="outstanding" element={<OutstandingReportPage />} />
             <Route path="recipes" element={<RecipesPage />} />
+            <Route path="production" element={<ProductionPage />} />
+            <Route path="cake-orders" element={<CakeOrdersPage />} />
+            <Route path="furniture-orders" element={<FurnitureOrdersPage />} />
             <Route path="wastage" element={<WastagePage />} />
             <Route path="batches" element={<BatchesPage />} />
             <Route path="variants" element={<VariantsPage />} />
             <Route path="serials" element={<SerialUnitsPage />} />
+            <Route path="repairs" element={<RepairsPage />} />
+            <Route path="installations" element={<InstallationsPage />} />
+            <Route path="deliveries" element={<DeliveriesPage />} />
+            <Route path="quotations" element={<QuotationsPage />} />
+            <Route path="price-lists" element={<PriceListsPage />} />
+            <Route path="sales-orders" element={<SalesOrdersPage />} />
+            <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+            <Route path="challans" element={<ChallansPage />} />
+            <Route path="warehouses" element={<WarehousesPage />} />
+            <Route path="tour-packages" element={<TourPackagesPage />} />
+            <Route path="travel-bookings" element={<TravelBookingsPage />} />
+            <Route path="travel-agents" element={<TravelAgentsPage />} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="item-activity" element={<ItemActivityPage />} />
             <Route path="stock-movements" element={<StockMovementsPage />} />
@@ -168,6 +204,8 @@ export default function AppRoutes() {
             <Route path="kitchen" element={<KitchenPage />} />
             <Route path="cafe" element={<CafePosPage />} />
             <Route path="grocery" element={<GroceryPosPage />} />
+            <Route path="stationery" element={<StationeryPosPage />} />
+            <Route path="hardware" element={<HardwarePosPage />} />
             <Route path="clothing" element={<ClothingPosPage />} />
             <Route path="returns" element={<ReturnsPage />} />
             <Route path="credit" element={<GroceryCreditPage />} />

@@ -103,6 +103,13 @@ def resolve_period(period: str, tz_name: str = "Asia/Kolkata", from_date=None, t
         if end_local <= start_local:
             raise ValueError("to date must be on or after from date")
         days = (end_day.date() - start_local.date()).days + 1
+        from app.constants.report_registry import MAX_CUSTOM_RANGE_DAYS
+
+        if days > MAX_CUSTOM_RANGE_DAYS:
+            raise ValueError(
+                f"Custom range cannot exceed {MAX_CUSTOM_RANGE_DAYS} days "
+                f"(requested {days} days). Narrow the date range."
+            )
         prev_end_local = start_local
         prev_start_local = start_local - timedelta(days=days)
         return (

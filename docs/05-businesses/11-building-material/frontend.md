@@ -1,21 +1,10 @@
-# Hardware / Building Material — Frontend
+# Building Material — Frontend
 
-Conceptual routes under `modules/building-material/` (not implemented yet).
+| Page | Route | Roles | Notes |
+|------|-------|-------|-------|
+| Quotations | `/owner/quotations` | Owner / Manager (write); Billing read | Quote builder; convert → bill |
+| Delivery Challans | `/owner/challans` | Owner / Manager (write); Billing read | Dispatch docs + PDF download |
+| Warehouses | `/owner/warehouses` | Owner / Manager (write); Billing read | Locations, balances, transfers |
+| Hardware POS | `/owner/hardware`, `/billing/hardware` | Billing+ | Measurement selling (BIZ-35) |
 
-| Page | Purpose | Roles | Components | API deps | UX |
-|------|---------|-------|------------|----------|-----|
-| Building Material Dashboard | Hardware / Building Material ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Warehouses | Hardware / Building Material ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Quotations | Hardware / Building Material ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Billing / Challans | Hardware / Building Material ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Credit | Hardware / Building Material ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Transfers | Hardware / Building Material ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Reports | Hardware / Building Material ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-
-## Shared UI
-
-Reuse common Billing, Customers, Reports pages. Industry nav items appear only when the module is enabled.
-
-## Responsive
-
-All pages: mobile + desktop; dark mode via existing theme.
+Nav items appear when `quotation` / `delivery_challan` / `warehouse` / `uom_measurement` modules are enabled.

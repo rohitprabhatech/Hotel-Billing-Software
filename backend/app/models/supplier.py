@@ -1,6 +1,8 @@
 """Tenant-scoped supplier master."""
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, UniqueConstraint
+from decimal import Decimal
+
+from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions import db
@@ -26,4 +28,6 @@ class Supplier(db.Model, TimestampMixin):
     email: Mapped[str | None] = mapped_column(String(255))
     address: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
+    credit_limit: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

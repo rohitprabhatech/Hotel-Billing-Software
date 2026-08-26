@@ -21,13 +21,28 @@ import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutl
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
 import KitchenOutlinedIcon from '@mui/icons-material/KitchenOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import BakeryDiningOutlinedIcon from '@mui/icons-material/BakeryDiningOutlined';
+import CakeOutlinedIcon from '@mui/icons-material/CakeOutlined';
+import WeekendOutlinedIcon from '@mui/icons-material/WeekendOutlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
+import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined';
 import PhoneIphoneOutlinedIcon from '@mui/icons-material/PhoneIphoneOutlined';
 import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
+import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined';
+import HandymanOutlinedIcon from '@mui/icons-material/HandymanOutlined';
+import DeliveryDiningOutlinedIcon from '@mui/icons-material/DeliveryDiningOutlined';
+import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
+import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined';
+import ShoppingCartCheckoutOutlinedIcon from '@mui/icons-material/ShoppingCartCheckoutOutlined';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
+import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined';
+import FlightTakeoffOutlinedIcon from '@mui/icons-material/FlightTakeoffOutlined';
+import LuggageOutlinedIcon from '@mui/icons-material/LuggageOutlined';
+import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined';
 import {
   AppBar,
   Box,
@@ -112,6 +127,20 @@ const navItems = [
     label: 'Grocery POS',
     icon: <ShoppingCartOutlinedIcon />,
     module: 'barcode_pos',
+    hideForBusinessTypes: ['stationery'],
+  },
+  {
+    to: PATHS.ownerStationery,
+    label: 'Stationery POS',
+    icon: <MenuBookOutlinedIcon />,
+    module: 'barcode_pos',
+    businessTypes: ['stationery'],
+  },
+  {
+    to: PATHS.ownerHardware,
+    label: 'Hardware POS',
+    icon: <StraightenOutlinedIcon />,
+    module: 'uom_measurement',
   },
   {
     to: PATHS.ownerClothing,
@@ -126,9 +155,87 @@ const navItems = [
     module: 'returns_exchange',
   },
   {
+    to: PATHS.ownerRepairs,
+    label: 'Repairs',
+    icon: <BuildOutlinedIcon />,
+    module: 'repair_service',
+  },
+  {
+    to: PATHS.ownerInstallations,
+    label: 'Installations',
+    icon: <HandymanOutlinedIcon />,
+    module: 'installation',
+  },
+  {
+    to: PATHS.ownerQuotations,
+    label: 'Quotations',
+    icon: <RequestQuoteOutlinedIcon />,
+    module: 'quotation',
+  },
+  {
+    to: PATHS.ownerPriceLists,
+    label: 'Price Lists',
+    icon: <PriceChangeOutlinedIcon />,
+    module: 'price_lists',
+    businessTypes: ['wholesale'],
+  },
+  {
+    to: PATHS.ownerSalesOrders,
+    label: 'Sales Orders',
+    icon: <ShoppingCartCheckoutOutlinedIcon />,
+    module: 'sales_orders',
+    businessTypes: ['wholesale'],
+  },
+  {
+    to: PATHS.ownerPurchaseOrders,
+    label: 'Purchase Orders',
+    icon: <AssignmentOutlinedIcon />,
+    module: 'purchase_orders',
+    businessTypes: ['wholesale'],
+  },
+  {
+    to: PATHS.ownerChallans,
+    label: 'Delivery Challans',
+    icon: <LocalShippingOutlinedIcon />,
+    module: 'delivery_challan',
+  },
+  {
+    to: PATHS.ownerWarehouses,
+    label: 'Warehouses',
+    icon: <WarehouseOutlinedIcon />,
+    module: 'warehouse',
+  },
+  {
+    to: PATHS.ownerTourPackages,
+    label: 'Tour Packages',
+    icon: <FlightTakeoffOutlinedIcon />,
+    module: 'tour_packages',
+    businessTypes: ['travel_agency'],
+  },
+  {
+    to: PATHS.ownerTravelBookings,
+    label: 'Travel Bookings',
+    icon: <LuggageOutlinedIcon />,
+    module: 'travel_bookings',
+    businessTypes: ['travel_agency'],
+  },
+  {
+    to: PATHS.ownerTravelAgents,
+    label: 'Travel Agents',
+    icon: <HandshakeOutlinedIcon />,
+    module: 'travel_commission',
+    businessTypes: ['travel_agency'],
+  },
+  {
     to: PATHS.ownerCredit,
     label: 'Credit / Udhari',
     icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  {
+    to: PATHS.ownerOutstanding,
+    label: 'Outstanding Report',
+    icon: <AssessmentOutlinedIcon />,
     module: 'customer_credit',
   },
   {
@@ -142,6 +249,33 @@ const navItems = [
     label: 'Recipes',
     icon: <MenuBookOutlinedIcon />,
     module: 'recipe',
+  },
+  {
+    to: PATHS.ownerProduction,
+    label: 'Production',
+    icon: <BakeryDiningOutlinedIcon />,
+    module: 'production',
+  },
+  {
+    to: PATHS.ownerCakeOrders,
+    label: 'Cake Orders',
+    icon: <CakeOutlinedIcon />,
+    module: 'custom_orders',
+    businessTypes: ['bakery_sweet'],
+  },
+  {
+    to: PATHS.ownerFurnitureOrders,
+    label: 'Furniture Orders',
+    icon: <WeekendOutlinedIcon />,
+    module: 'custom_orders',
+    businessTypes: ['furniture'],
+  },
+  {
+    to: PATHS.ownerDeliveries,
+    label: 'Deliveries',
+    icon: <DeliveryDiningOutlinedIcon />,
+    module: 'delivery_tracking',
+    businessTypes: ['furniture'],
   },
   {
     to: PATHS.ownerWastage,
@@ -238,6 +372,14 @@ const titles = {
     title: 'Grocery POS',
     subtitle: 'Scan-first billing with barcode lookup, weight quantities, and udhari.',
   },
+  [PATHS.ownerStationery]: {
+    title: 'Stationery POS',
+    subtitle: 'Search-first billing with barcode, bulk rates, and optional credit.',
+  },
+  [PATHS.ownerHardware]: {
+    title: 'Hardware POS',
+    subtitle: 'Bill pipes, cement, and tiles by length, weight, or area with clear unit prices.',
+  },
   [PATHS.ownerClothing]: {
     title: 'Clothing POS',
     subtitle: 'Pick size and color from live variant stock. Product images appear as thumbnails.',
@@ -246,9 +388,57 @@ const titles = {
     title: 'Returns / Exchange',
     subtitle: 'Restock the original size/color or swap into another variant against a finalized bill.',
   },
+  [PATHS.ownerRepairs]: {
+    title: 'Repairs',
+    subtitle: 'Track service tickets from drop-off through ready for pickup.',
+  },
+  [PATHS.ownerInstallations]: {
+    title: 'Installations',
+    subtitle: 'Schedule and track on-site installs linked to sold serial units.',
+  },
+  [PATHS.ownerQuotations]: {
+    title: 'Quotations',
+    subtitle: 'Build customer quotes and convert accepted lines into bills.',
+  },
+  [PATHS.ownerPriceLists]: {
+    title: 'Price Lists',
+    subtitle: 'Wholesale, retail, and customer-wise pricing matrices.',
+  },
+  [PATHS.ownerSalesOrders]: {
+    title: 'Sales Orders',
+    subtitle: 'Customer SOs that convert to bills when fulfilled.',
+  },
+  [PATHS.ownerPurchaseOrders]: {
+    title: 'Purchase Orders',
+    subtitle: 'Supplier POs that convert to purchases when stock arrives.',
+  },
+  [PATHS.ownerChallans]: {
+    title: 'Delivery Challans',
+    subtitle: 'Dispatch documents with printable PDFs; convert to bills when ready.',
+  },
+  [PATHS.ownerWarehouses]: {
+    title: 'Warehouses',
+    subtitle: 'Locations, balances, and stock transfers between warehouses.',
+  },
+  [PATHS.ownerTourPackages]: {
+    title: 'Tour Packages',
+    subtitle: 'Service packages with pricing — billed without inventory stock.',
+  },
+  [PATHS.ownerTravelBookings]: {
+    title: 'Travel Bookings',
+    subtitle: 'Booking board with advances, remaining payments, and trip status.',
+  },
+  [PATHS.ownerTravelAgents]: {
+    title: 'Travel Agents',
+    subtitle: 'Agent directory and commission report by booking.',
+  },
   [PATHS.ownerCredit]: {
     title: 'Credit / Udhari',
-    subtitle: 'Outstanding balances, collections, and payment history.',
+    subtitle: 'Customer and supplier outstanding balances, collections, and ledger history.',
+  },
+  [PATHS.ownerOutstanding]: {
+    title: 'Outstanding Report',
+    subtitle: 'Aged customer and supplier dues (0–30, 31–60, 61–90, 90+ days).',
   },
   [PATHS.ownerBatches]: {
     title: 'Batches / Expiry',
@@ -257,6 +447,22 @@ const titles = {
   [PATHS.ownerRecipes]: {
     title: 'Recipes',
     subtitle: 'Bill of materials — menu items mapped to ingredient stock.',
+  },
+  [PATHS.ownerProduction]: {
+    title: 'Production',
+    subtitle: 'Bake runs that consume ingredients and increase finished goods stock.',
+  },
+  [PATHS.ownerCakeOrders]: {
+    title: 'Cake Orders',
+    subtitle: 'Custom cakes with size, flavor, advances, delivery time, and status board.',
+  },
+  [PATHS.ownerFurnitureOrders]: {
+    title: 'Furniture Orders',
+    subtitle: 'Custom pieces with dimensions, material, advances, delivery time, and status board.',
+  },
+  [PATHS.ownerDeliveries]: {
+    title: 'Deliveries',
+    subtitle: 'Schedule and track last-mile delivery for ready furniture orders.',
   },
   [PATHS.ownerWastage]: {
     title: 'Food Wastage',
@@ -311,7 +517,10 @@ export default function OwnerLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const entitled = subscriptionAllowsAccess(user?.tenant?.subscription);
-  const visibleNav = useMemo(() => filterByModule(navItems), [filterByModule]);
+  const visibleNav = useMemo(
+    () => filterByModule(navItems, user?.tenant?.business_type),
+    [filterByModule, user?.tenant?.business_type],
+  );
 
   useEffect(() => {
     let active = true;

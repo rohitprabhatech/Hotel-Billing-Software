@@ -8,102 +8,25 @@ Wholesale testing gate.
 
 Wholesale Shops
 
-## Why This Sprint Is Required
+## Status
 
-Dedicated testing.
+**COMPLETED** (2026-08-26) — Gate **PASSED**
 
-## Existing Functionality
+## What shipped
 
-Core.
-
-## Missing Functionality
-
-Scenarios.
-
-## Scope
-
-### Backend Tasks
-
-- Tests
-
-### Frontend Tasks
-
-- Checklist
-
-### Database Tasks
-
-- Fixtures
-
-### API Tasks
-
-- Yes
-
-### UI/UX Tasks
-
-- Yes
-
-### Testing Tasks
-
-- Full matrix
-
-### Documentation Tasks
-
-- Gate
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- N/A
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- N/A
-
-## Frontend Pages
-
-- N/A
-
-## User Roles
-
-All.
-
-## Tenant Isolation
-
-Yes.
-
-## Audit Requirements
-
-Yes.
-
-## Notifications
-
-Yes.
+- Combined gate suite: `backend/tests/test_biz55_wholesale_testing_gate.py` (7 tests)
+- Full Phase 10 run: BIZ-51 … BIZ-55 — **28 passed**
+- Gate report: [`biz-55-wholesale-gate-report.md`](./biz-55-wholesale-gate-report.md)
+- Manual checklist: [`biz-55-manual-frontend-checklist.md`](./biz-55-manual-frontend-checklist.md)
 
 ## Acceptance Criteria
 
-- Gate signed
+- [x] Gate signed
 
 ## Dependencies
 
 BIZ-54
 
-## Risks
+## Next
 
-- None
-
-## Definition of Done
-
-- Gate doc
-
-## Status
-
-NOT STARTED
-
-## Phase
-
-Phase 10 – Wholesale
+BIZ-56 — next industry pack (Phase 11+)

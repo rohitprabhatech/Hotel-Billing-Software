@@ -1,4 +1,4 @@
-"""Supported base units of measure (BIZ-08)."""
+"""Supported base units of measure (BIZ-08 / BIZ-35)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,9 @@ UOM_L = "l"
 UOM_ML = "ml"
 UOM_M = "m"
 UOM_CM = "cm"
+UOM_FT = "ft"
+UOM_SQM = "sqm"
+UOM_SQFT = "sqft"
 UOM_BOX = "box"
 UOM_PACK = "pack"
 
@@ -23,6 +26,9 @@ ALLOWED_UOMS: frozenset[str] = frozenset(
         UOM_ML,
         UOM_M,
         UOM_CM,
+        UOM_FT,
+        UOM_SQM,
+        UOM_SQFT,
         UOM_BOX,
         UOM_PACK,
     }
@@ -36,6 +42,9 @@ UOM_LABELS: dict[str, str] = {
     UOM_ML: "Millilitre",
     UOM_M: "Metre",
     UOM_CM: "Centimetre",
+    UOM_FT: "Foot",
+    UOM_SQM: "Square metre",
+    UOM_SQFT: "Square foot",
     UOM_BOX: "Box",
     UOM_PACK: "Pack",
 }

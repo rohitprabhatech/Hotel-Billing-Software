@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from flask import current_app
 
+from app.constants.audit_catalog import entity_types_for_module, list_audit_meta
 from app.models.role import ROLE_OWNER
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.bill_repository import BillRepository
@@ -31,6 +32,11 @@ class AuditLogService:
         return current_app.config.get("REPORT_TIMEZONE", "Asia/Kolkata")
 
     @staticmethod
+    def catalog_meta():
+        AuditLogService._ensure_owner()
+        return list_audit_meta()
+
+    @staticmethod
     def list_logs(
         *,
         user_id=None,
@@ -41,6 +47,7 @@ class AuditLogService:
         q=None,
         from_date=None,
         to_date=None,
+        module=None,
         page=1,
         per_page=50,
     ):
@@ -55,11 +62,25 @@ class AuditLogService:
         except ValueError as exc:
             raise ValidationError("Invalid date format. Use YYYY-MM-DD") from exc
 
+        module_types = None
+        if module:
+            module_types = entity_types_for_module(module)
+            if module_types is None:
+                raise ValidationError(f"Unknown audit module: {module}")
+
+        # Explicit entity_type wins over module expansion when both sent.
+        entity_types = None
+        if entity_type:
+            entity_type = str(entity_type).strip().upper() or None
+        elif module_types:
+            entity_types = module_types
+
         rows, total = AuditLogRepository.list_by_tenant(
             ctx.tenant_id,
             user_id=user_id,
             action=action,
             entity_type=entity_type,
+            entity_types=entity_types,
             entity_id=entity_id,
             bill_number=bill_number,
             q=q,

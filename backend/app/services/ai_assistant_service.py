@@ -5,6 +5,7 @@ from flask import current_app
 from app.models.role import ROLE_OWNER
 from app.repositories.report_repository import ReportRepository
 from app.repositories.tenant_repository import TenantRepository
+from app.services.ai_industry_analyzers import run_industry_analyzers
 from app.utils.exceptions import ForbiddenError, ValidationError
 from app.utils.periods import resolve_period
 from app.utils.request_context import require_request_context
@@ -98,6 +99,11 @@ class AiAssistantService:
         business_name = (
             (tenant.business_name if tenant else None) or "Your business"
         ).strip()
+        industry_insights = (
+            run_industry_analyzers(tenant, start=start, end=end, label=label)
+            if tenant is not None
+            else []
+        )
 
         period_key = (period or "today").lower()
         has_sales = int(metrics.get("bill_count") or 0) > 0
@@ -126,6 +132,7 @@ class AiAssistantService:
                 "category_sales": [],
                 "day_wise": day_wise,
                 "insights": [],
+                "industry_insights": industry_insights,
                 "summary": (
                     f"No finalized bills were found for {business_name} during {label}."
                 ),
@@ -136,6 +143,7 @@ class AiAssistantService:
                     )
                 ),
                 "data_source": "tenant_sales_reports",
+                "analysis_mode": "rule_based",
             }
 
         top_items = item_wise[:TOP_N]
@@ -215,9 +223,11 @@ class AiAssistantService:
             "category_sales": category_wise,
             "day_wise": day_wise,
             "insights": insights,
+            "industry_insights": industry_insights,
             "summary": " ".join(summary_parts),
             "decisions": decisions,
             "data_source": "tenant_sales_reports",
+            "analysis_mode": "rule_based",
         }
 
     @staticmethod

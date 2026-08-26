@@ -111,8 +111,26 @@ BIZ-37
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 
 Phase 06 – Hardware / Building Material
+
+## Implementation notes (2026-08-25)
+
+- Tables: `warehouses`, `warehouse_stocks`, `stock_transfers` (+ lines/counter); `bills.warehouse_id`
+- Default warehouse `MAIN` auto-created; seeds from `items.stock_quantity`
+- Transfers conserve item total; bill can sell from selected warehouse
+- Purchases receive into default warehouse when module on
+- APIs: `/api/v1/warehouses`, `/warehouses/stocks`, `/stock-transfers`
+- UI: Owner Warehouses page (locations / balances / transfers)
+- Alembic: `20260825_biz38_warehouse_stock_foundation`
+- Tests: `test_biz38_warehouse_stock_foundation.py`
+
+### Default warehouse migration plan
+
+1. On first warehouse API use (or list), ensure one default `MAIN` per tenant with `warehouse` module.
+2. Copy each tracked `items.stock_quantity` into `warehouse_stocks` for MAIN (idempotent if rows already exist for that warehouse).
+3. Keep `items.stock_quantity` as billing aggregate; warehouse balances must sum to it for transferred stock (transfers do not change item total).
+4. Alembic creates empty tables; runtime seed handles existing tenants without a separate data migration script.

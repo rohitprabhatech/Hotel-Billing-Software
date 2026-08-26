@@ -102,7 +102,14 @@ BIZ-42
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Automated gate: `backend/tests/test_biz43_bakery_testing_gate.py`
+- Full Phase 07 suite: BIZ-40 … BIZ-43 — **25 passed** (2026-08-26)
+- Sign-off: [biz-43-bakery-gate-report.md](./biz-43-bakery-gate-report.md)
+- Manual UI: [biz-43-manual-frontend-checklist.md](./biz-43-manual-frontend-checklist.md)
 
 ## Phase
 

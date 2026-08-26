@@ -68,6 +68,9 @@ class SalesReturnService:
                     "exchange_item_id": line.exchange_item_id,
                     "exchange_variant_id": line.exchange_variant_id,
                     "exchange_item_name": line.exchange_item_name,
+                    "serial_unit_id": line.serial_unit_id,
+                    "exchange_serial_unit_id": line.exchange_serial_unit_id,
+                    "quarantine": bool(line.quarantine),
                 }
                 for line in (row.items or [])
             ],
@@ -107,6 +110,9 @@ class SalesReturnService:
                     "unit_price": float(line.unit_price),
                     "unit_refund": float(unit_refund),
                     "line_total": float(line.total),
+                    "serial_unit_id": getattr(line, "serial_unit_id", None),
+                    "serial_number": getattr(line, "serial_number", None),
+                    "is_serial": bool(getattr(line, "serial_unit_id", None)),
                 }
             )
         return {
@@ -214,33 +220,52 @@ class SalesReturnService:
             line_refund = money(unit_refund * quantity)
             exchange_item_id = (row.get("exchange_item_id") or "").strip() or None
             exchange_variant_id = (row.get("exchange_variant_id") or "").strip() or None
+            exchange_serial_unit_id = (row.get("exchange_serial_unit_id") or "").strip() or None
+            quarantine = bool(row.get("quarantine"))
+            serial_unit_id = getattr(bill_item, "serial_unit_id", None)
+            is_serial = bool(serial_unit_id)
+            if is_serial and quantity != Decimal("1.000"):
+                raise ValidationError("Serialized lines must be returned one unit at a time")
             exchange_item = None
             exchange_name = None
             exchange_value = money(0)
             if kind == KIND_EXCHANGE:
-                if not exchange_item_id:
-                    raise ValidationError("Select the size/color to give in exchange")
-                exchange_item = ItemRepository.lock_by_id_and_tenant(exchange_item_id, ctx.tenant_id)
-                if exchange_item is None or not exchange_item.is_active:
-                    raise ValidationError("Exchange item is inactive or not found")
-                if VariantService.item_tracks_variants(exchange_item):
-                    if not exchange_variant_id:
-                        raise ValidationError(f"Select a size/color for {exchange_item.name}")
-                    if exchange_variant_id == (bill_item.variant_id or ""):
-                        raise ValidationError("Exchange variant must be different from the returned one")
-                elif exchange_variant_id:
-                    raise ValidationError(f"{exchange_item.name} has no size/color variants")
-                exchange_name = exchange_item.name
-                if exchange_variant_id:
-                    variant = ItemVariantRepository.get_by_id(ctx.tenant_id, exchange_variant_id)
-                    if variant:
-                        exchange_name = f"{exchange_item.name} ({variant.size}/{variant.color})"
-                exchange_value = money(Decimal(exchange_item.price) * quantity)
+                if is_serial:
+                    if not exchange_serial_unit_id:
+                        raise ValidationError("Select the replacement serial / IMEI for exchange")
+                    if exchange_item_id or exchange_variant_id:
+                        raise ValidationError("Use exchange serial for serialized product exchange")
+                    exchange_item = ItemRepository.lock_by_id_and_tenant(bill_item.item_id, ctx.tenant_id)
+                    if exchange_item is None or not exchange_item.is_active:
+                        raise ValidationError("Exchange item is inactive or not found")
+                    if exchange_serial_unit_id == serial_unit_id:
+                        raise ValidationError("Exchange serial must be different from the returned one")
+                    exchange_name = bill_item.item_name
+                    exchange_value = money(Decimal(exchange_item.price) * quantity)
+                else:
+                    if not exchange_item_id:
+                        raise ValidationError("Select the size/color to give in exchange")
+                    exchange_item = ItemRepository.lock_by_id_and_tenant(exchange_item_id, ctx.tenant_id)
+                    if exchange_item is None or not exchange_item.is_active:
+                        raise ValidationError("Exchange item is inactive or not found")
+                    if VariantService.item_tracks_variants(exchange_item):
+                        if not exchange_variant_id:
+                            raise ValidationError(f"Select a size/color for {exchange_item.name}")
+                        if exchange_variant_id == (bill_item.variant_id or ""):
+                            raise ValidationError("Exchange variant must be different from the returned one")
+                    elif exchange_variant_id:
+                        raise ValidationError(f"{exchange_item.name} has no size/color variants")
+                    exchange_name = exchange_item.name
+                    if exchange_variant_id:
+                        variant = ItemVariantRepository.get_by_id(ctx.tenant_id, exchange_variant_id)
+                        if variant:
+                            exchange_name = f"{exchange_item.name} ({variant.size}/{variant.color})"
+                    exchange_value = money(Decimal(exchange_item.price) * quantity)
                 extra_total = money(extra_total + max(money(0), exchange_value - line_refund))
                 refund_total = money(refund_total + max(money(0), line_refund - exchange_value))
             else:
-                if exchange_item_id or exchange_variant_id:
-                    raise ValidationError("Exchange item is only valid for exchanges")
+                if exchange_item_id or exchange_variant_id or exchange_serial_unit_id:
+                    raise ValidationError("Exchange target is only valid for exchanges")
                 refund_total = money(refund_total + line_refund)
             prepared.append(
                 {
@@ -248,9 +273,13 @@ class SalesReturnService:
                     "quantity": quantity,
                     "line_refund": line_refund,
                     "exchange_item": exchange_item,
-                    "exchange_item_id": exchange_item_id,
+                    "exchange_item_id": exchange_item_id or (exchange_item.id if exchange_item else None),
                     "exchange_variant_id": exchange_variant_id,
                     "exchange_item_name": exchange_name,
+                    "exchange_serial_unit_id": exchange_serial_unit_id,
+                    "serial_unit_id": serial_unit_id,
+                    "quarantine": quarantine,
+                    "is_serial": is_serial,
                 }
             )
 
@@ -272,21 +301,50 @@ class SalesReturnService:
         db.session.flush()
 
         source = "EXCHANGE" if kind == KIND_EXCHANGE else "RETURN"
+        from app.services.serial_service import SerialService
+
         for payload in prepared:
             bill_item = payload["bill_item"]
             item = None
             if bill_item.item_id:
                 item = ItemRepository.lock_by_id_and_tenant(bill_item.item_id, ctx.tenant_id)
-            SalesReturnService._restock(
-                ctx,
-                item,
-                getattr(bill_item, "variant_id", None),
-                payload["quantity"],
-                source=source,
-                reference_id=header.id,
-                reason=f"{kind} {return_number} for bill {bill.bill_number}",
-            )
-            if kind == KIND_EXCHANGE and payload["exchange_item"] is not None:
+            if payload["is_serial"] and payload["serial_unit_id"]:
+                if kind == KIND_EXCHANGE and payload["exchange_serial_unit_id"]:
+                    new_unit = SerialService.exchange_unit(
+                        ctx.tenant_id,
+                        old_unit_id=payload["serial_unit_id"],
+                        new_unit_id=payload["exchange_serial_unit_id"],
+                        bill_id=bill.id,
+                        bill_item_id=bill_item.id,
+                        user_id=ctx.user_id,
+                    )
+                    bill_item.serial_unit_id = new_unit.id
+                    bill_item.serial_number = new_unit.serial
+                    if item:
+                        bill_item.item_name = f"{item.name} · {new_unit.serial}"
+                else:
+                    SerialService.return_from_sale(
+                        ctx.tenant_id,
+                        payload["serial_unit_id"],
+                        quarantine=payload["quarantine"],
+                        user_id=ctx.user_id,
+                        bill_id=bill.id,
+                    )
+            else:
+                SalesReturnService._restock(
+                    ctx,
+                    item,
+                    getattr(bill_item, "variant_id", None),
+                    payload["quantity"],
+                    source=source,
+                    reference_id=header.id,
+                    reason=f"{kind} {return_number} for bill {bill.bill_number}",
+                )
+            if (
+                kind == KIND_EXCHANGE
+                and payload["exchange_item"] is not None
+                and not payload["is_serial"]
+            ):
                 outgoing = payload["exchange_item"]
                 prev_out = Decimal(outgoing.stock_quantity or 0)
                 if VariantService.item_tracks_variants(outgoing):
@@ -343,6 +401,9 @@ class SalesReturnService:
                     exchange_item_id=payload["exchange_item_id"],
                     exchange_variant_id=payload["exchange_variant_id"],
                     exchange_item_name=payload["exchange_item_name"],
+                    serial_unit_id=payload.get("serial_unit_id"),
+                    exchange_serial_unit_id=payload.get("exchange_serial_unit_id"),
+                    quarantine=bool(payload.get("quarantine")),
                 )
             )
 

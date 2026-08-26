@@ -1,21 +1,22 @@
 # Book Stores — API
 
-Namespace: `/api/v1/books/...`
-
-Do **not** re-document common `/bills`, `/customers`, `/items` here — use those.
+Book metadata lives on common `/items`. Thin aliases under `/api/v1/books/...` (module `book_metadata`).
 
 | Method | Endpoint | Purpose | Auth | Permission | Tenant |
 |--------|----------|---------|------|------------|--------|
-| GET/POST | `/api/v1/books/catalog` | Book metadata | JWT | industry + role | Yes |
-| GET | `/api/v1/books/by-isbn/{isbn}` | ISBN lookup | JWT | industry + role | Yes |
-| POST | `/api/v1/books/returns` | Returns | JWT | industry + role | Yes |
+| GET/POST/PUT | `/api/v1/items` (+ `/:id`) | Catalog CRUD including `isbn`, `author`, `publisher` | JWT | items read/write | Yes |
+| GET | `/api/v1/items?q=` | Search name/SKU/barcode/**ISBN/author/publisher** | JWT | items:read | Yes |
+| GET | `/api/v1/items?isbn=` | Exact ISBN (hyphens optional) | JWT | items:read | Yes |
+| GET | `/api/v1/books/catalog` | Alias of items list (requires `book_metadata`) | JWT | items:read | Yes |
+| GET | `/api/v1/books/by-isbn/{isbn}` | Exact ISBN lookup | JWT | items:read | Yes |
+
+Returns / barcode POS reuse common + grocery endpoints (modules already on `book_store`).
 
 ## Contract notes
 
-- **Authentication:** Bearer JWT (business user).
-- **Tenant scope:** from JWT only.
-- **Validation:** 400 on bad payload; 409 on unique conflicts (e.g. IMEI).
-- **Errors:** 401 / 403 / 404 / 402 (subscription).
+- **ISBN uniqueness:** per tenant; 409 on duplicate.
+- **Normalization:** hyphens and spaces stripped on write/lookup.
+- **Errors:** 401 / 403 (missing module) / 404 / 409.
 
 ### Example response envelope
 

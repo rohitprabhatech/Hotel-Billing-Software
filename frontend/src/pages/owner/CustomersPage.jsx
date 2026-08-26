@@ -49,6 +49,7 @@ import {
   updateCustomer,
 } from '../../services/customerService';
 import { fetchClothingCustomerHistory } from '../../services/clothingService';
+import { fetchMobileCustomerHistory } from '../../services/mobileService';
 import { PAYMENT_CASH, PAYMENT_ONLINE } from '../../utils/paymentMethod';
 
 const emptyForm = {
@@ -69,6 +70,7 @@ function money(value) {
 
 export default function CustomersPage() {
   const clothingEnabled = useModuleGate('variants');
+  const mobileEnabled = useModuleGate('serial_imei');
   const [customers, setCustomers] = useState([]);
   const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [q, setQ] = useState('');
@@ -190,7 +192,10 @@ export default function CustomersPage() {
     setHistoryBills([]);
     setHistoryLoading(true);
     try {
-      if (clothingEnabled) {
+      if (mobileEnabled) {
+        const res = await fetchMobileCustomerHistory(customer.id, { per_page: 20 });
+        setHistoryBills(res.data?.bills || []);
+      } else if (clothingEnabled) {
         const res = await fetchClothingCustomerHistory(customer.id, { per_page: 20 });
         setHistoryBills(res.data?.bills || []);
       } else {
@@ -504,7 +509,14 @@ export default function CustomersPage() {
                     </TableCell>
                     <TableCell>
                       {bill.items?.length
-                        ? bill.items.map((line) => line.item_name).join(', ')
+                        ? bill.items
+                            .map((line) => {
+                              const parts = [line.item_name];
+                              if (line.serial_number) parts.push(`IMEI ${line.serial_number}`);
+                              if (line.warranty_until) parts.push(`warranty to ${line.warranty_until}`);
+                              return parts.join(' · ');
+                            })
+                            .join(', ')
                         : '—'}
                     </TableCell>
                     <TableCell align="right">₹{Number(bill.grand_total).toFixed(2)}</TableCell>

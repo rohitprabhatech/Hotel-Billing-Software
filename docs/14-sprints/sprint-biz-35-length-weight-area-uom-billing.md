@@ -102,8 +102,16 @@ BIZ-10, BIZ-08
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 
 Phase 06 – Hardware / Building Material
+
+## Implementation notes (2026-08-25)
+
+- `items.sale_uom` + area/length UoMs (`ft`, `sqm`, `sqft`); Decimal conversion via `app.utils.uom`
+- Bill stock deduction converts sale qty → stock UoM
+- APIs: `GET/POST /api/v1/hardware/units|pos-catalog|quote|convert` (module `uom_measurement`)
+- Hardware POS UI (owner + billing); Items stock vs sale unit
+- Tests: `backend/tests/test_biz35_length_weight_area_uom.py` (pipe 10×450=4500)

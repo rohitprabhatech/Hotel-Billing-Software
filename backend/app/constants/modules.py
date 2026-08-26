@@ -49,6 +49,7 @@ MODULE_CATALOG: dict[str, str] = {
     "custom_orders": "Custom Orders & Advances",
     "delivery_tracking": "Delivery Management",
     "book_metadata": "ISBN / Author / Publisher",
+    "furniture_attributes": "Furniture Dimensions / Material / Color",
     "price_lists": "Wholesale Price Lists",
     "sales_orders": "Sales Orders",
     "purchase_orders": "Purchase Orders",
@@ -126,6 +127,9 @@ _BUSINESS_TYPE_INDUSTRY: dict[str, frozenset[str]] = {
             "bulk_pricing",
             "customer_credit",
             "variants",
+            "quotation",
+            "delivery_challan",
+            "transport_charges",
         }
     ),
     "bakery_sweet": frozenset(
@@ -155,6 +159,7 @@ _BUSINESS_TYPE_INDUSTRY: dict[str, frozenset[str]] = {
     ),
     "furniture": frozenset(
         {
+            "furniture_attributes",
             "custom_orders",
             "quotation",
             "delivery_tracking",

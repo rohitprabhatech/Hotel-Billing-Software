@@ -1,25 +1,19 @@
 # Electronics Shops — API
 
-Namespace: `/api/v1/electronics/...`
-
-Do **not** re-document common `/bills`, `/customers`, `/items` here — use those.
+Namespace: `/api/v1/...` (shared serial/repair + pack-specific installation).
 
 | Method | Endpoint | Purpose | Auth | Permission | Tenant |
 |--------|----------|---------|------|------------|--------|
-| GET/POST | `/api/v1/electronics/serials` | Serial inventory | JWT | industry + role | Yes |
-| GET/POST | `/api/v1/electronics/warranties` | Warranties | JWT | industry + role | Yes |
-| GET/POST | `/api/v1/electronics/repairs` | Repairs | JWT | industry + role | Yes |
-| GET/POST | `/api/v1/electronics/installations` | Install jobs | JWT | industry + role | Yes |
+| GET | `/api/v1/serial-units` | Serial inventory (shared) | JWT | `serial_imei` | Yes |
+| GET/POST | `/api/v1/repairs` | Repair tickets (shared) | JWT | `repair_service` | Yes |
+| GET/POST | `/api/v1/installations` | Installation jobs | JWT | `installation` | Yes |
+| PATCH | `/api/v1/installations/{id}/status` | Status transitions | JWT Owner/Manager | `installation` | Yes |
+| GET | `/api/v1/mobile/sales` | Brand/model sales (shared with mobile) | JWT | `serial_imei` | Yes |
+
+Create installation body: `serial_unit_id`, `scheduled_at` (required); optional address, customer, technician, notes, charge. Status flow: `SCHEDULED` → `IN_PROGRESS` → `COMPLETED` (or `CANCELLED`).
 
 ## Contract notes
 
 - **Authentication:** Bearer JWT (business user).
 - **Tenant scope:** from JWT only.
-- **Validation:** 400 on bad payload; 409 on unique conflicts (e.g. IMEI).
-- **Errors:** 401 / 403 / 404 / 402 (subscription).
-
-### Example response envelope
-
-```json
-{ "success": true, "data": {}, "meta": {}, "error": null }
-```
+- **Module:** `installation` enabled for `electronics` (and furniture later).

@@ -13,11 +13,18 @@ from reportlab.pdfgen import canvas
 
 from app.constants.payments import normalize_payment_method, payment_method_label
 from app.constants.permissions import PERM_REPORTS
+from app.constants.report_registry import (
+    DEFAULT_BILLS_PER_PAGE,
+    MAX_BILLS_PER_PAGE,
+    MAX_CUSTOM_RANGE_DAYS,
+    filter_registry_for_modules,
+)
 from app.extensions import db
 from app.repositories.report_repository import ReportRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
-from app.utils.exceptions import ValidationError
+from app.services.module_service import ModuleService
+from app.utils.exceptions import NotFoundError, ValidationError
 from app.utils.permission_access import require_permission
 from app.utils.periods import resolve_period
 from app.utils.request_context import require_request_context
@@ -91,6 +98,37 @@ class ReportService:
         return top_items, low_items
 
     @staticmethod
+    def _bills_page(page=None, per_page=None) -> tuple[int, int]:
+        page_n = max(int(page or 1), 1)
+        per_n = min(
+            max(int(per_page or DEFAULT_BILLS_PER_PAGE), 1),
+            MAX_BILLS_PER_PAGE,
+        )
+        return page_n, per_n
+
+    @staticmethod
+    def available_reports():
+        ctx = ReportService._ensure_reports_access()
+        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        if tenant is None:
+            raise NotFoundError("Tenant not found")
+        enabled = set(ModuleService.enabled_codes_for_tenant(tenant))
+        reports = filter_registry_for_modules(enabled)
+        return {
+            "reports": reports,
+            "hub_reports": [row for row in reports if row["kind"] == "hub"],
+            "link_reports": [row for row in reports if row["kind"] == "link"],
+            "limits": {
+                "max_custom_range_days": MAX_CUSTOM_RANGE_DAYS,
+                "default_bills_per_page": DEFAULT_BILLS_PER_PAGE,
+                "max_bills_per_page": MAX_BILLS_PER_PAGE,
+            },
+            "index_notes": [
+                "bills: ix_bills_tenant_status_created_at (tenant_id, status, created_at)",
+            ],
+        }
+
+    @staticmethod
     def _build_report(
         tenant_id: str,
         start,
@@ -98,12 +136,24 @@ class ReportService:
         label: str,
         period: str,
         payment_method: str | None = None,
+        *,
+        page: int = 1,
+        per_page: int = DEFAULT_BILLS_PER_PAGE,
     ):
         method = ReportService._normalize_filter(payment_method)
+        page_n, per_n = ReportService._bills_page(page, per_page)
         item_wise = ReportRepository.item_wise(
             tenant_id, start, end, payment_method=method
         )
         top_items, low_items = ReportService._rank_items(item_wise)
+        bills, bills_total = ReportRepository.bill_rows(
+            tenant_id,
+            start,
+            end,
+            payment_method=method,
+            page=page_n,
+            per_page=per_n,
+        )
         return {
             "period": period,
             "label": label,
@@ -120,11 +170,12 @@ class ReportService:
             "day_wise": ReportRepository.day_wise(
                 tenant_id, start, end, payment_method=method
             ),
-            "bills": ReportService._serialize_bills(
-                ReportRepository.bill_rows(
-                    tenant_id, start, end, payment_method=method
-                )
-            ),
+            "bills": ReportService._serialize_bills(bills),
+            "bills_meta": {
+                "page": page_n,
+                "per_page": per_n,
+                "total": bills_total,
+            },
         }
 
     @staticmethod
@@ -165,22 +216,47 @@ class ReportService:
         }
 
     @staticmethod
-    def daily_sales(date: str | None = None, payment_method: str | None = None):
+    def daily_sales(
+        date: str | None = None,
+        payment_method: str | None = None,
+        *,
+        page: int = 1,
+        per_page: int = DEFAULT_BILLS_PER_PAGE,
+    ):
         ctx = ReportService._ensure_reports_access()
         if date:
             start, end, label, *_ = ReportService._bounds("custom", date, date)
         else:
             start, end, label, *_ = ReportService._bounds("today")
         return ReportService._build_report(
-            ctx.tenant_id, start, end, label, "daily", payment_method=payment_method
+            ctx.tenant_id,
+            start,
+            end,
+            label,
+            "daily",
+            payment_method=payment_method,
+            page=page,
+            per_page=per_page,
         )
 
     @staticmethod
-    def weekly_sales(payment_method: str | None = None):
+    def weekly_sales(
+        payment_method: str | None = None,
+        *,
+        page: int = 1,
+        per_page: int = DEFAULT_BILLS_PER_PAGE,
+    ):
         ctx = ReportService._ensure_reports_access()
         start, end, label, *_ = ReportService._bounds("this_week")
         return ReportService._build_report(
-            ctx.tenant_id, start, end, label, "weekly", payment_method=payment_method
+            ctx.tenant_id,
+            start,
+            end,
+            label,
+            "weekly",
+            payment_method=payment_method,
+            page=page,
+            per_page=per_page,
         )
 
     @staticmethod
@@ -188,6 +264,9 @@ class ReportService:
         year: int | None = None,
         month: int | None = None,
         payment_method: str | None = None,
+        *,
+        page: int = 1,
+        per_page: int = DEFAULT_BILLS_PER_PAGE,
     ):
         ctx = ReportService._ensure_reports_access()
         if year and month:
@@ -198,15 +277,36 @@ class ReportService:
         else:
             start, end, label, *_ = ReportService._bounds("this_month")
         return ReportService._build_report(
-            ctx.tenant_id, start, end, label, "monthly", payment_method=payment_method
+            ctx.tenant_id,
+            start,
+            end,
+            label,
+            "monthly",
+            payment_method=payment_method,
+            page=page,
+            per_page=per_page,
         )
 
     @staticmethod
-    def custom_sales(from_date: str, to_date: str, payment_method: str | None = None):
+    def custom_sales(
+        from_date: str,
+        to_date: str,
+        payment_method: str | None = None,
+        *,
+        page: int = 1,
+        per_page: int = DEFAULT_BILLS_PER_PAGE,
+    ):
         ctx = ReportService._ensure_reports_access()
         start, end, label, *_ = ReportService._bounds("custom", from_date, to_date)
         return ReportService._build_report(
-            ctx.tenant_id, start, end, label, "custom", payment_method=payment_method
+            ctx.tenant_id,
+            start,
+            end,
+            label,
+            "custom",
+            payment_method=payment_method,
+            page=page,
+            per_page=per_page,
         )
 
     @staticmethod
@@ -409,6 +509,17 @@ class ReportService:
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True,
             download_name=filename,
+        )
+
+    @staticmethod
+    def outstanding(*, party_type: str | None = None, as_of: str | None = None):
+        """Aged customer + supplier outstanding (BIZ-54)."""
+        ReportService._ensure_reports_access()
+        from app.services.party_ledger_service import PartyLedgerService
+
+        return PartyLedgerService.aged_outstanding_report(
+            as_of=as_of or None,
+            party_type=party_type,
         )
 
     @staticmethod

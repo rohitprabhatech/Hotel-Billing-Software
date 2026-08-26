@@ -110,8 +110,17 @@ BIZ-35
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 
 Phase 06 – Hardware / Building Material
+
+## Implementation notes (2026-08-25)
+
+- Tables: `quotations`, `quotation_items`, `delivery_challans`, `delivery_challan_items` + counters
+- APIs: `/api/v1/quotations`, `/api/v1/challans` (+ convert, challan PDF)
+- Modules: `quotation`, `delivery_challan` (hardware, building_material, wholesale; furniture has quotation)
+- UI: Owner Quotations + Delivery Challans pages
+- Tests: `test_biz36_quotation_delivery_challan.py`
+- Alembic: `20260825_biz36_quotations_delivery_challans`

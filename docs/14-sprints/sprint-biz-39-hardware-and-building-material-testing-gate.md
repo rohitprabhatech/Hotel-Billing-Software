@@ -102,7 +102,14 @@ BIZ-38
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Automated gate: `backend/tests/test_biz39_hardware_building_material_testing_gate.py`
+- Full Phase 06 suite: BIZ-35 … BIZ-39 — **27 passed** (2026-08-25)
+- Sign-off: [biz-39-hardware-building-material-gate-report.md](./biz-39-hardware-building-material-gate-report.md)
+- Manual UI: [biz-39-manual-frontend-checklist.md](./biz-39-manual-frontend-checklist.md)
 
 ## Phase
 

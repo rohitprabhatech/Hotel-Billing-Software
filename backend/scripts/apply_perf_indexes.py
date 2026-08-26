@@ -1,4 +1,8 @@
-"""Add composite indexes for bill list / delivery / stock hot paths (idempotent)."""
+"""Add composite indexes for bill list / delivery / stock / POS hot paths (idempotent).
+
+Prefer Alembic revision `20260826_biz66_perf_indexes` on app DBs.
+This script remains for ops catch-up on hosts that only run SQL helpers.
+"""
 
 from __future__ import annotations
 
@@ -39,6 +43,17 @@ def _has_table(conn, table: str) -> bool:
     )
 
 
+def _ensure_index(conn, table: str, name: str, ddl_cols: str) -> None:
+    if not _has_table(conn, table):
+        print(f"SKIP {table} (table missing)")
+        return
+    if _has_index(conn, table, name):
+        print(f"{name} already exists")
+        return
+    conn.execute(text(f"CREATE INDEX {name} ON {table} ({ddl_cols})"))
+    print(f"Created {name}")
+
+
 def main() -> int:
     url = os.environ.get("DATABASE_URL")
     if not url:
@@ -48,50 +63,40 @@ def main() -> int:
     engine = create_engine(url)
     with engine.begin() as conn:
         if _has_table(conn, "bill_deliveries"):
-            name = "ix_bill_deliveries_tenant_method_bill_created"
-            if not _has_index(conn, "bill_deliveries", name):
-                conn.execute(
-                    text(
-                        f"""
-                        CREATE INDEX {name}
-                        ON bill_deliveries (tenant_id, delivery_method, bill_id, created_at)
-                        """
-                    )
-                )
-                print(f"Created {name}")
-            else:
-                print(f"{name} already exists")
+            _ensure_index(
+                conn,
+                "bill_deliveries",
+                "ix_bill_deliveries_tenant_method_bill_created",
+                "tenant_id, delivery_method, bill_id, created_at",
+            )
         else:
             print("SKIP bill_deliveries (table missing)")
 
-        if _has_table(conn, "stock_movements"):
-            name = "ix_stock_movements_tenant_item_created"
-            if not _has_index(conn, "stock_movements", name):
-                conn.execute(
-                    text(
-                        f"""
-                        CREATE INDEX {name}
-                        ON stock_movements (tenant_id, item_id, created_at)
-                        """
-                    )
-                )
-                print(f"Created {name}")
-            else:
-                print(f"{name} already exists")
-        else:
-            print("SKIP stock_movements (table missing)")
-
-        if _has_table(conn, "bills"):
-            name = "ix_bills_tenant_created_at"
-            if not _has_index(conn, "bills", name):
-                conn.execute(
-                    text(
-                        f"CREATE INDEX {name} ON bills (tenant_id, created_at)"
-                    )
-                )
-                print(f"Created {name}")
-            else:
-                print(f"{name} already exists")
+        _ensure_index(
+            conn,
+            "stock_movements",
+            "ix_stock_movements_tenant_item_created",
+            "tenant_id, item_id, created_at",
+        )
+        _ensure_index(conn, "bills", "ix_bills_tenant_created_at", "tenant_id, created_at")
+        _ensure_index(
+            conn,
+            "items",
+            "ix_items_tenant_active_name",
+            "tenant_id, is_active, name",
+        )
+        _ensure_index(
+            conn,
+            "warehouse_stocks",
+            "ix_warehouse_stocks_tenant_item",
+            "tenant_id, item_id",
+        )
+        _ensure_index(
+            conn,
+            "serial_units",
+            "ix_serial_units_tenant_status_received",
+            "tenant_id, status, received_at",
+        )
 
     print("Performance indexes applied.")
     return 0

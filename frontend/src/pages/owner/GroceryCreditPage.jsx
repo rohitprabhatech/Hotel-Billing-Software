@@ -13,6 +13,8 @@ import {
   MenuItem,
   Select,
   Stack,
+  Tab,
+  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -35,6 +37,11 @@ import {
   fetchGroceryOutstanding,
   payGroceryCredit,
 } from '../../services/groceryService';
+import {
+  fetchSupplierLedger,
+  fetchSupplierOutstanding,
+  paySupplierCredit,
+} from '../../services/tradeCreditService';
 import { PAYMENT_CASH, PAYMENT_ONLINE } from '../../utils/paymentMethod';
 
 const PAGE_SIZE = 25;
@@ -46,48 +53,58 @@ function money(value) {
 
 export default function GroceryCreditPage() {
   const moduleEnabled = useModuleGate('customer_credit');
+  const [partyTab, setPartyTab] = useState('customer');
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [ledgerCustomer, setLedgerCustomer] = useState(null);
+  const [ledgerParty, setLedgerParty] = useState(null);
   const [ledgerData, setLedgerData] = useState(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
-  const [payCustomer, setPayCustomer] = useState(null);
+  const [payParty, setPayParty] = useState(null);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState(PAYMENT_CASH);
   const [payNotes, setPayNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmPay, setConfirmPay] = useState(false);
 
-  const load = useCallback(async (nextPage = 1) => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetchGroceryOutstanding({ page: nextPage, per_page: PAGE_SIZE });
-      setRows(res.data || []);
-      setMeta(res.meta || { page: nextPage, per_page: PAGE_SIZE, total: 0 });
-      setPage(res.meta?.page || nextPage);
-    } catch (err) {
-      setError(err.response?.data?.error?.message || 'Unable to load outstanding credit.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const isSupplier = partyTab === 'supplier';
+
+  const load = useCallback(
+    async (nextPage = 1) => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = isSupplier
+          ? await fetchSupplierOutstanding({ page: nextPage, per_page: PAGE_SIZE })
+          : await fetchGroceryOutstanding({ page: nextPage, per_page: PAGE_SIZE });
+        setRows(res.data || []);
+        setMeta(res.meta || { page: nextPage, per_page: PAGE_SIZE, total: 0 });
+        setPage(res.meta?.page || nextPage);
+      } catch (err) {
+        setError(err.response?.data?.error?.message || 'Unable to load outstanding credit.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isSupplier],
+  );
 
   useEffect(() => {
     if (!moduleEnabled) return;
     load(1);
   }, [moduleEnabled, load]);
 
-  const openLedger = async (customer) => {
-    setLedgerCustomer(customer);
+  const openLedger = async (party) => {
+    setLedgerParty(party);
     setLedgerLoading(true);
     setError('');
     try {
-      const res = await fetchGroceryCredit(customer.id, { per_page: 50 });
+      const res = isSupplier
+        ? await fetchSupplierLedger(party.id, { per_page: 50 })
+        : await fetchGroceryCredit(party.id, { per_page: 50 });
       setLedgerData(res.data);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to load payment history.');
@@ -97,7 +114,7 @@ export default function GroceryCreditPage() {
   };
 
   const onCollectPayment = async () => {
-    if (!payCustomer || !payAmount || Number(payAmount) <= 0) {
+    if (!payParty || !payAmount || Number(payAmount) <= 0) {
       setError('Enter a valid payment amount.');
       return;
     }
@@ -105,13 +122,18 @@ export default function GroceryCreditPage() {
     setError('');
     setSuccess('');
     try {
-      await payGroceryCredit(payCustomer.id, {
+      const payload = {
         amount: payAmount,
         collection_method: payMethod,
         notes: payNotes.trim() || null,
-      });
-      setSuccess(`Payment recorded for ${payCustomer.name}.`);
-      setPayCustomer(null);
+      };
+      if (isSupplier) {
+        await paySupplierCredit(payParty.id, payload);
+      } else {
+        await payGroceryCredit(payParty.id, payload);
+      }
+      setSuccess(`Payment recorded for ${payParty.name}.`);
+      setPayParty(null);
       setConfirmPay(false);
       await load(page);
     } catch (err) {
@@ -135,6 +157,17 @@ export default function GroceryCreditPage() {
         {error ? <Alert severity="error">{error}</Alert> : null}
         {success ? <Alert severity="success">{success}</Alert> : null}
 
+        <Tabs
+          value={partyTab}
+          onChange={(_, value) => {
+            setPartyTab(value);
+            setRows([]);
+          }}
+        >
+          <Tab value="customer" label="Customers" />
+          <Tab value="supplier" label="Suppliers" />
+        </Tabs>
+
         <TableCard>
           {loading ? (
             <LoadingBlock />
@@ -142,7 +175,7 @@ export default function GroceryCreditPage() {
             <Table size="small" sx={{ minWidth: 720 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Customer</TableCell>
+                  <TableCell>{isSupplier ? 'Supplier' : 'Customer'}</TableCell>
                   <TableCell>Phone</TableCell>
                   <TableCell align="right">Limit</TableCell>
                   <TableCell align="right">Outstanding</TableCell>
@@ -150,23 +183,23 @@ export default function GroceryCreditPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((customer) => (
-                  <TableRow key={customer.id} hover>
+                {rows.map((party) => (
+                  <TableRow key={party.id} hover>
                     <TableCell>
-                      <TruncateText value={customer.name} maxWidth={200} />
+                      <TruncateText value={party.name} maxWidth={200} />
                     </TableCell>
-                    <TableCell>{customer.phone_masked || '—'}</TableCell>
-                    <TableCell align="right">{money(customer.credit_limit)}</TableCell>
+                    <TableCell>{party.phone_masked || '—'}</TableCell>
+                    <TableCell align="right">{money(party.credit_limit)}</TableCell>
                     <TableCell align="right">
-                      <Chip size="small" color="warning" label={money(customer.balance)} />
+                      <Chip size="small" color="warning" label={money(party.balance)} />
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="Payment history">
+                        <Tooltip title="Ledger history">
                           <IconButton
                             size="small"
-                            aria-label={`History for ${customer.name}`}
-                            onClick={() => openLedger(customer)}
+                            aria-label={`History for ${party.name}`}
+                            onClick={() => openLedger(party)}
                           >
                             <AccountBalanceWalletOutlinedIcon fontSize="small" />
                           </IconButton>
@@ -175,14 +208,14 @@ export default function GroceryCreditPage() {
                           size="small"
                           variant="contained"
                           onClick={() => {
-                            setPayCustomer(customer);
+                            setPayParty(party);
                             setPayAmount('');
                             setPayMethod(PAYMENT_CASH);
                             setPayNotes('');
                             setConfirmPay(false);
                           }}
                         >
-                          Collect
+                          {isSupplier ? 'Pay' : 'Collect'}
                         </Button>
                       </Stack>
                     </TableCell>
@@ -193,8 +226,12 @@ export default function GroceryCreditPage() {
           )}
           {!loading && !rows.length ? (
             <EmptyState
-              title="No outstanding udhari"
-              description="Credit sales from Grocery POS appear here until they are collected."
+              title={isSupplier ? 'No supplier outstanding' : 'No outstanding udhari'}
+              description={
+                isSupplier
+                  ? 'Credit purchases appear here until they are paid.'
+                  : 'Credit sales appear here until they are collected.'
+              }
             />
           ) : null}
         </TableCard>
@@ -209,13 +246,10 @@ export default function GroceryCreditPage() {
         ) : null}
       </Stack>
 
-      <Dialog
-        open={Boolean(ledgerCustomer)}
-        onClose={() => setLedgerCustomer(null)}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle>Payment history — {ledgerCustomer?.name}</DialogTitle>
+      <Dialog open={Boolean(ledgerParty)} onClose={() => setLedgerParty(null)} fullWidth maxWidth="md">
+        <DialogTitle>
+          {isSupplier ? 'Supplier ledger' : 'Payment history'} — {ledgerParty?.name}
+        </DialogTitle>
         <DialogContent>
           {ledgerLoading ? (
             <LoadingBlock />
@@ -255,16 +289,18 @@ export default function GroceryCreditPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setLedgerCustomer(null)}>Close</Button>
+          <Button onClick={() => setLedgerParty(null)}>Close</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(payCustomer)} onClose={() => setPayCustomer(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Collect udhari — {payCustomer?.name}</DialogTitle>
+      <Dialog open={Boolean(payParty)} onClose={() => setPayParty(null)} fullWidth maxWidth="xs">
+        <DialogTitle>
+          {isSupplier ? 'Pay supplier' : 'Collect udhari'} — {payParty?.name}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             <Alert severity="warning">
-              Outstanding {money(payCustomer?.balance)}. Confirm the amount before recording.
+              Outstanding {money(payParty?.balance)}. Confirm the amount before recording.
             </Alert>
             <TextField
               label="Amount"
@@ -276,10 +312,10 @@ export default function GroceryCreditPage() {
               required
             />
             <FormControl fullWidth>
-              <InputLabel id="grocery-collect-method">Collection method</InputLabel>
+              <InputLabel id="trade-collect-method">Method</InputLabel>
               <Select
-                labelId="grocery-collect-method"
-                label="Collection method"
+                labelId="trade-collect-method"
+                label="Method"
                 value={payMethod}
                 onChange={(e) => setPayMethod(e.target.value)}
               >
@@ -298,7 +334,7 @@ export default function GroceryCreditPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPayCustomer(null)}>Cancel</Button>
+          <Button onClick={() => setPayParty(null)}>Cancel</Button>
           {!confirmPay ? (
             <Button
               variant="contained"

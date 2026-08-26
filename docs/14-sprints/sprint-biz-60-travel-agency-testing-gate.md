@@ -102,7 +102,7 @@ BIZ-59
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

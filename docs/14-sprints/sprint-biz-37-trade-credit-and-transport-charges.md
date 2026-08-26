@@ -104,8 +104,18 @@ BIZ-09, BIZ-36
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 
 Phase 06 – Hardware / Building Material
+
+## Implementation notes (2026-08-25)
+
+- `bills.transport_charge` + `delivery_challans.transport_charge` (post-GST / non-GST fee)
+- Supplier `balance` / `credit_limit`; ledger `party_type=SUPPLIER` + credit purchases
+- APIs: bill/challan transport; `/suppliers/outstanding|ledger|payments`
+- Credit UI: Customer + Supplier tabs; Hardware POS + Challans transport fields
+- Tax treatment: transport added after GST (not taxed again)
+- Tests: `test_biz37_trade_credit_transport.py`
+- Alembic: `20260825_biz37_transport_supplier_credit`

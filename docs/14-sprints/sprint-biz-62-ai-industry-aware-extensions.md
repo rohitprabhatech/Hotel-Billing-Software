@@ -103,7 +103,7 @@ BIZ-61
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

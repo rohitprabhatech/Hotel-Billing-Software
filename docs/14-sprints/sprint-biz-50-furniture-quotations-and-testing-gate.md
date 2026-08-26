@@ -8,102 +8,44 @@ Customer quotations (reuse BIZ-36) + testing gate.
 
 Furniture Shops
 
-## Why This Sprint Is Required
+## Status
 
-Quotation + testing.
+**COMPLETED** (2026-08-26)
 
-## Existing Functionality
+## What shipped
 
-Quotations module.
+### Backend
 
-## Missing Functionality
+- `/api/v1/furniture/quotations` aliases (list, create, get, status, convert) — reuses BIZ-36 quotation module already on `furniture` business type
+- No new migration
 
-Furniture enablement + gate.
+### Frontend
 
-## Scope
+- Shared **Quotations** page at `/owner/quotations` (module `quotation` already enabled for furniture)
 
-### Backend Tasks
+### Tests
 
-- Enable module
+- `test_biz50_furniture_quotations.py` (3 passed)
+- `test_biz50_furniture_testing_gate.py` (10 passed)
+- Full Phase 09: BIZ-47 … BIZ-50 — **28 passed**
 
-### Frontend Tasks
+### Documentation
 
-- Quotes
-
-### Database Tasks
-
-- Reuse
-
-### API Tasks
-
-- Reuse
-
-### UI/UX Tasks
-
-- Same
-
-### Testing Tasks
-
-- Gate
-
-### Documentation Tasks
-
-- Gate
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- Reuse
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- Reuse
-
-## Frontend Pages
-
-- Quotations
-
-## User Roles
-
-Owner/Manager.
-
-## Tenant Isolation
-
-Yes.
-
-## Audit Requirements
-
-Yes.
-
-## Notifications
-
-None.
+- [biz-50-furniture-gate-report.md](./biz-50-furniture-gate-report.md)
+- [biz-50-manual-frontend-checklist.md](./biz-50-manual-frontend-checklist.md)
 
 ## Acceptance Criteria
 
-- Gate signed
+- [x] Gate signed
 
 ## Dependencies
 
 BIZ-49, BIZ-36
 
-## Risks
-
-- None
-
-## Definition of Done
-
-- Gate doc
-
-## Status
-
-NOT STARTED
-
 ## Phase
 
-Phase 09 – Furniture
+Phase 09 – Furniture — **CLOSED**
+
+## Next
+
+BIZ-51 — wholesale pricing matrices (Phase 10)

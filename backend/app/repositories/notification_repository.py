@@ -1,6 +1,6 @@
 """Notification data access — tenant scoped."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.extensions import db
 from app.models.notification import Notification
@@ -91,6 +91,34 @@ class NotificationRepository:
         )
 
     @staticmethod
+    def has_recent_alert(
+        tenant_id: str,
+        *,
+        notification_type: str,
+        entity_type: str,
+        entity_id: str,
+        within_seconds: int,
+    ) -> bool:
+        """Rate limit: any alert (read or unread) within the cooldown window."""
+        if within_seconds <= 0:
+            return False
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+            seconds=int(within_seconds)
+        )
+        return (
+            db.session.query(Notification.id)
+            .filter(
+                Notification.tenant_id == tenant_id,
+                Notification.type == notification_type,
+                Notification.entity_type == entity_type,
+                Notification.entity_id == entity_id,
+                Notification.created_at >= cutoff,
+            )
+            .first()
+            is not None
+        )
+
+    @staticmethod
     def mark_read(row: Notification) -> Notification:
         if not row.is_read:
             row.is_read = True
@@ -114,7 +142,11 @@ class NotificationRepository:
 
     @staticmethod
     def mark_unread_stock_alerts_read(
-        tenant_id: str, *, entity_id: str, types: list[str]
+        tenant_id: str,
+        *,
+        entity_id: str,
+        types: list[str],
+        entity_type: str = "ITEM",
     ) -> int:
         if not types:
             return 0
@@ -123,7 +155,7 @@ class NotificationRepository:
             db.session.query(Notification)
             .filter(
                 Notification.tenant_id == tenant_id,
-                Notification.entity_type == "ITEM",
+                Notification.entity_type == entity_type,
                 Notification.entity_id == entity_id,
                 Notification.type.in_(types),
                 Notification.is_read.is_(False),

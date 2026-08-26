@@ -102,7 +102,7 @@ BIZ-33
 
 ## Status
 
-NOT STARTED
+COMPLETED (2026-08-25 on `rs/feature/billingV3`) — see [biz-34-mobile-electronics-gate-report.md](./biz-34-mobile-electronics-gate-report.md)
 
 ## Phase
 

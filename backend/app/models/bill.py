@@ -7,6 +7,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -36,6 +37,7 @@ class Bill(db.Model, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("tenant_id", "bill_number", name="uq_bills_tenant_bill_number"),
         UniqueConstraint("tenant_id", "bill_sequence", name="uq_bills_tenant_bill_sequence"),
+        Index("ix_bills_tenant_created_at", "tenant_id", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -93,6 +95,12 @@ class Bill(db.Model, TimestampMixin):
     )
     service_charge: Mapped[Decimal] = mapped_column(
         Numeric(12, 2), nullable=False, default=Decimal("0.00")
+    )
+    transport_charge: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, default=Decimal("0.00")
+    )
+    warehouse_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("warehouses.id", ondelete="SET NULL"), nullable=True, index=True
     )
     split_group_id: Mapped[str | None] = mapped_column(String(36), index=True)
 

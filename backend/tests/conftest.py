@@ -107,6 +107,17 @@ def _seed(session):
             email_verified=True,
             token_version=0,
         ),
+        User(
+            id="b2222222-2222-2222-2222-222222222222",
+            tenant_id=tenant_b.id,
+            role_id=billing_role.id,
+            name="Billing B",
+            email="billing@hotelb.com",
+            password_hash=hash_password("Billing@12345"),
+            is_active=True,
+            email_verified=True,
+            token_version=0,
+        ),
     ]
     session.add_all([owner_role, billing_role, manager_role, tenant_a, tenant_b, *users])
     now = utc_now_naive()

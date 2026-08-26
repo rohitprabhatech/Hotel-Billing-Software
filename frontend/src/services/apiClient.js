@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getApiErrorMessage } from '../utils/apiError';
 
 const apiClient = axios.create({
   baseURL:
@@ -32,6 +33,9 @@ const PUBLIC_AUTH_PATHS = [
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Attach a safe user-facing message for callers that prefer error.userMessage
+    error.userMessage = getApiErrorMessage(error);
+
     if (error.response?.status === 401) {
       const path = window.location.pathname;
       const hadSession = Boolean(localStorage.getItem('access_token'));
@@ -47,4 +51,5 @@ apiClient.interceptors.response.use(
   },
 );
 
+export { getApiErrorMessage };
 export default apiClient;

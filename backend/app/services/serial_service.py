@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.constants.permissions import PERM_ITEMS_READ, PERM_ITEMS_STOCK
 from app.extensions import db
-from app.models.serial_unit import STATUS_IN_STOCK, STATUS_SOLD, SerialUnit
+from app.models.serial_unit import STATUS_IN_STOCK, STATUS_QUARANTINE, STATUS_SOLD, SerialUnit
 from app.repositories.item_repository import ItemRepository
 from app.repositories.serial_unit_repository import SerialUnitRepository
 from app.repositories.tenant_repository import TenantRepository
@@ -214,3 +214,71 @@ class SerialService:
             old_data={"status": STATUS_SOLD, "serial": unit.serial},
             new_data={"status": STATUS_IN_STOCK, "serial": unit.serial},
         )
+
+    @staticmethod
+    def return_from_sale(
+        tenant_id: str,
+        serial_unit_id: str,
+        *,
+        quarantine: bool = False,
+        user_id=None,
+        bill_id: str | None = None,
+    ) -> SerialUnit:
+        unit = SerialUnitRepository.lock_by_id(tenant_id, serial_unit_id)
+        if unit is None:
+            raise ValidationError("Serial / IMEI unit not found")
+        if unit.status != STATUS_SOLD:
+            raise ValidationError(f"Serial / IMEI {unit.serial} is not on a sold bill")
+        if bill_id and unit.sold_bill_id and unit.sold_bill_id != bill_id:
+            raise ValidationError("Serial / IMEI does not belong to this bill")
+        item = ItemRepository.lock_by_id_and_tenant(unit.item_id, tenant_id)
+        if item is None:
+            raise ValidationError("Item not found for serial unit")
+        target = STATUS_QUARANTINE if quarantine else STATUS_IN_STOCK
+        unit.status = target
+        unit.sold_bill_id = None
+        unit.sold_bill_item_id = None
+        unit.sold_at = None
+        SerialService.sync_item_stock(item)
+        AuditService.log(
+            tenant_id=tenant_id,
+            action="QUARANTINE_SERIAL" if quarantine else "RESTORE_SERIAL",
+            entity_type="SERIAL_UNIT",
+            entity_id=unit.id,
+            user_id=user_id,
+            old_data={"status": STATUS_SOLD, "serial": unit.serial},
+            new_data={"status": target, "serial": unit.serial},
+        )
+        return unit
+
+    @staticmethod
+    def exchange_unit(
+        tenant_id: str,
+        *,
+        old_unit_id: str,
+        new_unit_id: str,
+        bill_id: str,
+        bill_item_id: str,
+        user_id=None,
+    ) -> SerialUnit:
+        old_unit = SerialUnitRepository.lock_by_id(tenant_id, old_unit_id)
+        if old_unit is None:
+            raise ValidationError("Returned serial / IMEI not found")
+        item = ItemRepository.lock_by_id_and_tenant(old_unit.item_id, tenant_id)
+        if item is None:
+            raise ValidationError("Item not found")
+        SerialService.return_from_sale(
+            tenant_id,
+            old_unit_id,
+            quarantine=True,
+            user_id=user_id,
+            bill_id=bill_id,
+        )
+        new_unit = SerialUnitRepository.lock_by_id(tenant_id, new_unit_id)
+        if new_unit is None or new_unit.item_id != item.id:
+            raise ValidationError("Exchange serial / IMEI does not match this product")
+        SerialService.allocate_for_sale(
+            tenant_id, item, serial_unit_id=new_unit_id, user_id=user_id
+        )
+        SerialService.bind_sold_line(new_unit, bill_id=bill_id, bill_item_id=bill_item_id)
+        return new_unit

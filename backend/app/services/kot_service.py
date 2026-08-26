@@ -3,6 +3,7 @@
 from app.constants.kots import (
     ACTIVE_KOT_STATUSES,
     KOT_STATUS_QUEUED,
+    KOT_STATUS_READY,
     can_transition_kot_status,
 )
 from app.constants.orders import ORDER_STATUS_OPEN
@@ -155,6 +156,17 @@ class KotService:
             old_data=old,
             new_data=new_data,
         )
+        if new_status == KOT_STATUS_READY:
+            from app.services.notification_service import NotificationService
+
+            NotificationService.notify_kot_ready(
+                tenant_id=ctx.tenant_id,
+                kot_id=kot.id,
+                kot_number=kot.kot_number,
+                order_number=kot.order_number or "",
+                table_code=kot.dining_table_code,
+                user_id=ctx.user_id,
+            )
         db.session.commit()
         return new_data
 

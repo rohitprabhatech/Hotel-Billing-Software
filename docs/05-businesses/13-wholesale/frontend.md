@@ -1,20 +1,24 @@
 # Wholesale Shops — Frontend
 
-Conceptual routes under `modules/wholesale/` (not implemented yet).
+| Page | Path | Roles | Notes |
+|------|------|-------|-------|
+| Price Lists | `/owner/price-lists` | Owner / Manager / Billing (read) | Matrices + customer assignments (`price_lists`) |
+| Sales Orders | `/owner/sales-orders` | Owner / Manager / Billing (read) | SO → bill (`sales_orders`) |
+| Purchase Orders | `/owner/purchase-orders` | Owner / Manager / Billing (read) | PO → purchase (`purchase_orders`) |
+| Grocery / Barcode POS | `/owner/grocery` | Owner / Manager / Billing | List prices when customer selected |
+| Quotations | shared `/owner/quotations` | As permitted | Module `quotation` |
+| Delivery Challans | `/owner/challans` | Owner / Manager / Billing | Module `delivery_challan`; PDF |
+| Credit / Udhari | `/owner/credit` | Owner / Manager | Collections + ledger |
+| Outstanding Report | `/owner/outstanding` | Owner / Manager | Aged buckets + print |
+| Warehouses | `/owner/warehouses` | Owner / Manager / Billing (read) | Sell-from on POS & New Bill; transfer UX |
 
-| Page | Purpose | Roles | Components | API deps | UX |
-|------|---------|-------|------------|----------|-----|
-| Wholesale Dashboard | Wholesale Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Price Lists | Wholesale Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Quotations / SO / PO | Wholesale Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Warehouses / Transfers | Wholesale Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Billing / Challans | Wholesale Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Outstanding | Wholesale Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Reports | Wholesale Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
+## UX (BIZ-51 … BIZ-54)
 
-## Shared UI
-
-Reuse common Billing, Customers, Reports pages. Industry nav items appear only when the module is enabled.
+- Create wholesale lists; mark one as default; assign customers
+- POS cart recalculates when customer changes
+- Create SO / PO documents; confirm; convert to bill or purchase
+- Pick sell-from warehouse on barcode POS and New Bill; transfer shows available at source
+- Aged outstanding report with print; tax invoice PDF on bills with GST
 
 ## Responsive
 

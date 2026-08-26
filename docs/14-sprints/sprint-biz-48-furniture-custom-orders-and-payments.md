@@ -102,7 +102,15 @@ BIZ-42, BIZ-47
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- `order_type=furniture` on shared `custom_product_orders` (no new migration)
+- Aliases: `/api/v1/furniture/custom-orders` (+ advance); bakery create forces bakery type
+- UI: `FurnitureOrdersPage` at `/owner/furniture-orders`; Cake Orders scoped to bakery
+- Field map: dimensions→`size`, material→`flavor`, notes/finish, `delivery_at`
+- Tests: `test_biz48_furniture_custom_orders.py` (5 passed)
 
 ## Phase
 

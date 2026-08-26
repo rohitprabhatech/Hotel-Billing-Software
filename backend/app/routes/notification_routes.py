@@ -15,6 +15,12 @@ def list_notifications():
     return notification_controller.list_notifications()
 
 
+@notifications_bp.get("/templates")
+@roles_required(ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
+def list_templates():
+    return notification_controller.list_templates()
+
+
 @notifications_bp.get("/unread-count")
 @roles_required(ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 def unread_count():

@@ -8,103 +8,38 @@ Enable warehouse module fully for wholesale.
 
 Wholesale Shops
 
-## Why This Sprint Is Required
+## Status
 
-Multiple warehouses required.
+**COMPLETED** (2026-08-26)
 
-## Existing Functionality
+## What shipped
 
-BIZ-38 foundation.
+### Backend
 
-## Missing Functionality
+- Wholesale already has `warehouse` in module matrix (BIZ-38 reuse)
+- Transfer pre-validates all source balances before any mutation
+- Per-warehouse LOW_STOCK / OUT_OF_STOCK notifications (`entity_type=WAREHOUSE_STOCK`)
+- Aliases: `/wholesale/warehouses`, `/wholesale/warehouses/stocks`, `/wholesale/stock-transfers`
+- Bills continue to accept `warehouse_id` when module on
 
-Wholesale defaults + transfer UX polish.
+### Frontend
 
-## Scope
+- Sell-from warehouse picker on Grocery/Barcode POS and New Bill
+- Warehouses page: balances filter by location; transfer lines show qty available at **from** warehouse
 
-### Backend Tasks
+### Tests
 
-- Enable
-- Transfer validations
-
-### Frontend Tasks
-
-- Wholesale warehouse UI
-
-### Database Tasks
-
-- Reuse
-
-### API Tasks
-
-- Reuse
-
-### UI/UX Tasks
-
-- Same
-
-### Testing Tasks
-
-- Multi-warehouse sales
-
-### Documentation Tasks
-
-- warehouse wholesale
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- Reuse
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- Reuse
-
-## Frontend Pages
-
-- Warehouses
-
-## User Roles
-
-Owner/Manager.
-
-## Tenant Isolation
-
-Yes.
-
-## Audit Requirements
-
-Transfers.
-
-## Notifications
-
-Low per WH.
+- `backend/tests/test_biz53_wholesale_warehouse.py` (5 passed)
 
 ## Acceptance Criteria
 
-- Sell from selected warehouse
+- [x] Sell from selected warehouse
+- [x] Wholesale warehouse E2E (transfer + bill + low-stock notify)
 
 ## Dependencies
 
 BIZ-38, BIZ-52
 
-## Risks
+## Next
 
-- None
-
-## Definition of Done
-
-- Wholesale warehouse E2E
-
-## Status
-
-NOT STARTED
-
-## Phase
-
-Phase 10 – Wholesale
+BIZ-54 — wholesale outstanding, challan, and GST invoice

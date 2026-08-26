@@ -106,6 +106,19 @@ class ItemBatchRepository:
         return total
 
     @staticmethod
+    def writeoff_batches(tenant_id: str, item_id: str) -> list[ItemBatch]:
+        """FEFO including expired — for wastage / write-off of perishable FG."""
+        return (
+            ItemBatch.query.filter_by(tenant_id=tenant_id, item_id=item_id, is_active=True)
+            .filter(ItemBatch.quantity > 0)
+            .order_by(
+                ItemBatch.expiry_date.asc().nullslast(),
+                ItemBatch.created_at.asc(),
+            )
+            .all()
+        )
+
+    @staticmethod
     def add(batch: ItemBatch) -> ItemBatch:
         db.session.add(batch)
         return batch

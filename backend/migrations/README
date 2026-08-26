@@ -1,8 +1,19 @@
-Flask-Migrate / Alembic migrations for the Hotel Billing API.
+Flask-Migrate / Alembic migrations for the Business Billing API.
 
 Use from the backend directory with the virtualenv active:
 
-  flask --app run:app db migrate -m "message"
-  flask --app run:app db upgrade
+```powershell
+flask --app run:app db upgrade
+flask --app run:app db current
+python scripts\print_alembic_chain.py
+```
 
-Domain models are introduced in Sprint 3+.
+**Live / existing databases:** follow `docs/03-database/10-industry-modules-ops-runbook.md`.  
+Never run `sql/02_schema.sql` on production data.
+
+**Stamp helpers:**
+
+- Phase 8 only (legacy): `python scripts/stamp_alembic_head.py`
+- Industry head (tables already present): `python scripts/stamp_alembic_industry_head.py`
+
+Current head: `20260826_biz66_perf_indexes` (see `docs/03-database/11-alembic-revision-order.md`).

@@ -6,6 +6,17 @@ from app.services.notification_service import NotificationService
 from app.utils.responses import success_response
 
 
+def list_templates():
+    industry_only = str(request.args.get("industry_only", "")).lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    return success_response(
+        data=NotificationService.list_templates(industry_only=industry_only)
+    )
+
+
 def list_notifications():
     unread_only = str(request.args.get("unread_only", "")).lower() in {"1", "true", "yes"}
     page = request.args.get("page", 1, type=int)

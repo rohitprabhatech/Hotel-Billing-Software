@@ -2,10 +2,16 @@
 
 from decimal import Decimal
 
+from app.constants.notification_templates import (
+    NOTIFICATION_TEMPLATES,
+    list_templates as catalog_list_templates,
+)
 from app.extensions import db
 from app.models.notification import Notification
 from app.repositories.notification_repository import NotificationRepository
-from app.utils.exceptions import NotFoundError
+from app.repositories.tenant_repository import TenantRepository
+from app.services.module_service import ModuleService
+from app.utils.exceptions import NotFoundError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.request_context import require_request_context
 
@@ -19,9 +25,96 @@ TYPE_SUBSCRIPTION_EXPIRED = "SUBSCRIPTION_EXPIRED"
 TYPE_BATCH_EXPIRING = "BATCH_EXPIRING"
 TYPE_BATCH_EXPIRED = "BATCH_EXPIRED"
 TYPE_CREDIT_DUE = "CREDIT_DUE"
+TYPE_REPAIR_READY = "REPAIR_READY"
+TYPE_INSTALLATION_SCHEDULED = "INSTALLATION_SCHEDULED"
+TYPE_INSTALLATION_COMPLETED = "INSTALLATION_COMPLETED"
+TYPE_CUSTOM_ORDER_DELIVERY = "CUSTOM_ORDER_DELIVERY"
+TYPE_CUSTOM_ORDER_READY = "CUSTOM_ORDER_READY"
+TYPE_DELIVERY_OUT_FOR_DELIVERY = "DELIVERY_OUT_FOR_DELIVERY"
+TYPE_DELIVERY_COMPLETED = "DELIVERY_COMPLETED"
+TYPE_TRAVEL_BOOKING_CONFIRMED = "TRAVEL_BOOKING_CONFIRMED"
+TYPE_TRAVEL_PAYMENT_DUE = "TRAVEL_PAYMENT_DUE"
+TYPE_KOT_READY = "KOT_READY"
 
 
 class NotificationService:
+    @staticmethod
+    def list_templates(*, industry_only: bool = False):
+        """Module-filtered template catalog for the current tenant (BIZ-63)."""
+        ctx = require_request_context()
+        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        if tenant is None:
+            raise NotFoundError("Tenant not found")
+        enabled = set(ModuleService.enabled_codes_for_tenant(tenant))
+        rows = []
+        for row in catalog_list_templates(industry_only=industry_only):
+            module = row["module"]
+            # core_* always available; industry modules must be enabled
+            if module.startswith("core_") or module in enabled:
+                rows.append({**row, "enabled": True})
+        return {
+            "templates": rows,
+            "enabled_modules": sorted(enabled),
+            "industry_count": sum(1 for row in rows if row["industry"]),
+        }
+
+    @staticmethod
+    def emit_template(
+        *,
+        key: str,
+        tenant_id: str,
+        entity_id: str,
+        context: dict,
+        user_id: str | None = None,
+        entity_type_override: str | None = None,
+    ):
+        """
+        Emit a registered template with dedupe / cooldown rate limits.
+        Returns the Notification row, or None when suppressed.
+        """
+        tpl = NOTIFICATION_TEMPLATES.get(key)
+        if tpl is None:
+            raise ValidationError(f"Unknown notification template: {key}")
+        entity_type = entity_type_override or tpl.get("entity_type")
+        notification_type = tpl["type"]
+        if not entity_id or not entity_type:
+            raise ValidationError("entity_id and entity_type are required for template emit")
+
+        if tpl.get("dedupe_open") and NotificationRepository.has_open_alert(
+            tenant_id,
+            notification_type=notification_type,
+            entity_type=entity_type,
+            entity_id=entity_id,
+        ):
+            return None
+        cooldown = int(tpl.get("cooldown_seconds") or 0)
+        if cooldown and NotificationRepository.has_recent_alert(
+            tenant_id,
+            notification_type=notification_type,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            within_seconds=cooldown,
+        ):
+            return None
+
+        try:
+            title = tpl["title"].format(**context)
+            message = tpl["message"].format(**context)
+        except KeyError as exc:
+            raise ValidationError(
+                f"Missing template context for '{key}': {exc.args[0]}"
+            ) from exc
+
+        return NotificationService.create_tenant_notification(
+            tenant_id=tenant_id,
+            notification_type=notification_type,
+            title=title[:160],
+            message=message,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            user_id=user_id,
+        )
+
     @staticmethod
     def list_notifications(*, unread_only=False, page=1, per_page=50):
         ctx = require_request_context()
@@ -216,6 +309,79 @@ class NotificationService:
                 )
 
     @staticmethod
+    def notify_warehouse_stock_transition(
+        *,
+        tenant_id: str,
+        item,
+        warehouse,
+        stock_id: str,
+        previous: Decimal | None,
+        new_stock: Decimal | None,
+    ):
+        """LOW_STOCK / OUT_OF_STOCK for a warehouse balance (BIZ-53)."""
+        if previous is None or new_stock is None or not stock_id:
+            return
+        previous = Decimal(previous)
+        new_stock = Decimal(new_stock)
+        wh_label = warehouse.code if warehouse else "warehouse"
+        label = f"{item.name} @ {wh_label}"
+        entity_type = "WAREHOUSE_STOCK"
+
+        if new_stock > 0:
+            NotificationRepository.mark_unread_stock_alerts_read(
+                tenant_id,
+                entity_id=stock_id,
+                types=[TYPE_OUT_OF_STOCK],
+                entity_type=entity_type,
+            )
+        minimum = item.minimum_stock_level
+        if minimum is None or new_stock > Decimal(minimum):
+            NotificationRepository.mark_unread_stock_alerts_read(
+                tenant_id,
+                entity_id=stock_id,
+                types=[TYPE_LOW_STOCK],
+                entity_type=entity_type,
+            )
+
+        if previous > 0 and new_stock <= 0:
+            if not NotificationRepository.has_open_alert(
+                tenant_id,
+                notification_type=TYPE_OUT_OF_STOCK,
+                entity_type=entity_type,
+                entity_id=stock_id,
+            ):
+                NotificationService.create_tenant_notification(
+                    tenant_id=tenant_id,
+                    notification_type=TYPE_OUT_OF_STOCK,
+                    title="Out of stock (warehouse)",
+                    message=f"Out of stock: {label} is currently unavailable at this location.",
+                    entity_type=entity_type,
+                    entity_id=stock_id,
+                )
+            return
+        if minimum is None:
+            return
+        minimum = Decimal(minimum)
+        if previous > minimum and new_stock <= minimum and new_stock > 0:
+            if not NotificationRepository.has_open_alert(
+                tenant_id,
+                notification_type=TYPE_LOW_STOCK,
+                entity_type=entity_type,
+                entity_id=stock_id,
+            ):
+                NotificationService.create_tenant_notification(
+                    tenant_id=tenant_id,
+                    notification_type=TYPE_LOW_STOCK,
+                    title="Low stock (warehouse)",
+                    message=(
+                        f"Low stock: {label} has only {float(new_stock):g} units remaining "
+                        f"(minimum {float(minimum):g})."
+                    ),
+                    entity_type=entity_type,
+                    entity_id=stock_id,
+                )
+
+    @staticmethod
     def notify_insufficient_attempt(
         *,
         tenant_id: str,
@@ -269,30 +435,6 @@ class NotificationService:
         )
 
     @staticmethod
-    def notify_credit_due(
-        *,
-        tenant_id: str,
-        customer_id: str,
-        customer_name: str,
-        amount,
-        balance_after,
-        bill_number: str | None = None,
-    ):
-        label = bill_number or ""
-        bill_part = f" Bill #{label}." if label else ""
-        NotificationService.create_tenant_notification(
-            tenant_id=tenant_id,
-            notification_type=TYPE_CREDIT_DUE,
-            title="Credit sale (udhari)",
-            message=(
-                f"{customer_name}: ₹{float(amount):.2f} on credit.{bill_part} "
-                f"Outstanding now ₹{float(balance_after):.2f}."
-            ),
-            entity_type="CUSTOMER",
-            entity_id=customer_id,
-        )
-
-    @staticmethod
     def notify_email_delivery_failed(
         *,
         tenant_id: str,
@@ -320,6 +462,224 @@ class NotificationService:
             message=f"Bill #{label}{to}: {reason}",
             entity_type="BILL_DELIVERY",
             entity_id=delivery_id,
+        )
+
+    @staticmethod
+    def notify_credit_due(
+        *,
+        tenant_id: str,
+        customer_id: str,
+        customer_name: str,
+        amount,
+        balance_after,
+        bill_number: str | None = None,
+    ):
+        label = bill_number or ""
+        bill_part = f" Bill #{label}." if label else ""
+        NotificationService.emit_template(
+            key="credit_due",
+            tenant_id=tenant_id,
+            entity_id=customer_id,
+            context={
+                "customer_name": customer_name,
+                "amount": float(amount),
+                "bill_part": bill_part,
+                "balance_after": float(balance_after),
+            },
+        )
+
+    @staticmethod
+    def notify_repair_ready(
+        *,
+        tenant_id: str,
+        repair_number: str,
+        serial: str,
+        user_id: str | None = None,
+    ):
+        serial_label = serial or "unit"
+        NotificationService.emit_template(
+            key="repair_ready",
+            tenant_id=tenant_id,
+            entity_id=repair_number,
+            context={"repair_number": repair_number, "serial": serial_label},
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_kot_ready(
+        *,
+        tenant_id: str,
+        kot_id: str,
+        kot_number: str,
+        order_number: str,
+        table_code: str | None = None,
+        user_id: str | None = None,
+    ):
+        table_part = f" (table {table_code})" if table_code else ""
+        NotificationService.emit_template(
+            key="kot_ready",
+            tenant_id=tenant_id,
+            entity_id=kot_id,
+            context={
+                "kot_number": kot_number,
+                "order_number": order_number or "—",
+                "table_part": table_part,
+            },
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_installation_scheduled(
+        *,
+        tenant_id: str,
+        installation_number: str,
+        serial: str,
+        scheduled_at: str,
+        user_id: str | None = None,
+    ):
+        serial_label = serial or "unit"
+        NotificationService.emit_template(
+            key="installation_scheduled",
+            tenant_id=tenant_id,
+            entity_id=installation_number,
+            context={
+                "installation_number": installation_number,
+                "serial": serial_label,
+                "scheduled_at": scheduled_at,
+            },
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_installation_completed(
+        *,
+        tenant_id: str,
+        installation_number: str,
+        serial: str,
+        user_id: str | None = None,
+    ):
+        serial_label = serial or "unit"
+        NotificationService.create_tenant_notification(
+            tenant_id=tenant_id,
+            notification_type=TYPE_INSTALLATION_COMPLETED,
+            title="Installation completed",
+            message=f"{installation_number}: {serial_label} installation is done.",
+            entity_type="INSTALLATION_ORDER",
+            entity_id=installation_number,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_custom_order_delivery(
+        *,
+        tenant_id: str,
+        order_number: str,
+        title: str,
+        delivery_at: str,
+        user_id: str | None = None,
+    ):
+        NotificationService.create_tenant_notification(
+            tenant_id=tenant_id,
+            notification_type=TYPE_CUSTOM_ORDER_DELIVERY,
+            title="Custom order delivery scheduled",
+            message=f"{order_number}: {title} due {delivery_at}.",
+            entity_type="CUSTOM_ORDER",
+            entity_id=order_number,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_custom_order_ready(
+        *,
+        tenant_id: str,
+        order_number: str,
+        title: str,
+        user_id: str | None = None,
+    ):
+        NotificationService.emit_template(
+            key="custom_order_ready",
+            tenant_id=tenant_id,
+            entity_id=order_number,
+            context={"order_number": order_number, "title": title},
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_delivery_out_for_delivery(
+        *,
+        tenant_id: str,
+        delivery_number: str,
+        customer_name: str,
+        user_id: str | None = None,
+    ):
+        NotificationService.create_tenant_notification(
+            tenant_id=tenant_id,
+            notification_type=TYPE_DELIVERY_OUT_FOR_DELIVERY,
+            title="Out for delivery",
+            message=f"{delivery_number}: {customer_name} — order is on the way.",
+            entity_type="DELIVERY_JOB",
+            entity_id=delivery_number,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_delivery_completed(
+        *,
+        tenant_id: str,
+        delivery_number: str,
+        customer_name: str,
+        user_id: str | None = None,
+    ):
+        NotificationService.create_tenant_notification(
+            tenant_id=tenant_id,
+            notification_type=TYPE_DELIVERY_COMPLETED,
+            title="Delivery completed",
+            message=f"{delivery_number}: {customer_name} — furniture delivered.",
+            entity_type="DELIVERY_JOB",
+            entity_id=delivery_number,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_travel_booking_confirmed(
+        *,
+        tenant_id: str,
+        booking_number: str,
+        package_name: str,
+        customer_name: str,
+        user_id: str | None = None,
+    ):
+        NotificationService.emit_template(
+            key="travel_booking_confirmed",
+            tenant_id=tenant_id,
+            entity_id=booking_number,
+            context={
+                "booking_number": booking_number,
+                "package_name": package_name,
+                "customer_name": customer_name,
+            },
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def notify_travel_payment_due(
+        *,
+        tenant_id: str,
+        booking_number: str,
+        customer_name: str,
+        remaining,
+        user_id: str | None = None,
+    ):
+        NotificationService.emit_template(
+            key="travel_payment_due",
+            tenant_id=tenant_id,
+            entity_id=booking_number,
+            context={
+                "booking_number": booking_number,
+                "customer_name": customer_name,
+                "remaining": float(remaining),
+            },
+            user_id=user_id,
         )
 
     @staticmethod

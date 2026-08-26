@@ -8,102 +8,39 @@ Outstanding reports, challan, GST invoice using existing bill PDF + credit.
 
 Wholesale Shops
 
-## Why This Sprint Is Required
+## Status
 
-Wholesale special reporting docs.
+**COMPLETED** (2026-08-26)
 
-## Existing Functionality
+## What shipped
 
-Reports, credit, challan, GST on bills.
+### Backend
 
-## Missing Functionality
+- `GET /api/v1/reports/outstanding` — FIFO-aged customer + supplier dues (0–30 / 31–60 / 61–90 / 90+)
+- Alias: `GET /api/v1/wholesale/reports/outstanding`
+- Wholesale challan aliases: `/wholesale/challans` (+ PDF)
+- Bill PDF: **TAX INVOICE** title when GST / wholesale / GSTIN; line GST %; place of supply
 
-Outstanding aged report; wholesale invoice template tweaks.
+### Frontend
 
-## Scope
+- `/owner/outstanding` — aged outstanding table + print
+- Nav: Outstanding Report (customer_credit module)
 
-### Backend Tasks
+### Tests
 
-- Aged outstanding report
-
-### Frontend Tasks
-
-- Outstanding + print
-
-### Database Tasks
-
-- N/A
-
-### API Tasks
-
-- /reports/outstanding
-
-### UI/UX Tasks
-
-- Report table
-
-### Testing Tasks
-
-- Aging buckets
-
-### Documentation Tasks
-
-- outstanding
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- N/A
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- reports
-
-## Frontend Pages
-
-- OutstandingReport
-
-## User Roles
-
-Owner/Manager.
-
-## Tenant Isolation
-
-Yes.
-
-## Audit Requirements
-
-N/A.
-
-## Notifications
-
-Optional dues.
+- `backend/tests/test_biz54_wholesale_outstanding.py` (4 passed)
 
 ## Acceptance Criteria
 
-- Customer+supplier outstanding
+- [x] Customer + supplier outstanding (aged)
+- [x] Reports live
+- [x] Challan usable via wholesale aliases
+- [x] GST tax invoice PDF polish
 
 ## Dependencies
 
 BIZ-53, BIZ-37
 
-## Risks
+## Next
 
-- None
-
-## Definition of Done
-
-- Reports live
-
-## Status
-
-NOT STARTED
-
-## Phase
-
-Phase 10 – Wholesale
+BIZ-55 — wholesale testing gate

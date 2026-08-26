@@ -102,7 +102,15 @@ BIZ-24
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Modules on `stationery`: `barcode_pos`, `bulk_pricing`, `customer_credit` (no new migration)
+- API aliases: `GET /api/v1/stationery/pos-catalog`, `/products/search`, `/products/by-barcode/<code>` (reuse grocery barcode POS)
+- UI: `StationeryPosPage` — search-first POS + credit checkout at `/owner/stationery` and `/billing/stationery`
+- Nav: Stationery POS shown only for `business_type=stationery`; Grocery POS hidden for stationery
+- Tests: `test_biz44_stationery_pack.py` (4 passed)
 
 ## Phase
 

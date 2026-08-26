@@ -8,106 +8,38 @@ Wholesale vs retail vs customer-wise pricing.
 
 Wholesale Shops
 
-## Why This Sprint Is Required
+## Status
 
-Core wholesale differentiator.
+**COMPLETED** (2026-08-26)
 
-## Existing Functionality
+## What shipped
 
-Price tiers BIZ-21; customers.
+### Backend
 
-## Missing Functionality
+- Tables: `price_lists`, `price_list_items`, `customer_price_lists`
+- Migration: `20260826_biz51_wholesale_price_lists`
+- `/api/v1/price-lists` CRUD, item matrix replace, customer assignments
+- `/api/v1/wholesale/price-lists` aliases
+- **Resolution order:** customer list → default wholesale list → bulk qty tiers → catalog retail
+- Bill creation + grocery POS catalog use resolver (`customer_id` query on catalog)
 
-price lists / customer price assignments.
+### Frontend
 
-## Scope
+- **Price Lists** admin at `/owner/price-lists` (wholesale tenants)
+- Grocery/barcode POS applies list prices when customer selected
 
-### Backend Tasks
+### Tests
 
-- Price list engine
-
-### Frontend Tasks
-
-- Price list admin
-- POS price resolution
-
-### Database Tasks
-
-- price_lists
-- customer_price_lists
-
-### API Tasks
-
-- price-lists
-
-### UI/UX Tasks
-
-- Admin tables
-
-### Testing Tasks
-
-- Resolution order
-
-### Documentation Tasks
-
-- 13-wholesale
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- price_lists
-- price_list_items
-- customer_price_lists
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- /price-lists
-
-## Frontend Pages
-
-- PriceLists
-
-## User Roles
-
-Owner.
-
-## Tenant Isolation
-
-Standard.
-
-## Audit Requirements
-
-Price list changes.
-
-## Notifications
-
-None.
+- `backend/tests/test_biz51_wholesale_price_lists.py` (7 passed)
 
 ## Acceptance Criteria
 
-- Customer-specific price applies
+- [x] Customer-specific price applies
 
 ## Dependencies
 
 BIZ-10, BIZ-21, BIZ-04
 
-## Risks
+## Next
 
-- Complex resolution — document priority
-
-## Definition of Done
-
-- Resolver documented+tested
-
-## Status
-
-NOT STARTED
-
-## Phase
-
-Phase 10 – Wholesale
+BIZ-52 — sales orders & purchase orders

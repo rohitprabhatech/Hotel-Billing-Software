@@ -38,6 +38,7 @@ import { listSerialUnits, receiveSerialUnit } from '../../services/serialService
 
 function statusChip(status) {
   if (status === 'SOLD') return <Chip size="small" color="default" label="Sold" />;
+  if (status === 'QUARANTINE') return <Chip size="small" color="warning" label="Quarantine" />;
   return <Chip size="small" color="success" label="In stock" />;
 }
 

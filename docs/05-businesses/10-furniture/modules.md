@@ -1,21 +1,12 @@
 # Furniture Shops — Modules
 
-| Module | Type | Priority | Dependencies |
-|--------|------|----------|--------------|
-| Billing | Common | High | Auth, Products |
-| Inventory | Common | High* | Products (*light/none for Travel) |
-| Customers | Common | High | Tenant |
-| Payments | Common | High | Billing |
-| Reports | Common | High | Billing data |
-| Product dimensions / material / color | Industry | High | Common core + pack |
-| Custom furniture orders | Industry | High | Common core + pack |
-| Advance / remaining payment | Industry | High | Common core + pack |
-| Delivery management | Industry | High | Common core + pack |
-| Installation tracking | Industry | High | Common core + pack |
-| Order status | Industry | High | Common core + pack |
-| Customer quotation | Industry | High | Common core + pack |
+Activated when `business_type = furniture`.
 
-## Purpose summary
-
-This pack activates only when `business_type = furniture`.  
-Implementation lives under backend/frontend `modules/furniture/` (conceptual — not created yet).
+| Module code | Type | Priority | Notes |
+|-------------|------|----------|-------|
+| `furniture_attributes` | Industry | High | Dimensions / material / color on items (BIZ-47) |
+| `custom_orders` | Industry | High | Shared custom orders (BIZ-48) |
+| `quotation` | Industry | High | Shared quotations |
+| `delivery_tracking` | Industry | High | Delivery board (BIZ-49) |
+| `installation` | Industry | High | Installation tracking |
+| Billing / Inventory / Customers / Reports | Common | High | Shared core |

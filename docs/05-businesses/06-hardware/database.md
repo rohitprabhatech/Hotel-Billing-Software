@@ -24,9 +24,10 @@
 
 | Entity | Class | Purpose |
 |--------|-------|---------|
-| UnitOfMeasure | BUSINESS-SPECIFIC | piece, kg, m, … |
-| PriceHistory | BUSINESS-SPECIFIC | Historical unit prices |
-| CreditAccount | BUSINESS-SPECIFIC | Customer/supplier credit |
+| Item.sale_uom | COMMON EXTENSION (BIZ-35) | Optional sell unit; stock remains `items.uom` |
+| Unit catalog | CONSTANT | `app.constants.uom` / measurement helpers (not a table) |
+| PriceHistory | BUSINESS-SPECIFIC | Historical unit prices (later) |
+| CreditAccount | BUSINESS-SPECIFIC | Customer/supplier credit (shared ledger) |
 
 ## Relationships (summary)
 

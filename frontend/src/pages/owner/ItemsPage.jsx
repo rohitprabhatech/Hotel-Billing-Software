@@ -75,6 +75,7 @@ const emptyForm = {
   sku: '',
   barcode: '',
   uom: DEFAULT_UOM,
+  sale_uom: '',
   category_id: '',
   description: '',
   price: '',
@@ -88,6 +89,16 @@ const emptyForm = {
   block_expired_batches: true,
   tracks_serial: false,
   warranty_months: '',
+  brand: '',
+  model_name: '',
+  isbn: '',
+  author: '',
+  publisher: '',
+  dimension_length: '',
+  dimension_width: '',
+  dimension_height: '',
+  material: '',
+  color: '',
 };
 
 const PAGE_SIZE = 25;
@@ -104,7 +115,10 @@ export default function ItemsPage() {
   const batchExpiryEnabled = useModuleGate('batch_expiry');
   const variantsEnabled = useModuleGate('variants');
   const serialImeiEnabled = useModuleGate('serial_imei');
+  const bookMetadataEnabled = useModuleGate('book_metadata');
+  const furnitureAttributesEnabled = useModuleGate('furniture_attributes');
   const warrantyEnabled = useModuleGate('warranty');
+  const uomMeasurementEnabled = useModuleGate('uom_measurement');
   const productImagesEnabled = useModuleGate('product_images');
   const { canWriteItems, canStockItems, canAudit, canStockMovements } = usePermissions();
   const movementsPath = stockMovementsPath(role);
@@ -200,6 +214,7 @@ export default function ItemsPage() {
       sku: item.sku || '',
       barcode: item.barcode || '',
       uom: item.uom || DEFAULT_UOM,
+      sale_uom: item.sale_uom && item.sale_uom !== item.uom ? item.sale_uom : '',
       category_id: item.category_id || '',
       description: item.description || '',
       price: item.price ?? '',
@@ -213,6 +228,16 @@ export default function ItemsPage() {
       block_expired_batches: item.block_expired_batches !== false,
       tracks_serial: Boolean(item.tracks_serial),
       warranty_months: item.warranty_months != null ? String(item.warranty_months) : '',
+      brand: item.brand || '',
+      model_name: item.model_name || '',
+      isbn: item.isbn || '',
+      author: item.author || '',
+      publisher: item.publisher || '',
+      dimension_length: item.dimension_length ?? '',
+      dimension_width: item.dimension_width ?? '',
+      dimension_height: item.dimension_height ?? '',
+      material: item.material || '',
+      color: item.color || '',
     });
     setOpen(true);
   };
@@ -409,6 +434,9 @@ export default function ItemsPage() {
       sku: form.sku.trim() || null,
       barcode: form.barcode.trim() || null,
       uom: form.uom || DEFAULT_UOM,
+      ...(uomMeasurementEnabled
+        ? { sale_uom: form.sale_uom.trim() ? form.sale_uom : null }
+        : {}),
       category_id: form.category_id,
       description: form.description || null,
       price: form.price,
@@ -431,6 +459,22 @@ export default function ItemsPage() {
     }
     if (warrantyEnabled) {
       payload.warranty_months = form.warranty_months === '' ? null : form.warranty_months;
+    }
+    if (serialImeiEnabled) {
+      payload.brand = form.brand.trim() || null;
+      payload.model_name = form.model_name.trim() || null;
+    }
+    if (bookMetadataEnabled) {
+      payload.isbn = form.isbn.trim() || null;
+      payload.author = form.author.trim() || null;
+      payload.publisher = form.publisher.trim() || null;
+    }
+    if (furnitureAttributesEnabled) {
+      payload.dimension_length = form.dimension_length === '' ? null : form.dimension_length;
+      payload.dimension_width = form.dimension_width === '' ? null : form.dimension_width;
+      payload.dimension_height = form.dimension_height === '' ? null : form.dimension_height;
+      payload.material = form.material.trim() || null;
+      payload.color = form.color.trim() || null;
     }
     try {
       if (editing) {
@@ -500,7 +544,13 @@ export default function ItemsPage() {
           }
         >
           <TextField
-            label="Search name or SKU"
+            label={
+              bookMetadataEnabled
+                ? 'Search name, ISBN, author…'
+                : furnitureAttributesEnabled
+                  ? 'Search name, material, color…'
+                  : 'Search name or SKU'
+            }
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -589,6 +639,37 @@ export default function ItemsPage() {
                   <TableRow key={item.id} hover>
                     <TableCell>
                       <TruncateText value={item.name} maxWidth={160} />
+                      {serialImeiEnabled && (item.brand || item.model_name) ? (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {[item.brand, item.model_name].filter(Boolean).join(' · ')}
+                        </Typography>
+                      ) : null}
+                      {bookMetadataEnabled && (item.author || item.isbn || item.publisher) ? (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {[item.author, item.isbn && `ISBN ${item.isbn}`, item.publisher]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Typography>
+                      ) : null}
+                      {furnitureAttributesEnabled &&
+                      (item.material ||
+                        item.color ||
+                        item.dimension_length != null ||
+                        item.dimension_width != null ||
+                        item.dimension_height != null) ? (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {[
+                            [item.dimension_length, item.dimension_width, item.dimension_height]
+                              .some((v) => v != null && v !== '')
+                              ? `${item.dimension_length ?? '—'}×${item.dimension_width ?? '—'}×${item.dimension_height ?? '—'}`
+                              : null,
+                            item.material,
+                            item.color,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Typography>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <TruncateText value={item.sku || '—'} maxWidth={100} />
@@ -820,10 +901,10 @@ export default function ItemsPage() {
               helperText="Scannable code — unique per business"
             />
             <FormControl fullWidth>
-              <InputLabel id="item-uom-label">Unit of measure</InputLabel>
+              <InputLabel id="item-uom-label">Stock unit</InputLabel>
               <Select
                 labelId="item-uom-label"
-                label="Unit of measure"
+                label="Stock unit"
                 value={form.uom}
                 onChange={(e) => setForm((f) => ({ ...f, uom: e.target.value }))}
               >
@@ -834,6 +915,24 @@ export default function ItemsPage() {
                 ))}
               </Select>
             </FormControl>
+            {uomMeasurementEnabled ? (
+              <FormControl fullWidth>
+                <InputLabel id="item-sale-uom-label">Sale unit (optional)</InputLabel>
+                <Select
+                  labelId="item-sale-uom-label"
+                  label="Sale unit (optional)"
+                  value={form.sale_uom}
+                  onChange={(e) => setForm((f) => ({ ...f, sale_uom: e.target.value }))}
+                >
+                  <MenuItem value="">Same as stock unit</MenuItem>
+                  {UOM_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
             <CategoryHierarchyAutocomplete
               categories={categories}
               valueId={form.category_id}
@@ -936,13 +1035,100 @@ export default function ItemsPage() {
               </>
             ) : null}
             {serialImeiEnabled ? (
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ gridColumn: { sm: '1 / -1' } }}>
-                <Switch
-                  checked={Boolean(form.tracks_serial)}
-                  onChange={(e) => setForm((f) => ({ ...f, tracks_serial: e.target.checked }))}
+              <>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ gridColumn: { sm: '1 / -1' } }}>
+                  <Switch
+                    checked={Boolean(form.tracks_serial)}
+                    onChange={(e) => setForm((f) => ({ ...f, tracks_serial: e.target.checked }))}
+                  />
+                  <Typography variant="body2">Track serial / IMEI units (receive units separately)</Typography>
+                </Stack>
+                <TextField
+                  label="Brand"
+                  value={form.brand}
+                  onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                  placeholder="Samsung, Apple, Xiaomi…"
+                  fullWidth
                 />
-                <Typography variant="body2">Track serial / IMEI units (receive units separately)</Typography>
-              </Stack>
+                <TextField
+                  label="Model"
+                  value={form.model_name}
+                  onChange={(e) => setForm((f) => ({ ...f, model_name: e.target.value }))}
+                  placeholder="Galaxy A15, iPhone 15…"
+                  fullWidth
+                />
+              </>
+            ) : null}
+            {bookMetadataEnabled ? (
+              <>
+                <TextField
+                  label="ISBN"
+                  value={form.isbn}
+                  onChange={(e) => setForm((f) => ({ ...f, isbn: e.target.value }))}
+                  placeholder="9780140449136"
+                  fullWidth
+                  helperText="Unique per shop; hyphens optional"
+                />
+                <TextField
+                  label="Author"
+                  value={form.author}
+                  onChange={(e) => setForm((f) => ({ ...f, author: e.target.value }))}
+                  placeholder="Author name"
+                  fullWidth
+                />
+                <TextField
+                  label="Publisher"
+                  value={form.publisher}
+                  onChange={(e) => setForm((f) => ({ ...f, publisher: e.target.value }))}
+                  placeholder="Publisher"
+                  fullWidth
+                  sx={{ gridColumn: { sm: '1 / -1' } }}
+                />
+              </>
+            ) : null}
+            {furnitureAttributesEnabled ? (
+              <>
+                <TextField
+                  label="Length"
+                  type="number"
+                  value={form.dimension_length}
+                  onChange={(e) => setForm((f) => ({ ...f, dimension_length: e.target.value }))}
+                  fullWidth
+                  inputProps={{ min: 0, step: 0.001 }}
+                  helperText="Shop units (e.g. inches / cm)"
+                />
+                <TextField
+                  label="Width"
+                  type="number"
+                  value={form.dimension_width}
+                  onChange={(e) => setForm((f) => ({ ...f, dimension_width: e.target.value }))}
+                  fullWidth
+                  inputProps={{ min: 0, step: 0.001 }}
+                />
+                <TextField
+                  label="Height"
+                  type="number"
+                  value={form.dimension_height}
+                  onChange={(e) => setForm((f) => ({ ...f, dimension_height: e.target.value }))}
+                  fullWidth
+                  inputProps={{ min: 0, step: 0.001 }}
+                />
+                <TextField
+                  label="Material"
+                  value={form.material}
+                  onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))}
+                  placeholder="Teak, plywood, metal…"
+                  fullWidth
+                />
+                <TextField
+                  label="Color / finish"
+                  value={form.color}
+                  onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
+                  placeholder="Walnut, white…"
+                  fullWidth
+                  sx={{ gridColumn: { sm: '1 / -1' } }}
+                />
+              </>
             ) : null}
             {warrantyEnabled ? (
               <TextField

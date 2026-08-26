@@ -25,6 +25,7 @@ def _parse_bool(value):
 def list_items():
     q = request.args.get("q")
     barcode = request.args.get("barcode")
+    isbn = request.args.get("isbn")
     category_id = request.args.get("category_id")
     is_active = _parse_bool(request.args.get("is_active"))
     stock_status = request.args.get("stock_status")
@@ -33,6 +34,7 @@ def list_items():
     data, meta = ItemService.list_items(
         q=q,
         barcode=barcode,
+        isbn=isbn,
         category_id=category_id,
         is_active=is_active,
         stock_status=stock_status,
@@ -62,6 +64,7 @@ def create_item():
         sku=payload.get("sku"),
         barcode=payload.get("barcode"),
         uom=payload.get("uom"),
+        sale_uom=payload.get("sale_uom"),
         cost_price=payload.get("cost_price"),
         stock_quantity=payload.get("stock_quantity"),
         minimum_stock_level=payload.get("minimum_stock_level"),
@@ -71,6 +74,16 @@ def create_item():
         block_expired_batches=payload.get("block_expired_batches", True),
         tracks_serial=payload.get("tracks_serial", False),
         warranty_months=payload.get("warranty_months"),
+        brand=payload.get("brand"),
+        model_name=payload.get("model_name"),
+        isbn=payload.get("isbn"),
+        author=payload.get("author"),
+        publisher=payload.get("publisher"),
+        dimension_length=payload.get("dimension_length"),
+        dimension_width=payload.get("dimension_width"),
+        dimension_height=payload.get("dimension_height"),
+        material=payload.get("material"),
+        color=payload.get("color"),
     )
     return success_response(data=data, status_code=201)
 
@@ -91,6 +104,8 @@ def update_item(item_id: str):
         barcode_provided="barcode" in raw,
         uom=payload.get("uom") if "uom" in raw else None,
         uom_provided="uom" in raw,
+        sale_uom=payload.get("sale_uom") if "sale_uom" in raw else None,
+        sale_uom_provided="sale_uom" in raw,
         cost_price=payload.get("cost_price") if "cost_price" in raw else None,
         cost_price_provided="cost_price" in raw,
         stock_quantity=payload.get("stock_quantity") if "stock_quantity" in raw else None,
@@ -113,6 +128,26 @@ def update_item(item_id: str):
         tracks_serial_provided="tracks_serial" in raw,
         warranty_months=payload.get("warranty_months") if "warranty_months" in raw else None,
         warranty_months_provided="warranty_months" in raw,
+        brand=payload.get("brand") if "brand" in raw else None,
+        brand_provided="brand" in raw,
+        model_name=payload.get("model_name") if "model_name" in raw else None,
+        model_name_provided="model_name" in raw,
+        isbn=payload.get("isbn") if "isbn" in raw else None,
+        isbn_provided="isbn" in raw,
+        author=payload.get("author") if "author" in raw else None,
+        author_provided="author" in raw,
+        publisher=payload.get("publisher") if "publisher" in raw else None,
+        publisher_provided="publisher" in raw,
+        dimension_length=payload.get("dimension_length") if "dimension_length" in raw else None,
+        dimension_length_provided="dimension_length" in raw,
+        dimension_width=payload.get("dimension_width") if "dimension_width" in raw else None,
+        dimension_width_provided="dimension_width" in raw,
+        dimension_height=payload.get("dimension_height") if "dimension_height" in raw else None,
+        dimension_height_provided="dimension_height" in raw,
+        material=payload.get("material") if "material" in raw else None,
+        material_provided="material" in raw,
+        color=payload.get("color") if "color" in raw else None,
+        color_provided="color" in raw,
     )
     return success_response(data=data)
 

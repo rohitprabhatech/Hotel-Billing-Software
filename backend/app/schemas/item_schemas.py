@@ -12,6 +12,7 @@ class CreateItemSchema(Schema):
     sku = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=64))
     barcode = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=64))
     uom = fields.String(load_default="pcs", validate=validate.Length(max=16))
+    sale_uom = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=16))
     description = fields.String(load_default=None, allow_none=True)
     price = fields.Decimal(required=True, as_string=False)
     cost_price = fields.Decimal(load_default=None, allow_none=True, as_string=False)
@@ -24,6 +25,16 @@ class CreateItemSchema(Schema):
     block_expired_batches = fields.Boolean(load_default=True)
     tracks_serial = fields.Boolean(load_default=False)
     warranty_months = fields.Integer(load_default=None, allow_none=True, validate=validate.Range(min=0, max=120))
+    brand = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=80))
+    model_name = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=120))
+    isbn = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=32))
+    author = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=160))
+    publisher = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=160))
+    dimension_length = fields.Decimal(load_default=None, allow_none=True, as_string=False)
+    dimension_width = fields.Decimal(load_default=None, allow_none=True, as_string=False)
+    dimension_height = fields.Decimal(load_default=None, allow_none=True, as_string=False)
+    material = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=120))
+    color = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=80))
 
 
 class UpdateItemSchema(Schema):
@@ -35,6 +46,7 @@ class UpdateItemSchema(Schema):
     sku = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=64))
     barcode = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=64))
     uom = fields.String(load_default="pcs", validate=validate.Length(max=16))
+    sale_uom = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=16))
     description = fields.String(load_default=None, allow_none=True)
     price = fields.Decimal(load_default=None, as_string=False)
     cost_price = fields.Decimal(load_default=None, allow_none=True, as_string=False)
@@ -47,6 +59,16 @@ class UpdateItemSchema(Schema):
     block_expired_batches = fields.Boolean(load_default=None, allow_none=True)
     tracks_serial = fields.Boolean(load_default=None, allow_none=True)
     warranty_months = fields.Integer(load_default=None, allow_none=True, validate=validate.Range(min=0, max=120))
+    brand = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=80))
+    model_name = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=120))
+    isbn = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=32))
+    author = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=160))
+    publisher = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=160))
+    dimension_length = fields.Decimal(load_default=None, allow_none=True, as_string=False)
+    dimension_width = fields.Decimal(load_default=None, allow_none=True, as_string=False)
+    dimension_height = fields.Decimal(load_default=None, allow_none=True, as_string=False)
+    material = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=120))
+    color = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=80))
 
 
 class ItemStatusSchema(Schema):

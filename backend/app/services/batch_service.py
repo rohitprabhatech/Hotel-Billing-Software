@@ -118,24 +118,29 @@ class BatchService:
             name = batch.item.name if batch.item else "Item"
             code = batch.batch_code or batch.id[:8]
             if days_left < 0:
-                NotificationService.create_tenant_notification(
+                NotificationService.emit_template(
+                    key="batch_expired",
                     tenant_id=tenant_id,
-                    notification_type=TYPE_BATCH_EXPIRED,
-                    title=f"Expired batch: {name}",
-                    message=f"Batch {code} expired on {batch.expiry_date.isoformat()} "
-                    f"(qty {float(batch.quantity):g}).",
-                    entity_type="ITEM_BATCH",
                     entity_id=batch.id,
+                    context={
+                        "item_name": name,
+                        "batch_code": code,
+                        "expiry_date": batch.expiry_date.isoformat(),
+                        "quantity": float(batch.quantity),
+                    },
                 )
             elif days_left <= DEFAULT_EXPIRY_WARNING_DAYS:
-                NotificationService.create_tenant_notification(
+                NotificationService.emit_template(
+                    key="batch_expiring",
                     tenant_id=tenant_id,
-                    notification_type=TYPE_BATCH_EXPIRING,
-                    title=f"Expiring soon: {name}",
-                    message=f"Batch {code} expires on {batch.expiry_date.isoformat()} "
-                    f"({days_left} day(s) left, qty {float(batch.quantity):g}).",
-                    entity_type="ITEM_BATCH",
                     entity_id=batch.id,
+                    context={
+                        "item_name": name,
+                        "batch_code": code,
+                        "expiry_date": batch.expiry_date.isoformat(),
+                        "days_left": days_left,
+                        "quantity": float(batch.quantity),
+                    },
                 )
         db.session.flush()
 
@@ -158,27 +163,18 @@ class BatchService:
             raise ValidationError("expiry_date is required")
 
         code = (batch_code or "").strip() or None
-        if code:
-            existing = ItemBatchRepository.find_by_code(ctx.tenant_id, item.id, code)
-            if existing:
-                raise ConflictError("Batch code already exists for this item")
-
-        previous = Decimal(item.stock_quantity) if item.stock_quantity is not None else Decimal("0")
-        new_stock = previous + amount
-        item.stock_quantity = new_stock
-
-        batch = ItemBatch(
-            id=new_uuid(),
+        batch, previous, new_stock, _movement_id = BatchService.create_batch_uncommitted(
             tenant_id=ctx.tenant_id,
-            item_id=item.id,
-            batch_code=code,
-            expiry_date=expiry_date,
+            item=item,
             quantity=amount,
-            is_active=True,
+            expiry_date=expiry_date,
+            batch_code=code,
+            created_by=ctx.user_id,
+            reason=(reason or "").strip() or None,
+            movement_source="RECEIVE",
+            reference_type="ITEM_BATCH",
         )
-        ItemBatchRepository.add(batch)
 
-        reason_text = (reason or "").strip() or f"Batch receive {code or batch.id[:8]}"
         AuditService.log(
             tenant_id=ctx.tenant_id,
             action="CREATE_BATCH",
@@ -188,17 +184,6 @@ class BatchService:
                 **BatchService.serialize(batch, item_name=item.name),
                 "stock_quantity": float(new_stock),
             },
-        )
-        StockMovementService.record(
-            tenant_id=ctx.tenant_id,
-            item_id=item.id,
-            delta=amount,
-            quantity_after=new_stock,
-            source="RECEIVE",
-            reason=reason_text,
-            reference_type="ITEM_BATCH",
-            reference_id=batch.id,
-            created_by=ctx.user_id,
         )
         NotificationService.notify_stock_transition(
             tenant_id=ctx.tenant_id,
@@ -327,3 +312,95 @@ class BatchService:
             if batch.quantity <= 0:
                 batch.quantity = Decimal("0")
                 batch.is_active = False
+
+    @staticmethod
+    def allocate_for_writeoff(tenant_id: str, item, quantity: Decimal) -> list[tuple[ItemBatch, Decimal]]:
+        """FEFO across all active batches (including expired) for wastage."""
+        if not getattr(item, "tracks_batches", False):
+            return []
+        needed = qty(quantity)
+        if needed <= 0:
+            return []
+        available = Decimal("0")
+        rows = ItemBatchRepository.writeoff_batches(tenant_id, item.id)
+        for batch in rows:
+            available += Decimal(batch.quantity)
+        if needed > available:
+            raise ValidationError(
+                f"Insufficient batch stock for {item.name}. "
+                f"Available in batches: {float(available):g}, wastage: {float(needed):g}."
+            )
+        remaining = needed
+        allocations: list[tuple[ItemBatch, Decimal]] = []
+        for batch in rows:
+            if remaining <= 0:
+                break
+            take = min(Decimal(batch.quantity), remaining)
+            if take <= 0:
+                continue
+            allocations.append((batch, take))
+            remaining -= take
+        return allocations
+
+    @staticmethod
+    def create_batch_uncommitted(
+        *,
+        tenant_id: str,
+        item,
+        quantity: Decimal,
+        expiry_date: date,
+        batch_code: str | None = None,
+        created_by: str | None = None,
+        reason: str | None = None,
+        movement_source: str = "RECEIVE",
+        reference_type: str = "ITEM_BATCH",
+        reference_id: str | None = None,
+    ) -> tuple[ItemBatch, Decimal, Decimal, str]:
+        """Create batch + bump item stock without committing (caller owns transaction).
+
+        Returns (batch, previous_stock, new_stock, movement_id).
+        """
+        amount = qty(quantity)
+        if amount <= 0:
+            raise ValidationError("Quantity must be greater than zero")
+        if expiry_date is None:
+            raise ValidationError("expiry_date is required")
+        if not getattr(item, "tracks_batches", False):
+            raise ValidationError(
+                "Enable 'tracks batches' on this item before receiving batch stock."
+            )
+
+        code = (batch_code or "").strip() or None
+        if code:
+            existing = ItemBatchRepository.find_by_code(tenant_id, item.id, code)
+            if existing:
+                raise ConflictError("Batch code already exists for this item")
+
+        previous = Decimal(item.stock_quantity) if item.stock_quantity is not None else Decimal("0")
+        new_stock = previous + amount
+        item.stock_quantity = new_stock
+
+        batch = ItemBatch(
+            id=new_uuid(),
+            tenant_id=tenant_id,
+            item_id=item.id,
+            batch_code=code,
+            expiry_date=expiry_date,
+            quantity=amount,
+            is_active=True,
+        )
+        ItemBatchRepository.add(batch)
+
+        reason_text = (reason or "").strip() or f"Batch receive {code or batch.id[:8]}"
+        movement = StockMovementService.record(
+            tenant_id=tenant_id,
+            item_id=item.id,
+            delta=amount,
+            quantity_after=new_stock,
+            source=movement_source,
+            reason=reason_text,
+            reference_type=reference_type,
+            reference_id=reference_id or batch.id,
+            created_by=created_by,
+        )
+        return batch, previous, new_stock, movement.id

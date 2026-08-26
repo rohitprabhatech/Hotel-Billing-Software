@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -10,13 +10,20 @@ from app.models.base import TimestampMixin, utcnow
 
 STATUS_IN_STOCK = "IN_STOCK"
 STATUS_SOLD = "SOLD"
-ALLOWED_SERIAL_STATUSES = frozenset({STATUS_IN_STOCK, STATUS_SOLD})
+STATUS_QUARANTINE = "QUARANTINE"
+ALLOWED_SERIAL_STATUSES = frozenset({STATUS_IN_STOCK, STATUS_SOLD, STATUS_QUARANTINE})
 
 
 class SerialUnit(db.Model, TimestampMixin):
     __tablename__ = "serial_units"
     __table_args__ = (
         UniqueConstraint("tenant_id", "serial", name="uq_serial_units_tenant_serial"),
+        Index(
+            "ix_serial_units_tenant_status_received",
+            "tenant_id",
+            "status",
+            "received_at",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

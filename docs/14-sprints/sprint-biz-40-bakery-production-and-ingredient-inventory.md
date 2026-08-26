@@ -103,7 +103,17 @@ BIZ-16, BIZ-10
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Models: `production_runs`, `production_run_items`, `production_run_number_counters` (PR-#####)
+- API: `/api/v1/productions` (list/create/get), module `production`
+- Stock: ingredient − / finished goods + via `PRODUCTION` movements; low-stock notify
+- Sell path: with production module on, bills deduct FG stock (not BOM again)
+- UI: Owner Production page
+- Migration: `20260825_biz40_bakery_production_runs`
+- Tests: `test_biz40_bakery_production.py` (6 passed)
 
 ## Phase
 

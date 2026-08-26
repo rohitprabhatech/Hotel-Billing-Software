@@ -1,22 +1,11 @@
 # Book Stores — Modules
 
-| Module | Type | Priority | Dependencies |
-|--------|------|----------|--------------|
-| Billing | Common | High | Auth, Products |
-| Inventory | Common | High* | Products (*light/none for Travel) |
-| Customers | Common | High | Tenant |
-| Payments | Common | High | Billing |
-| Reports | Common | High | Billing data |
-| ISBN | Industry | High | Common core + pack |
-| Author / Publisher / Edition | Industry | High | Common core + pack |
-| Barcode | Industry | High | Common core + pack |
-| Book category | Industry | High | Common core + pack |
-| Stock management | Industry | High | Common core + pack |
-| Bulk pricing | Industry | High | Common core + pack |
-| Customer purchase history | Industry | High | Common core + pack |
-| Return management | Industry | High | Common core + pack |
+Activated when `business_type = book_store`.
 
-## Purpose summary
-
-This pack activates only when `business_type = book_store`.  
-Implementation lives under backend/frontend `modules/books/` (conceptual — not created yet).
+| Module code | Type | Priority | Notes |
+|-------------|------|----------|-------|
+| `book_metadata` | Industry | High | ISBN / author / publisher on items + `/books` aliases |
+| `barcode_pos` | Industry | High | Shared barcode / search POS |
+| `bulk_pricing` | Industry | High | Shared bulk tiers |
+| `returns_exchange` | Industry | High | Shared returns (BIZ-46 gate focus) |
+| Billing / Inventory / Customers / Reports | Common | High | Shared core |

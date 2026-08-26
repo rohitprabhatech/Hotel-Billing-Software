@@ -14,3 +14,8 @@ export async function fetchAuditAlerts() {
   const { data } = await apiClient.get('/audit-logs/alerts');
   return data;
 }
+
+export async function fetchAuditMeta() {
+  const { data } = await apiClient.get('/audit-logs/meta');
+  return data;
+}

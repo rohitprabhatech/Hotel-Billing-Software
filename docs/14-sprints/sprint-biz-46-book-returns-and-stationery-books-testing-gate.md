@@ -102,7 +102,15 @@ BIZ-45, BIZ-27
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Book returns proven on shared `/returns` (module already on `book_store`)
+- ReturnsPage: plain-item exchange catalog via grocery POS (books)
+- Gate suite: `test_biz46_stationery_books_testing_gate.py`
+- Full Phase 08: BIZ-44 … BIZ-46 — **20 passed** (2026-08-26)
+- Gate report + manual checklist published
 
 ## Phase
 

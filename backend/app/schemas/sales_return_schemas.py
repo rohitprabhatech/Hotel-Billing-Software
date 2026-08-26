@@ -17,6 +17,10 @@ class ReturnLineSchema(Schema):
     exchange_variant_id = fields.String(
         load_default=None, allow_none=True, validate=validate.Length(max=36)
     )
+    exchange_serial_unit_id = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=36)
+    )
+    quarantine = fields.Boolean(load_default=False)
 
 
 class CreateSalesReturnSchema(Schema):

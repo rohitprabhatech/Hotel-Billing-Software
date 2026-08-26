@@ -19,6 +19,10 @@ class CreatePurchaseSchema(Schema):
     supplier_id = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=36))
     invoice_number = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=60))
     notes = fields.String(load_default=None, allow_none=True)
+    payment_method = fields.String(
+        load_default="cash",
+        validate=validate.OneOf(["cash", "online", "credit"]),
+    )
     items = fields.List(
         fields.Nested(PurchaseLineSchema), required=True, validate=validate.Length(min=1)
     )

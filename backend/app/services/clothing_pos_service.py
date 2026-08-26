@@ -1,5 +1,6 @@
 """Clothing POS catalog with variant stock matrix (BIZ-26)."""
 
+from app.constants.perf import POS_CATALOG_DEFAULT_LIMIT, clamp_pos_catalog_limit
 from app.constants.permissions import PERM_ITEMS_READ
 from app.repositories.item_image_repository import ItemImageRepository
 from app.repositories.item_repository import ItemRepository
@@ -16,7 +17,7 @@ from app.utils.request_context import require_request_context
 
 class ClothingPosService:
     @staticmethod
-    def pos_catalog(*, q: str | None = None, limit: int = 200):
+    def pos_catalog(*, q: str | None = None, limit: int = POS_CATALOG_DEFAULT_LIMIT):
         require_permission(PERM_ITEMS_READ)
         ctx = require_request_context()
         tenant = TenantRepository.get_by_id(ctx.tenant_id)
@@ -30,7 +31,7 @@ class ClothingPosService:
             q=q,
             is_active=True,
             page=1,
-            per_page=min(max(int(limit or 200), 1), 200),
+            per_page=clamp_pos_catalog_limit(limit),
         )
         item_ids = [row.id for row in rows]
         variants_by_item = ItemVariantRepository.list_active_for_items(ctx.tenant_id, item_ids)

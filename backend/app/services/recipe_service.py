@@ -62,7 +62,13 @@ class RecipeService:
         if menu_item is None or not menu_item.is_active:
             raise ValidationError("Menu item not found or inactive")
         if not menu_item.is_menu:
-            raise ValidationError("Recipes can only be linked to menu items")
+            from app.repositories.tenant_repository import TenantRepository
+            from app.services.module_service import ModuleService
+
+            tenant = TenantRepository.get_by_id(ctx.tenant_id)
+            # Bakery production reuses recipes for finished goods that are not F&B menu rows.
+            if not (tenant and ModuleService.is_enabled_for_tenant(tenant, "production")):
+                raise ValidationError("Recipes can only be linked to menu items")
 
         existing = RecipeRepository.get_by_menu_item(ctx.tenant_id, menu_item.id)
         if existing is not None:
@@ -191,6 +197,9 @@ class RecipeService:
             "id": recipe.id,
             "menu_item_id": recipe.menu_item_id,
             "menu_item_name": recipe.menu_item.name if recipe.menu_item else None,
+            "menu_item_tracks_batches": bool(
+                getattr(recipe.menu_item, "tracks_batches", False) if recipe.menu_item else False
+            ),
             "name": recipe.name,
             "yield_quantity": float(recipe.yield_quantity),
             "is_active": recipe.is_active,

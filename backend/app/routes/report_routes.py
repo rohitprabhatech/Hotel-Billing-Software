@@ -12,6 +12,13 @@ from app.utils.permission_access import permission_required
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 
 
+@reports_bp.get("/available")
+@roles_required(ROLE_OWNER, ROLE_MANAGER)
+@permission_required(PERM_REPORTS)
+def available():
+    return report_controller.available()
+
+
 @reports_bp.get("/summary")
 @roles_required(ROLE_OWNER, ROLE_MANAGER)
 @permission_required(PERM_REPORTS)
@@ -53,6 +60,13 @@ def custom_sales():
 @permission_required(PERM_REPORTS)
 def fb_report():
     return report_controller.fb_report()
+
+
+@reports_bp.get("/outstanding")
+@roles_required(ROLE_OWNER, ROLE_MANAGER)
+@permission_required(PERM_REPORTS)
+def outstanding():
+    return report_controller.outstanding()
 
 
 @reports_bp.get("/export")

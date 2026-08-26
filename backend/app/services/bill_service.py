@@ -20,6 +20,7 @@ from app.repositories.item_repository import ItemRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
 from app.services.bulk_pricing_service import BulkPricingService
+from app.services.price_list_service import PriceListService
 from app.services.notification_service import NotificationService
 from app.utils.exceptions import InsufficientStockError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
@@ -41,6 +42,8 @@ class BillService:
         customer_phone: str | None = None,
         customer_email: str | None = None,
         customer_id: str | None = None,
+        transport_charge=0,
+        warehouse_id: str | None = None,
     ):
         ctx = require_request_context()
         if not items:
@@ -52,6 +55,39 @@ class BillService:
             )
         except ValueError as exc:
             raise ValidationError("Please select a payment method.") from exc
+
+        try:
+            transport_value = money(transport_charge or 0)
+        except Exception as exc:
+            raise ValidationError("Invalid transport charge") from exc
+        if transport_value < 0:
+            raise ValidationError("Transport charge cannot be negative")
+        if transport_value > 0:
+            from app.services.module_service import ModuleService
+
+            tenant_for_mod = TenantRepository.get_by_id(ctx.tenant_id)
+            if not ModuleService.is_enabled_for_tenant(tenant_for_mod, "transport_charges"):
+                raise ValidationError("Transport charges are not enabled for this business")
+
+        sale_warehouse_id = (warehouse_id or "").strip() or None
+        warehouse_module_on = False
+        tenant_early = TenantRepository.get_by_id(ctx.tenant_id)
+        if tenant_early is not None:
+            from app.services.module_service import ModuleService
+            from app.services.warehouse_service import WarehouseService
+
+            warehouse_module_on = WarehouseService.module_enabled(tenant_early)
+            if warehouse_module_on:
+                if sale_warehouse_id:
+                    from app.repositories.warehouse_repository import WarehouseRepository
+
+                    wh = WarehouseRepository.get_by_id(ctx.tenant_id, sale_warehouse_id)
+                    if wh is None or not wh.is_active:
+                        raise ValidationError("Warehouse not found or inactive")
+                else:
+                    sale_warehouse_id = WarehouseService.ensure_default_warehouse(
+                        ctx.tenant_id
+                    ).id
 
         bill_reference = (reference if reference is not None else table_number) or ""
         bill_reference = bill_reference.strip() or None
@@ -170,7 +206,18 @@ class BillService:
             elif row["variant_id"]:
                 raise ValidationError(f"{item.name} has no size/color variants")
             else:
-                parent_sold[item.id] = parent_sold.get(item.id, Decimal("0")) + row["quantity"]
+                from app.constants.measurement import effective_sale_uom
+                from app.utils.uom import stock_quantity_from_sale
+
+                sale_unit = effective_sale_uom(
+                    uom=item.uom, sale_uom=getattr(item, "sale_uom", None)
+                )
+                stock_qty = stock_quantity_from_sale(
+                    sale_quantity=row["quantity"],
+                    stock_uom=item.uom or "pcs",
+                    sale_uom=sale_unit,
+                )
+                parent_sold[item.id] = parent_sold.get(item.id, Decimal("0")) + stock_qty
 
         for row in serial_cart:
             item = locked[row["item_id"]]
@@ -273,7 +320,12 @@ class BillService:
             qty_for_price[row["item_id"]] = qty_for_price.get(row["item_id"], Decimal("0")) + row[
                 "quantity"
             ]
-        unit_prices = BulkPricingService.resolve_many(tenant, locked, qty_for_price)
+        unit_prices = PriceListService.resolve_many(
+            tenant,
+            locked,
+            qty_for_price,
+            customer_id=linked_customer.id if linked_customer else None,
+        )
         serial_moves = []
         for row in serial_cart:
             item = locked[row["item_id"]]
@@ -326,7 +378,9 @@ class BillService:
             )
 
         try:
-            calculated = calculate_bill_totals(calc_lines, discount)
+            calculated = calculate_bill_totals(
+                calc_lines, discount, transport_charge_amount=transport_value
+            )
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
 
@@ -342,6 +396,15 @@ class BillService:
                 new_stock = previous - quantity
                 item.stock_quantity = new_stock
                 stock_moves.append((item, previous, new_stock, quantity))
+                if warehouse_module_on and sale_warehouse_id:
+                    from app.services.warehouse_service import WarehouseService
+
+                    WarehouseService.deduct_for_sale(
+                        tenant_id=ctx.tenant_id,
+                        warehouse_id=sale_warehouse_id,
+                        item_id=item.id,
+                        quantity=quantity,
+                    )
             BatchService.apply_allocations(batch_allocations.get(item_id) or [])
 
         for row in cart_merged.values():
@@ -384,6 +447,9 @@ class BillService:
             gst_amount=calculated["gst_amount"],
             grand_total=calculated["grand_total"],
             round_off=calculated["round_off"],
+            service_charge=calculated.get("service_charge") or money(0),
+            transport_charge=calculated.get("transport_charge") or money(0),
+            warehouse_id=sale_warehouse_id if warehouse_module_on else None,
             status="FINALIZED",
             payment_method=payment,
             created_by=ctx.user_id,
@@ -754,6 +820,15 @@ class BillService:
                 reference_id=bill.id,
                 created_by=ctx.user_id,
             )
+            if getattr(bill, "warehouse_id", None):
+                from app.services.warehouse_service import WarehouseService
+
+                WarehouseService.restore_for_cancel(
+                    tenant_id=ctx.tenant_id,
+                    warehouse_id=bill.warehouse_id,
+                    item_id=item.id,
+                    quantity=restored_qty,
+                )
             NotificationService.notify_stock_transition(
                 tenant_id=ctx.tenant_id,
                 item=item,
@@ -886,6 +961,8 @@ class BillService:
             "sgst_amount": float(bill.sgst_amount),
             "gst_amount": float(bill.gst_amount),
             "service_charge": float(getattr(bill, "service_charge", 0) or 0),
+            "transport_charge": float(getattr(bill, "transport_charge", 0) or 0),
+            "warehouse_id": getattr(bill, "warehouse_id", None),
             "round_off": float(bill.round_off),
             "grand_total": float(bill.grand_total),
             "status": bill.status,

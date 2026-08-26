@@ -107,6 +107,12 @@ class WastageService:
                 f"Insufficient stock. Available: {float(previous):g}, wastage: {float(parsed_qty):g}."
             )
 
+        from app.services.batch_service import BatchService
+
+        batch_allocations = BatchService.allocate_for_writeoff(
+            ctx.tenant_id, item, parsed_qty
+        )
+
         tz = WastageService._tenant_tz()
         if wastage_date:
             entry_date = wastage_date
@@ -132,6 +138,8 @@ class WastageService:
             created_by=ctx.user_id,
         )
         item.stock_quantity = new_stock
+        if batch_allocations:
+            BatchService.apply_allocations(batch_allocations)
 
         entry = WastageEntry(
             id=entry_id,

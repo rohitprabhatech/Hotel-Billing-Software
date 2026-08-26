@@ -58,8 +58,27 @@ export function ModulesProvider({ children }) {
       error,
       refresh,
       isModuleEnabled: (code) => enabledSet.has(code),
-      filterByModule: (items) =>
-        (items || []).filter((item) => !item.module || enabledSet.has(item.module)),
+      filterByModule: (items, businessType) =>
+        (items || []).filter((item) => {
+          if (item.module && !enabledSet.has(item.module)) return false;
+          if (
+            Array.isArray(item.businessTypes) &&
+            item.businessTypes.length &&
+            businessType &&
+            !item.businessTypes.includes(businessType)
+          ) {
+            return false;
+          }
+          if (
+            Array.isArray(item.hideForBusinessTypes) &&
+            item.hideForBusinessTypes.length &&
+            businessType &&
+            item.hideForBusinessTypes.includes(businessType)
+          ) {
+            return false;
+          }
+          return true;
+        }),
     };
   }, [enabledModules, modulesDetail, loading, error, refresh]);
 

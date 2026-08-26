@@ -1,22 +1,14 @@
 # Stationery Shops — Modules
 
-| Module | Type | Priority | Dependencies |
-|--------|------|----------|--------------|
-| Billing | Common | High | Auth, Products |
-| Inventory | Common | High* | Products (*light/none for Travel) |
-| Customers | Common | High | Tenant |
-| Payments | Common | High | Billing |
-| Reports | Common | High | Billing data |
-| Barcode / SKU | Industry | High | Common core + pack |
-| Brand management | Industry | High | Common core + pack |
-| Category management | Industry | High | Common core + pack |
-| Bulk pricing | Industry | High | Common core + pack |
-| Low-stock alerts | Industry | High | Common core + pack |
-| Customer credit | Industry | High | Common core + pack |
-| Fast POS billing | Industry | High | Common core + pack |
-| Product search | Industry | High | Common core + pack |
+Activated when `business_type = stationery` (see `BUSINESS_TYPE_MODULES` in backend).
 
-## Purpose summary
+| Module code | Type | Priority | Notes |
+|-------------|------|----------|-------|
+| `barcode_pos` | Industry | High | POS catalog + barcode lookup |
+| `bulk_pricing` | Industry | High | Shared bulk tiers on items/bills |
+| `customer_credit` | Industry | High | Udhari / outstanding + credit bills |
+| Billing / Inventory / Customers / Reports | Common | High | Shared core |
 
-This pack activates only when `business_type = stationery`.  
-Implementation lives under backend/frontend `modules/stationery/` (conceptual — not created yet).
+Also available via common inventory: low-stock alerts on sell/purchase paths.
+
+Brand/category management uses common Categories + Items (no separate stationery brands API in BIZ-44).

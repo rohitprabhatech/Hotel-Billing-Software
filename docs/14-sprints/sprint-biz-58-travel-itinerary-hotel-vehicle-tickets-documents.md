@@ -104,7 +104,7 @@ BIZ-57
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

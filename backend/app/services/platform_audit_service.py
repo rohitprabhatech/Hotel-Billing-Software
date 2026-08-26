@@ -2,34 +2,9 @@
 
 from app.models.platform_audit_log import PlatformAuditLog
 from app.repositories.platform_audit_repository import PlatformAuditRepository
+from app.utils.audit_scrub import scrub_audit_payload
 from app.utils.ids import new_uuid
 from app.utils.request_context import get_master_context
-
-
-_SECRET_KEYS = {
-    "password",
-    "password_hash",
-    "confirm_password",
-    "current_password",
-    "new_password",
-    "access_token",
-    "token",
-    "secret",
-    "access_token_encrypted",
-}
-
-
-def _scrub(value):
-    if isinstance(value, dict):
-        cleaned = {}
-        for key, item in value.items():
-            if str(key).lower() in _SECRET_KEYS:
-                continue
-            cleaned[key] = _scrub(item)
-        return cleaned
-    if isinstance(value, list):
-        return [_scrub(item) for item in value]
-    return value
 
 
 class PlatformAuditService:
@@ -53,8 +28,8 @@ class PlatformAuditService:
             entity_type=entity_type,
             entity_id=entity_id,
             tenant_id=tenant_id,
-            old_data=_scrub(old_data) if old_data else None,
-            new_data=_scrub(new_data) if new_data else None,
+            old_data=scrub_audit_payload(old_data) if old_data else None,
+            new_data=scrub_audit_payload(new_data) if new_data else None,
             ip_address=ctx.ip_address if ctx else None,
             user_agent=ctx.user_agent if ctx else None,
         )

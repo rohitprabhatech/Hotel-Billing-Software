@@ -1,6 +1,6 @@
 """Global role model — OWNER, MANAGER, and BILLING_USER."""
 
-from sqlalchemy import String
+from sqlalchemy import CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -17,6 +17,12 @@ ROLE_MANAGER_ID = "33333333-3333-3333-3333-333333333333"
 
 class Role(db.Model, TimestampMixin):
     __tablename__ = "roles"
+    __table_args__ = (
+        CheckConstraint(
+            "name IN ('OWNER', 'BILLING_USER', 'MANAGER')",
+            name="chk_roles_name",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)

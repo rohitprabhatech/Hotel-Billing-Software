@@ -8,6 +8,7 @@ from app.models.purchase import PURCHASE_CANCELLED, PURCHASE_FINALIZED, Purchase
 from app.repositories.item_repository import ItemRepository
 from app.repositories.purchase_repository import PurchaseRepository
 from app.repositories.supplier_repository import SupplierRepository
+from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
 from app.utils.exceptions import InsufficientStockError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
@@ -72,11 +73,16 @@ class PurchaseService:
         invoice_number: str | None,
         notes: str | None,
         items: list[dict],
+        payment_method: str | None = "cash",
     ):
         require_permission(PERM_PURCHASES_WRITE)
         ctx = require_request_context()
         if not items:
             raise ValidationError("At least one line item is required")
+
+        method = (payment_method or "cash").strip().lower()
+        if method not in {"cash", "online", "credit"}:
+            raise ValidationError("Payment method must be cash, online, or credit")
 
         supplier = None
         supplier_name = None
@@ -85,6 +91,8 @@ class PurchaseService:
             if supplier is None or not supplier.is_active:
                 raise ValidationError("Supplier not found or inactive")
             supplier_name = supplier.name
+        if method == "credit" and supplier is None:
+            raise ValidationError("Supplier is required for credit purchases")
 
         merged: dict[str, dict] = {}
         for row in items:
@@ -183,6 +191,16 @@ class PurchaseService:
                 reference_id=purchase.id,
                 created_by=ctx.user_id,
             )
+            from app.services.module_service import ModuleService
+            from app.services.warehouse_service import WarehouseService
+
+            tenant = TenantRepository.get_by_id(ctx.tenant_id)
+            if WarehouseService.module_enabled(tenant):
+                WarehouseService.receive_into_default(
+                    tenant_id=ctx.tenant_id,
+                    item_id=item.id,
+                    quantity=quantity,
+                )
             if previous is not None:
                 NotificationService.notify_stock_transition(
                     tenant_id=ctx.tenant_id,
@@ -198,6 +216,17 @@ class PurchaseService:
             entity_id=purchase.id,
             new_data=PurchaseService.serialize(purchase, include_items=True),
         )
+        if method == "credit" and supplier is not None:
+            from app.services.party_ledger_service import PartyLedgerService
+
+            PartyLedgerService.record_credit_purchase(
+                tenant_id=ctx.tenant_id,
+                supplier_id=supplier.id,
+                amount=purchase.total_amount,
+                purchase_id=purchase.id,
+                purchase_number=purchase.purchase_number,
+                created_by=ctx.user_id,
+            )
         db.session.commit()
         db.session.refresh(purchase)
         return PurchaseService.serialize(purchase, include_items=True)
@@ -263,6 +292,17 @@ class PurchaseService:
                 reference_id=purchase.id,
                 created_by=ctx.user_id,
             )
+            from app.services.module_service import ModuleService
+            from app.services.warehouse_service import WarehouseService
+
+            tenant = TenantRepository.get_by_id(ctx.tenant_id)
+            if WarehouseService.module_enabled(tenant):
+                WarehouseService.adjust_warehouse_stock(
+                    tenant_id=ctx.tenant_id,
+                    warehouse_id=WarehouseService.ensure_default_warehouse(ctx.tenant_id).id,
+                    item_id=item.id,
+                    delta=-quantity,
+                )
 
         purchase.status = PURCHASE_CANCELLED
         purchase.cancelled_by = ctx.user_id
@@ -277,6 +317,18 @@ class PurchaseService:
             old_data=old,
             new_data=PurchaseService.serialize(purchase, include_items=True),
         )
+        if purchase.supplier_id:
+            from app.services.party_ledger_service import PartyLedgerService
+
+            PartyLedgerService.record_purchase_cancel_reversal(
+                tenant_id=ctx.tenant_id,
+                supplier_id=purchase.supplier_id,
+                amount=purchase.total_amount,
+                purchase_id=purchase.id,
+                purchase_number=purchase.purchase_number,
+                created_by=ctx.user_id,
+                reason=reason_text,
+            )
         db.session.commit()
         db.session.refresh(purchase)
         return PurchaseService.serialize(purchase, include_items=True)

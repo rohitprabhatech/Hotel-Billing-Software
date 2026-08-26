@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Card,
+  CardActionArea,
   CardContent,
   CircularProgress,
   FormControl,
@@ -18,9 +19,11 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -37,9 +40,9 @@ import PageShell from '../../components/PageShell';
 import Section from '../../components/Section';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
-import { useModuleGate } from '../../context/ModulesContext';
 import {
   downloadReport,
+  fetchAvailableReports,
   fetchCustomSales,
   fetchDailySales,
   fetchFbReport,
@@ -49,6 +52,7 @@ import {
 import { listCategories } from '../../services/categoryService';
 import { fetchClothingSales } from '../../services/clothingService';
 import { fetchGrocerySales } from '../../services/groceryService';
+import { fetchMobileSales } from '../../services/mobileService';
 import { PAYMENT_CASH, PAYMENT_CREDIT, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
 
 function money(v) {
@@ -122,9 +126,9 @@ function ItemSalesTable({ rows, emptyTitle, emptyDescription }) {
 
 export default function ReportsPage() {
   const theme = useTheme();
-  const fbEnabled = useModuleGate('order_channels');
-  const groceryEnabled = useModuleGate('customer_credit');
-  const clothingEnabled = useModuleGate('variants');
+  const [hubReports, setHubReports] = useState([{ id: 'sales', view: 'sales', label: 'Sales' }]);
+  const [linkReports, setLinkReports] = useState([]);
+  const [maxRangeDays, setMaxRangeDays] = useState(366);
   const [view, setView] = useState('sales');
   const [type, setType] = useState('daily');
   const [date, setDate] = useState('');
@@ -136,15 +140,52 @@ export default function ReportsPage() {
   const [brandFilter, setBrandFilter] = useState('');
   const [sizeFilter, setSizeFilter] = useState('');
   const [colorFilter, setColorFilter] = useState('');
+  const [modelFilter, setModelFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [categories, setCategories] = useState([]);
+  const [billsPage, setBillsPage] = useState(1);
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState('');
 
+  const clothingEnabled = useMemo(
+    () => hubReports.some((row) => row.view === 'apparel'),
+    [hubReports],
+  );
+  const mobileEnabled = useMemo(
+    () => hubReports.some((row) => row.view === 'mobile'),
+    [hubReports],
+  );
+
   useEffect(() => {
-    if (!clothingEnabled) return undefined;
+    let cancelled = false;
+    fetchAvailableReports()
+      .then((res) => {
+        if (cancelled) return;
+        const hub = res.data?.hub_reports?.length
+          ? res.data.hub_reports
+          : [{ id: 'sales', view: 'sales', label: 'Sales' }];
+        setHubReports(hub);
+        setLinkReports(res.data?.link_reports || []);
+        setMaxRangeDays(res.data?.limits?.max_custom_range_days || 366);
+        setView((current) =>
+          hub.some((row) => row.view === current) ? current : hub[0]?.view || 'sales',
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHubReports([{ id: 'sales', view: 'sales', label: 'Sales' }]);
+          setLinkReports([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!clothingEnabled && !mobileEnabled) return undefined;
     let cancelled = false;
     listCategories()
       .then((res) => {
@@ -156,13 +197,15 @@ export default function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [clothingEnabled]);
+  }, [clothingEnabled, mobileEnabled]);
 
-  const load = async () => {
+  const load = async (pageOverride) => {
+    const page = pageOverride || billsPage;
     setLoading(true);
     setError('');
     try {
       const paymentParams = paymentMethod ? { payment_method: paymentMethod } : {};
+      const pageParams = { page, per_page: 50 };
       let res;
       if (view === 'fb') {
         if (type === 'custom') {
@@ -185,16 +228,34 @@ export default function ReportsPage() {
         if (colorFilter.trim()) apparelParams.color = colorFilter.trim();
         if (categoryFilter) apparelParams.category_id = categoryFilter;
         res = await fetchClothingSales(apparelParams);
+      } else if (view === 'mobile') {
+        const mobileParams = { ...paymentParams };
+        if (type === 'custom') {
+          mobileParams.from = fromDate;
+          mobileParams.to = toDate;
+        } else if (date) {
+          mobileParams.date = date;
+        }
+        if (brandFilter.trim()) mobileParams.brand = brandFilter.trim();
+        if (modelFilter.trim()) mobileParams.model_name = modelFilter.trim();
+        if (categoryFilter) mobileParams.category_id = categoryFilter;
+        res = await fetchMobileSales(mobileParams);
       } else if (type === 'daily') {
-        res = await fetchDailySales({ ...(date ? { date } : {}), ...paymentParams });
+        res = await fetchDailySales({ ...(date ? { date } : {}), ...paymentParams, ...pageParams });
       } else if (type === 'weekly') {
-        res = await fetchWeeklySales(paymentParams);
+        res = await fetchWeeklySales({ ...paymentParams, ...pageParams });
       } else if (type === 'monthly') {
-        res = await fetchMonthlySales({ year, month, ...paymentParams });
+        res = await fetchMonthlySales({ year, month, ...paymentParams, ...pageParams });
       } else {
-        res = await fetchCustomSales({ from: fromDate, to: toDate, ...paymentParams });
+        res = await fetchCustomSales({
+          from: fromDate,
+          to: toDate,
+          ...paymentParams,
+          ...pageParams,
+        });
       }
       setReport(res.data);
+      if (pageOverride) setBillsPage(pageOverride);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to generate report.');
     } finally {
@@ -226,29 +287,61 @@ export default function ReportsPage() {
   };
 
   const metrics = report?.metrics || {};
+  const billsMeta = report?.bills_meta;
+  const showIndustryTabs = hubReports.length > 1;
 
   return (
     <PageShell>
-      {(fbEnabled || groceryEnabled || clothingEnabled) ? (
+      {showIndustryTabs ? (
         <Tabs
           value={view}
           onChange={(_, value) => {
             setView(value);
-            if (value === 'kirana' || value === 'apparel') setType('daily');
+            setReport(null);
+            setBillsPage(1);
+            if (value === 'kirana' || value === 'apparel' || value === 'mobile') setType('daily');
           }}
           sx={{ mb: 2 }}
+          variant="scrollable"
+          allowScrollButtonsMobile
         >
-          <Tab value="sales" label="Sales" />
-          {fbEnabled ? <Tab value="fb" label="F&B Insights" /> : null}
-          {groceryEnabled ? <Tab value="kirana" label="Kirana" /> : null}
-          {clothingEnabled ? <Tab value="apparel" label="Apparel" /> : null}
+          {hubReports.map((row) => (
+            <Tab key={row.id} value={row.view} label={row.label} />
+          ))}
         </Tabs>
       ) : null}
+
+      {linkReports.length ? (
+        <Section title="More reports" description="Module-enabled reports outside this hub">
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 2,
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' },
+              mb: 2,
+            }}
+          >
+            {linkReports.map((row) => (
+              <Card key={row.id} variant="outlined">
+                <CardActionArea component={RouterLink} to={row.ui_path || '/owner/reports'}>
+                  <CardContent>
+                    <Typography fontWeight={700}>{row.label}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {row.description}
+                    </Typography>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            ))}
+          </Box>
+        </Section>
+      ) : null}
+
       <FilterBar
         actions={
           <Button
             variant="contained"
-            onClick={load}
+            onClick={() => load(1)}
             disabled={loading}
             startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
           >
@@ -278,7 +371,7 @@ export default function ReportsPage() {
               <MenuItem value="custom">Custom Range</MenuItem>
             </Select>
           </FormControl>
-        ) : view === 'apparel' ? (
+        ) : view === 'apparel' || view === 'mobile' ? (
           <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
             <InputLabel>Period</InputLabel>
             <Select label="Period" value={type} onChange={(e) => setType(e.target.value)}>
@@ -346,6 +439,7 @@ export default function ReportsPage() {
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              helperText={view === 'sales' ? `Max ${maxRangeDays} days` : undefined}
               sx={{ minWidth: { xs: '100%', sm: 160 } }}
             />
           </>
@@ -392,7 +486,41 @@ export default function ReportsPage() {
           </>
         ) : null}
 
-        {view === 'sales' || view === 'kirana' || view === 'apparel' ? (
+        {view === 'mobile' ? (
+          <>
+            <TextField
+              label="Brand"
+              value={brandFilter}
+              onChange={(e) => setBrandFilter(e.target.value)}
+              placeholder="e.g. Samsung"
+              sx={{ minWidth: { xs: '100%', sm: 140 } }}
+            />
+            <TextField
+              label="Model"
+              value={modelFilter}
+              onChange={(e) => setModelFilter(e.target.value)}
+              placeholder="e.g. Galaxy A15"
+              sx={{ minWidth: { xs: '100%', sm: 160 } }}
+            />
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+              <InputLabel>Category</InputLabel>
+              <Select
+                label="Category"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {categories.map((cat) => (
+                  <MenuItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        ) : null}
+
+        {view === 'sales' || view === 'kirana' || view === 'apparel' || view === 'mobile' ? (
           <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
             <InputLabel>Payment Method</InputLabel>
             <Select
@@ -543,6 +671,96 @@ export default function ReportsPage() {
               </Table>
               {!report.variant_stock?.length ? (
                 <EmptyState title="No variants" description="Add size/color rows on Items to see stock here." />
+              ) : null}
+            </TableCard>
+          </Section>
+        </>
+      ) : null}
+
+      {report && view === 'mobile' ? (
+        <>
+          <Section
+            title={report.label}
+            description="Sales by brand and model with current IMEI stock"
+          >
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' },
+              }}
+            >
+              <KpiCard title="Total Sales" value={money(metrics.total_sales)} />
+              <KpiCard title="Bills" value={metrics.bill_count ?? '—'} />
+              <KpiCard title="Items Sold" value={metrics.items_sold ?? '—'} />
+              <KpiCard title="In stock IMEI" value={report.serial_stock_summary?.IN_STOCK ?? 0} />
+              <KpiCard title="Returns" value={report.returns?.return_count ?? 0} />
+              <KpiCard title="Exchanges" value={report.returns?.exchange_count ?? 0} />
+            </Box>
+          </Section>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 3,
+              gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+            }}
+          >
+            <Section title="By brand">
+              <DimensionTable
+                rows={report.by_brand}
+                labelHeader="Brand"
+                emptyTitle="No brand sales"
+                emptyDescription="No mobile sales in this period."
+              />
+            </Section>
+            <Section title="By model">
+              <DimensionTable
+                rows={report.by_model}
+                labelHeader="Model"
+                emptyTitle="No model sales"
+                emptyDescription="No mobile sales in this period."
+              />
+            </Section>
+            <Section title="By category">
+              <DimensionTable
+                rows={report.by_category}
+                labelHeader="Category"
+                emptyTitle="No category sales"
+                emptyDescription="No mobile sales in this period."
+              />
+            </Section>
+          </Box>
+          <Section title="IMEI stock">
+            <TableCard>
+              <Table size="small" sx={{ minWidth: 560 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Item</TableCell>
+                    <TableCell>Brand</TableCell>
+                    <TableCell>Model</TableCell>
+                    <TableCell>IMEI / Serial</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(report.serial_stock || []).map((row) => (
+                    <TableRow key={row.serial_unit_id} hover>
+                      <TableCell>
+                        <TruncateText value={row.item_name} maxWidth={200} />
+                      </TableCell>
+                      <TableCell>{row.brand || '—'}</TableCell>
+                      <TableCell>{row.model_name || '—'}</TableCell>
+                      <TableCell>{row.serial}</TableCell>
+                      <TableCell>{row.status}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {!report.serial_stock?.length ? (
+                <EmptyState
+                  title="No serial units"
+                  description="Receive IMEI units on Serial / IMEI to see stock here."
+                />
               ) : null}
             </TableCard>
           </Section>
@@ -838,6 +1056,36 @@ export default function ReportsPage() {
                   description="No bills match this report period and payment filter."
                 />
               ) : null}
+              {billsMeta ? (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  justifyContent="flex-end"
+                  alignItems="center"
+                  sx={{ px: 2, py: 1.5 }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    Page {billsMeta.page} · {billsMeta.total} bills
+                  </Typography>
+                  <Button
+                    size="small"
+                    disabled={loading || billsMeta.page <= 1}
+                    onClick={() => load(billsMeta.page - 1)}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    size="small"
+                    disabled={
+                      loading ||
+                      billsMeta.page * billsMeta.per_page >= billsMeta.total
+                    }
+                    onClick={() => load(billsMeta.page + 1)}
+                  >
+                    Next
+                  </Button>
+                </Stack>
+              ) : null}
             </TableCard>
           </Section>
         </>
@@ -846,7 +1094,7 @@ export default function ReportsPage() {
           title="No report generated yet"
           description="Choose daily, weekly, monthly, or a custom range, then click Generate."
           actionLabel="Generate"
-          onAction={load}
+          onAction={() => load(1)}
         />
       ) : null}
     </PageShell>

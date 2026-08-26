@@ -19,8 +19,11 @@ import {
   FormControlLabel,
   FormLabel,
   IconButton,
+  InputLabel,
+  MenuItem,
   Radio,
   RadioGroup,
+  Select,
   Stack,
   TextField,
   Tooltip,
@@ -31,6 +34,7 @@ import EmptyState from '../../components/EmptyState';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
 import TruncateText from '../../components/TruncateText';
+import { getApiErrorMessage } from '../../utils/apiError';
 import {
   createBill,
   downloadBillPdf,
@@ -43,6 +47,7 @@ import { getItemByBarcode, listItems } from '../../services/itemService';
 import { listItemVariants } from '../../services/variantService';
 import { getSerialUnitBySerial, listSerialUnits } from '../../services/serialService';
 import { listItemAccessories } from '../../services/itemService';
+import { listWarehouses } from '../../services/warehouseService';
 import { useModuleGate } from '../../context/ModulesContext';
 import VariantStockGrid from '../../components/VariantStockGrid';
 import {
@@ -85,6 +90,7 @@ export default function NewBillPage() {
   const variantsEnabled = useModuleGate('variants');
   const serialImeiEnabled = useModuleGate('serial_imei');
   const warrantyEnabled = useModuleGate('warranty');
+  const warehouseEnabled = useModuleGate('warehouse');
   const [q, setQ] = useState('');
   const [barcode, setBarcode] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -98,6 +104,8 @@ export default function NewBillPage() {
   const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [customerName, setCustomerName] = useState('');
   const [countryCode, setCountryCode] = useState('91');
+  const [warehouses, setWarehouses] = useState([]);
+  const [warehouseId, setWarehouseId] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -150,7 +158,7 @@ export default function NewBillPage() {
         }),
       );
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Unable to load items.');
+      setError(getApiErrorMessage(err, 'Unable to load items.'));
     } finally {
       setLoadingItems(false);
     }
@@ -161,6 +169,18 @@ export default function NewBillPage() {
       .then((res) => setCategories((res.data || []).filter((c) => c.is_active)))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!warehouseEnabled) return;
+    listWarehouses()
+      .then((res) => {
+        const rows = res.data || [];
+        setWarehouses(rows);
+        const def = rows.find((w) => w.is_default) || rows[0];
+        if (def) setWarehouseId((prev) => prev || def.id);
+      })
+      .catch(() => {});
+  }, [warehouseEnabled]);
 
   // Debounce catalog search so typing stays responsive with large inventories.
   useEffect(() => {
@@ -307,7 +327,7 @@ export default function NewBillPage() {
         });
         setSerialUnits(res.data || []);
       } catch (err) {
-        setError(err.response?.data?.error?.message || 'Could not load serial units.');
+        setError(getApiErrorMessage(err, 'Could not load serial units.'));
         setSerialPick(null);
       } finally {
         setSerialUnitsLoading(false);
@@ -329,7 +349,7 @@ export default function NewBillPage() {
         }
         setVariantPick({ item, variants });
       } catch (err) {
-        setError(err.response?.data?.error?.message || 'Could not load variants.');
+        setError(getApiErrorMessage(err, 'Could not load variants.'));
       }
       return;
     }
@@ -347,7 +367,7 @@ export default function NewBillPage() {
       setBarcode('');
       window.requestAnimationFrame(() => barcodeInputRef.current?.focus());
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'No active item found for this barcode.');
+      setError(getApiErrorMessage(err, 'No active item found for this barcode.'));
     } finally {
       setScanning(false);
     }
@@ -411,7 +431,7 @@ export default function NewBillPage() {
       setSerialPick(null);
       setSerialDraft('');
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Serial / IMEI not found.');
+      setError(getApiErrorMessage(err, 'Serial / IMEI not found.'));
     }
   };
 
@@ -444,6 +464,7 @@ export default function NewBillPage() {
         customer_phone: customerPhone || null,
         customer_email: customerEmail.trim() || null,
         customer_id: selectedCustomer?.id || null,
+        warehouse_id: warehouseEnabled && warehouseId ? warehouseId : undefined,
         items: cart.map((line) => ({
           item_id: line.item_id,
           variant_id: line.variant_id || undefined,
@@ -461,7 +482,7 @@ export default function NewBillPage() {
       // Refresh catalog so stock quantities reflect deduction.
       search(q, categoryId);
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to generate bill');
+      setError(getApiErrorMessage(err, 'Failed to generate bill'));
     } finally {
       setSaving(false);
     }
@@ -479,8 +500,10 @@ export default function NewBillPage() {
       setPhoneDialogOpen(false);
     } catch (err) {
       setWhatsappError(
-        err.response?.data?.error?.message ||
+        getApiErrorMessage(
+          err,
           'Unable to send the bill on WhatsApp. Please try again or use Print Bill.',
+        ),
       );
     } finally {
       setWhatsappSending(false);
@@ -515,8 +538,10 @@ export default function NewBillPage() {
       setEmailDialogOpen(false);
     } catch (err) {
       setEmailError(
-        err.response?.data?.error?.message ||
+        getApiErrorMessage(
+          err,
           'Unable to send the bill by email. Please try again or use Print Bill.',
+        ),
       );
     } finally {
       setEmailSending(false);
@@ -761,6 +786,25 @@ export default function NewBillPage() {
                   }}
                 />
               </Box>
+
+              {warehouseEnabled && warehouses.length ? (
+                <FormControl fullWidth size="small" sx={{ mb: 2.5 }}>
+                  <InputLabel id="bill-warehouse">Sell from warehouse</InputLabel>
+                  <Select
+                    labelId="bill-warehouse"
+                    label="Sell from warehouse"
+                    value={warehouseId}
+                    onChange={(e) => setWarehouseId(e.target.value)}
+                  >
+                    {warehouses.map((w) => (
+                      <MenuItem key={w.id} value={w.id}>
+                        {w.code} · {w.name}
+                        {w.is_default ? ' (default)' : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : null}
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
                 <TextField
@@ -1018,7 +1062,7 @@ export default function NewBillPage() {
                 await downloadBillPdf(createdBill.id, createdBill.bill_number);
               } catch (err) {
                 setWhatsappError(
-                  err.response?.data?.error?.message || 'Unable to download bill PDF.',
+                  getApiErrorMessage(err, 'Unable to download bill PDF.'),
                 );
               }
             }}

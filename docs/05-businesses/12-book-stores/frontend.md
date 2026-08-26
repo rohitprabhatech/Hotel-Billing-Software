@@ -1,18 +1,16 @@
 # Book Stores — Frontend
 
-Conceptual routes under `modules/books/` (not implemented yet).
+| Page | Path | Roles | Notes |
+|------|------|-------|-------|
+| Books catalog (Items) | `/owner/items`, `/billing/items` | Owner / Manager / Billing | ISBN / Author / Publisher when `book_metadata` on |
+| Grocery / barcode POS | `/owner/grocery`, `/billing/grocery` | As permitted | Shared POS; catalog search includes ISBN/author |
+| Returns | `/owner/returns` | As permitted | Module `returns_exchange` |
 
-| Page | Purpose | Roles | Components | API deps | UX |
-|------|---------|-------|------------|----------|-----|
-| Bookstore Dashboard | Book Stores ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Catalog (ISBN) | Book Stores ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| POS Billing | Book Stores ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Returns | Book Stores ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Reports | Book Stores ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
+## UX (BIZ-45)
 
-## Shared UI
-
-Reuse common Billing, Customers, Reports pages. Industry nav items appear only when the module is enabled.
+- Items search label becomes “Search name, ISBN, author…” for book stores.
+- Create/edit form shows ISBN, Author, Publisher fields.
+- List subtitle shows author · ISBN · publisher.
 
 ## Responsive
 

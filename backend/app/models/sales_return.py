@@ -3,7 +3,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -82,6 +82,13 @@ class SalesReturnItem(db.Model):
         String(36), ForeignKey("item_variants.id", ondelete="SET NULL")
     )
     exchange_item_name: Mapped[str | None] = mapped_column(String(200))
+    serial_unit_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("serial_units.id", ondelete="SET NULL"), nullable=True
+    )
+    exchange_serial_unit_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("serial_units.id", ondelete="SET NULL"), nullable=True
+    )
+    quarantine: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), nullable=False, default=utcnow
     )

@@ -26,6 +26,9 @@ _ALLOWED_SOURCES = {
     "WASTAGE",
     "RETURN",
     "EXCHANGE",
+    "TRANSFER_OUT",
+    "TRANSFER_IN",
+    "PRODUCTION",
 }
 
 

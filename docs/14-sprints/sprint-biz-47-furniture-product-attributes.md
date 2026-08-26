@@ -102,7 +102,15 @@ BIZ-10
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Module `furniture_attributes` on `furniture` business type
+- Columns on `items`: `dimension_length` / `width` / `height`, `material`, `color`
+- Migration: `20260826_biz47_furniture_product_attributes`
+- Search `q` matches material/color; Items UI gated form + list
+- Tests: `test_biz47_furniture_product_attributes.py` (5 passed)
 
 ## Phase
 

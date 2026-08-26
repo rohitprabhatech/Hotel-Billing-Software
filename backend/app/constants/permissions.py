@@ -39,6 +39,8 @@ PERM_ADDONS_READ = "addons.read"
 PERM_ADDONS_WRITE = "addons.write"
 PERM_WASTAGE_READ = "wastage.read"
 PERM_WASTAGE_WRITE = "wastage.write"
+PERM_PRODUCTION_READ = "production.read"
+PERM_PRODUCTION_WRITE = "production.write"
 PERM_USERS_MANAGE = "users.manage"
 PERM_TENANT_SETTINGS = "tenant.settings"
 PERM_AUDIT = "audit"
@@ -77,6 +79,8 @@ ALL_PERMISSIONS: frozenset[str] = frozenset(
         PERM_ADDONS_WRITE,
         PERM_WASTAGE_READ,
         PERM_WASTAGE_WRITE,
+        PERM_PRODUCTION_READ,
+        PERM_PRODUCTION_WRITE,
         PERM_USERS_MANAGE,
         PERM_TENANT_SETTINGS,
         PERM_AUDIT,
@@ -115,6 +119,8 @@ _MANAGER_PERMISSIONS: frozenset[str] = frozenset(
         PERM_ADDONS_WRITE,
         PERM_WASTAGE_READ,
         PERM_WASTAGE_WRITE,
+        PERM_PRODUCTION_READ,
+        PERM_PRODUCTION_WRITE,
         PERM_NOTIFICATIONS,
     }
 )
@@ -144,6 +150,26 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     ROLE_OWNER: ALL_PERMISSIONS,
     ROLE_MANAGER: _MANAGER_PERMISSIONS,
     ROLE_BILLING_USER: _BILLING_USER_PERMISSIONS,
+}
+
+# Industry modules reuse coarse capabilities (BIZ-65 matrix). Routes still enforce
+# module_required + these permission codes — not separate micro-perms per vertical.
+INDUSTRY_PERMISSION_MATRIX: dict[str, dict[str, str]] = {
+    "kot": {"read": PERM_KOT_READ, "write": PERM_KOT_WRITE, "status": PERM_KOT_STATUS},
+    "repair_service": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "installation": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "quotation": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "delivery_challan": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "warehouse": {"read": PERM_ITEMS_READ, "write": PERM_ITEMS_STOCK},
+    "custom_orders": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "production": {"read": PERM_PRODUCTION_READ, "write": PERM_PRODUCTION_WRITE},
+    "delivery_tracking": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "price_lists": {"read": PERM_ITEMS_READ, "write": PERM_ITEMS_WRITE},
+    "sales_orders": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "purchase_orders": {"read": PERM_PURCHASES_READ, "write": PERM_PURCHASES_WRITE},
+    "travel_bookings": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "travel_commission": {"read": PERM_BILLING, "write": PERM_BILLING},
+    "tour_packages": {"read": PERM_ITEMS_READ, "write": PERM_ITEMS_WRITE},
 }
 
 # Roles an Owner may assign when creating tenant staff (never OWNER or MASTER).

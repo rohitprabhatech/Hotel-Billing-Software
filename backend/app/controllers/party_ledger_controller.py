@@ -34,3 +34,32 @@ def record_customer_payment(customer_id: str):
         collection_method=payload.get("collection_method"),
     )
     return success_response(data=data, status_code=201)
+
+
+def list_supplier_outstanding():
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 50))
+    data, meta = PartyLedgerService.list_supplier_outstanding(page=page, per_page=per_page)
+    return success_response(data=data, meta=meta)
+
+
+def list_supplier_ledger(supplier_id: str):
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 50))
+    data, meta = PartyLedgerService.list_supplier_ledger(
+        supplier_id,
+        page=page,
+        per_page=per_page,
+    )
+    return success_response(data=data, meta=meta)
+
+
+def record_supplier_payment(supplier_id: str):
+    payload = customer_payment_schema.load(request.get_json() or {})
+    data = PartyLedgerService.record_supplier_payment(
+        supplier_id,
+        amount=payload["amount"],
+        notes=payload.get("notes"),
+        collection_method=payload.get("collection_method"),
+    )
+    return success_response(data=data, status_code=201)

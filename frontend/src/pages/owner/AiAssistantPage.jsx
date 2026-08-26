@@ -160,6 +160,41 @@ export default function AiAssistantPage() {
         </Alert>
       ) : null}
 
+      {analysis && (analysis.industry_insights || []).length && !loading ? (
+        <Section
+          title="Industry Insights"
+          description="Optional module analyzers — rule-based, tenant-scoped only (not an LLM)."
+        >
+          <Stack spacing={2} sx={{ mb: 2 }}>
+            {analysis.industry_insights.map((block) => (
+              <Card key={`${block.module}-${block.title}`} variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {block.title}
+                  </Typography>
+                  {block.insufficient_data ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      {block.message || 'Not enough industry data for this module.'}
+                    </Typography>
+                  ) : (
+                    <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                      {(block.insights || []).map((insight) => (
+                        <Box key={`${insight.type}-${insight.title}`}>
+                          <Typography variant="subtitle2">{insight.title}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {insight.detail}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        </Section>
+      ) : null}
+
       {analysis && !analysis.insufficient_data && !loading ? (
         <>
           <Section

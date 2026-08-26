@@ -15,6 +15,12 @@ def list_logs():
     return audit_log_controller.list_logs()
 
 
+@audit_logs_bp.get("/meta")
+@roles_required(ROLE_OWNER)
+def catalog_meta():
+    return audit_log_controller.catalog_meta()
+
+
 @audit_logs_bp.get("/alerts")
 @roles_required(ROLE_OWNER)
 def alerts():

@@ -8,107 +8,38 @@ Bookings with status, advance/remaining payments linked to customers/packages.
 
 Travel Agencies
 
-## Why This Sprint Is Required
+## Status
 
-Core travel workflow.
+**COMPLETED** (2026-08-26)
 
-## Existing Functionality
+## What shipped
 
-Custom order payment patterns; customers.
+### Backend
 
-## Missing Functionality
+- Tables: `travel_bookings`, `travel_booking_payments`, `travel_booking_number_counters` (`TB-#####`)
+- Migration: `20260826_biz57_travel_bookings`
+- Status pipeline: BOOKED → CONFIRMED → IN_PROGRESS → COMPLETED (cancel allowed until complete)
+- Complete blocked while remaining balance &gt; 0
+- Notifications: `TRAVEL_BOOKING_CONFIRMED`, `TRAVEL_PAYMENT_DUE`
+- APIs: `/travel-bookings` + `/travel/bookings` aliases
 
-travel_bookings.
+### Frontend
 
-## Scope
+- `/owner/travel-bookings` status board + create + record payment
 
-### Backend Tasks
+### Tests
 
-- Booking service
-- Payment schedule
-
-### Frontend Tasks
-
-- Booking board
-
-### Database Tasks
-
-- travel_bookings
-- travel_booking_payments
-
-### API Tasks
-
-- /travel-bookings
-
-### UI/UX Tasks
-
-- Pipeline statuses
-
-### Testing Tasks
-
-- Payment totals
-- Status rules
-
-### Documentation Tasks
-
-- bookings
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- travel_bookings
-- travel_booking_payments
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- bookings
-
-## Frontend Pages
-
-- Bookings
-
-## User Roles
-
-Owner/Manager/Billing as configured.
-
-## Tenant Isolation
-
-Standard.
-
-## Audit Requirements
-
-Booking+payment.
-
-## Notifications
-
-Payment due / booking confirm.
+- `backend/tests/test_biz57_travel_bookings.py` (4 passed)
 
 ## Acceptance Criteria
 
-- Advance+remaining
-- Status board
+- [x] Advance + remaining
+- [x] Status board
 
 ## Dependencies
 
 BIZ-56
 
-## Risks
+## Next
 
-- None
-
-## Definition of Done
-
-- Booking E2E
-
-## Status
-
-NOT STARTED
-
-## Phase
-
-Phase 11 – Travel Agency
+BIZ-58 — itinerary, hotel/vehicle/tickets, documents

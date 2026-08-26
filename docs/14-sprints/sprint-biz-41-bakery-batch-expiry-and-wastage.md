@@ -102,7 +102,16 @@ BIZ-40, BIZ-22
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Bakery uses shared `batch_expiry` + `wastage` modules (already on `bakery_sweet`)
+- Production with `tracks_batches` FG requires `expiry_date` and creates `item_batches` (code defaults to PR number)
+- Wastage FEFO write-off includes expired batches
+- Alias `GET /api/v1/bakery/expiry`
+- Owner Production form: FG expiry + batch code; Batches / Wastage pages reused
+- Tests: `test_biz41_bakery_batch_expiry_wastage.py` (6 passed)
 
 ## Phase
 

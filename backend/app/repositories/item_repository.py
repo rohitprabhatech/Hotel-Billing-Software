@@ -68,11 +68,27 @@ class ItemRepository:
         )
 
     @staticmethod
+    def find_by_tenant_and_isbn(tenant_id: str, isbn: str) -> Item | None:
+        cleaned = (isbn or "").strip().replace("-", "").replace(" ", "")
+        if not cleaned:
+            return None
+        return (
+            db.session.query(Item)
+            .options(joinedload(Item.category), joinedload(Item.creator))
+            .filter(
+                Item.tenant_id == tenant_id,
+                func.lower(Item.isbn) == cleaned.lower(),
+            )
+            .first()
+        )
+
+    @staticmethod
     def list_by_tenant(
         tenant_id: str,
         *,
         q: str | None = None,
         barcode: str | None = None,
+        isbn: str | None = None,
         category_id: str | None = None,
         is_active: bool | None = None,
         stock_status: str | None = None,
@@ -83,11 +99,26 @@ class ItemRepository:
         if barcode:
             cleaned = barcode.strip()
             query = query.filter(func.lower(Item.barcode) == cleaned.lower())
+        elif isbn:
+            cleaned = isbn.strip().replace("-", "").replace(" ", "")
+            query = query.filter(func.lower(Item.isbn) == cleaned.lower())
         elif q:
-            like = f"%{q.strip()}%"
-            query = query.filter(
-                or_(Item.name.ilike(like), Item.sku.ilike(like), Item.barcode.ilike(like))
-            )
+            raw_q = q.strip()
+            like = f"%{raw_q}%"
+            isbn_compact = raw_q.replace("-", "").replace(" ", "")
+            clauses = [
+                Item.name.ilike(like),
+                Item.sku.ilike(like),
+                Item.barcode.ilike(like),
+                Item.isbn.ilike(like),
+                Item.author.ilike(like),
+                Item.publisher.ilike(like),
+                Item.material.ilike(like),
+                Item.color.ilike(like),
+            ]
+            if isbn_compact and isbn_compact != raw_q:
+                clauses.append(Item.isbn.ilike(f"%{isbn_compact}%"))
+            query = query.filter(or_(*clauses))
         if category_id:
             query = query.filter(Item.category_id == category_id)
         if is_active is not None:
@@ -132,7 +163,9 @@ class ItemRepository:
         )
         if is_veg is not None:
             query = query.filter(Item.is_veg.is_(is_veg))
-        return query.order_by(Item.name.asc()).all()
+        from app.constants.perf import MENU_CATALOG_MAX
+
+        return query.order_by(Item.name.asc()).limit(MENU_CATALOG_MAX).all()
 
     @staticmethod
     def inventory_health_counts(tenant_id: str) -> dict:

@@ -116,3 +116,5 @@ def change_password():
         confirm_password=payload["confirm_password"],
     )
     return success_response(data=data)
+
+

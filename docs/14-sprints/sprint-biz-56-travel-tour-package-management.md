@@ -8,103 +8,38 @@ Tour packages with pricing (service-oriented, not classic SKU stock).
 
 Travel Agencies
 
-## Why This Sprint Is Required
+## Status
 
-Travel is service-first; packages replace product stock.
+**COMPLETED** (2026-08-26)
 
-## Existing Functionality
+## What shipped
 
-Items could model packages poorly; expenses; customers; bills.
+### Backend
 
-## Missing Functionality
+- Table: `tour_packages` (code, name, destination, duration, price, GST, linked `item_id`)
+- Migration: `20260826_biz56_tour_packages`
+- Linked catalog item always has `stock_quantity=NULL` (no stock checks / deductions)
+- APIs: `/tour-packages` and aliases `/travel/packages`
+- `POST .../packages/{id}/bill` — service billing helper
+- Auto category **Tour Packages** for linked items
 
-tour_packages entity.
+### Frontend
 
-## Scope
+- `/owner/tour-packages` — package cards, create/edit, Create bill
 
-### Backend Tasks
+### Tests
 
-- Package CRUD
-- Optional inventory=false
-
-### Frontend Tasks
-
-- Package catalog
-
-### Database Tasks
-
-- tour_packages
-
-### API Tasks
-
-- /tour-packages
-
-### UI/UX Tasks
-
-- Package cards still use design system (interaction containers OK)
-
-### Testing Tasks
-
-- No stock deduct for packages
-
-### Documentation Tasks
-
-- 14-travel
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- tour_packages
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- tour-packages
-
-## Frontend Pages
-
-- Packages
-
-## User Roles
-
-Owner.
-
-## Tenant Isolation
-
-Standard.
-
-## Audit Requirements
-
-Package changes.
-
-## Notifications
-
-None.
+- `backend/tests/test_biz56_tour_packages.py` (5 passed)
 
 ## Acceptance Criteria
 
-- Packages billable without negative stock
+- [x] Packages billable without negative stock
+- [x] Service billing path clear (linked untracked item + `/bill`)
 
 ## Dependencies
 
 BIZ-10, BIZ-04
 
-## Risks
+## Next
 
-- Forcing travel into item stock model — avoid
-
-## Definition of Done
-
-- Service billing path clear
-
-## Status
-
-NOT STARTED
-
-## Phase
-
-Phase 11 – Travel Agency
+BIZ-57 — travel booking management and payments

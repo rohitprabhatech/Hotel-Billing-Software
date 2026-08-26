@@ -37,6 +37,10 @@ class CreateBillSchema(Schema):
     table_number = fields.String(
         load_default=None, allow_none=True, validate=validate.Length(max=30)
     )  # legacy alias for reference
+    transport_charge = fields.Decimal(load_default=0, as_string=False)
+    warehouse_id = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(min=1, max=36)
+    )
     payment_method = fields.String(
         load_default=DEFAULT_PAYMENT_METHOD,
         validate=validate.OneOf(sorted(ALLOWED_PAYMENT_METHODS)),

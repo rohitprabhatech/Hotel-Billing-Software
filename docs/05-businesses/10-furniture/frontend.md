@@ -1,20 +1,19 @@
 # Furniture Shops — Frontend
 
-Conceptual routes under `modules/furniture/` (not implemented yet).
+| Page | Path | Roles | Notes |
+|------|------|-------|-------|
+| Furniture catalog (Items) | `/owner/items` | Owner / Manager / Billing | L/W/H + material + color (`furniture_attributes`) |
+| Furniture Orders | `/owner/furniture-orders` | Owner / Manager / Billing | Status board + advances (`custom_orders`) |
+| Deliveries | `/owner/deliveries` | Owner / Manager / Billing | Last-mile board (`delivery_tracking`) |
+| Installations | `/owner/installations` | Owner / Manager / Billing | Serial (electronics) or custom order (furniture) |
+| Quotations | `/owner/quotations` | Owner / Manager / Billing | QT-##### create/convert (`quotation`) |
 
-| Page | Purpose | Roles | Components | API deps | UX |
-|------|---------|-------|------------|----------|-----|
-| Furniture Dashboard | Furniture Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Catalog / Specs | Furniture Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Quotations | Furniture Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Custom Orders | Furniture Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Deliveries / Install | Furniture Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Billing | Furniture Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Reports | Furniture Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
+## UX (BIZ-48)
 
-## Shared UI
-
-Reuse common Billing, Customers, Reports pages. Industry nav items appear only when the module is enabled.
+- Kanban: Booked → Confirmed → In production → Ready → Delivered (via Deliveries board)
+- Form: title, dimensions (`size`), material (`flavor`), customer, total, advance &lt; total, delivery datetime
+- Ready orders: schedule on **Deliveries**; optional **Installations** from ready order
+- Cake Orders nav hidden for furniture (`businessTypes` filter)
 
 ## Responsive
 

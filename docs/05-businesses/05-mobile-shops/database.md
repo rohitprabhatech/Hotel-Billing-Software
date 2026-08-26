@@ -25,9 +25,10 @@
 | Entity | Class | Purpose |
 |--------|-------|---------|
 | SerialUnit | BUSINESS-SPECIFIC | IMEI/serial instance |
-| Warranty | BUSINESS-SPECIFIC | Warranty period / status |
-| RepairTicket | BUSINESS-SPECIFIC | Repair/service job |
-| AccessoryLink | BUSINESS-SPECIFIC | Optional accessory kits |
+| Item.brand / Item.model_name | BUSINESS-SPECIFIC attrs | Mobile catalog brand & model (BIZ-32) |
+| Warranty | BUSINESS-SPECIFIC | Warranty period / status (`warranty_months`, `warranty_until`) |
+| RepairOrder | BUSINESS-SPECIFIC | Repair/service job |
+| ItemAccessory | BUSINESS-SPECIFIC | Optional accessory kits |
 
 ## Relationships (summary)
 

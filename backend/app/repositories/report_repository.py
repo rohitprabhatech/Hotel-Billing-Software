@@ -281,14 +281,28 @@ class ReportRepository:
         ]
 
     @staticmethod
-    def bill_rows(tenant_id: str, start, end, payment_method: str | None = None) -> list[Bill]:
-        query = (
-            db.session.query(Bill)
-            .filter(
-                Bill.tenant_id == tenant_id,
-                Bill.created_at >= start,
-                Bill.created_at < end,
-            )
+    def bill_rows(
+        tenant_id: str,
+        start,
+        end,
+        payment_method: str | None = None,
+        *,
+        page: int = 1,
+        per_page: int = 50,
+    ) -> tuple[list[Bill], int]:
+        query = db.session.query(Bill).filter(
+            Bill.tenant_id == tenant_id,
+            Bill.created_at >= start,
+            Bill.created_at < end,
         )
         query = ReportRepository._payment_filter(query, payment_method)
-        return query.order_by(Bill.created_at.desc()).limit(200).all()
+        total = query.count()
+        page = max(int(page or 1), 1)
+        per_page = min(max(int(per_page or 50), 1), 200)
+        rows = (
+            query.order_by(Bill.created_at.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+        return rows, total

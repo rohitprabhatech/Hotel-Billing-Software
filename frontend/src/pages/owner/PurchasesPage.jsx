@@ -85,6 +85,7 @@ export default function PurchasesPage() {
     supplier_id: '',
     invoice_number: '',
     notes: '',
+    payment_method: 'cash',
     lines: [emptyLine()],
   });
 
@@ -136,6 +137,7 @@ export default function PurchasesPage() {
       supplier_id: '',
       invoice_number: '',
       notes: '',
+      payment_method: 'cash',
       lines: [emptyLine()],
     });
     await loadFormData();
@@ -199,6 +201,7 @@ export default function PurchasesPage() {
         supplier_id: form.supplier_id || null,
         invoice_number: form.invoice_number.trim() || null,
         notes: form.notes.trim() || null,
+        payment_method: form.payment_method || 'cash',
         items: lines,
       });
       setCreateOpen(false);
@@ -385,6 +388,19 @@ export default function PurchasesPage() {
                     {supplier.name}
                   </MenuItem>
                 ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel id="purchase-pay-label">Payment</InputLabel>
+              <Select
+                labelId="purchase-pay-label"
+                label="Payment"
+                value={form.payment_method}
+                onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
+              >
+                <MenuItem value="cash">Cash / paid</MenuItem>
+                <MenuItem value="online">Online / paid</MenuItem>
+                <MenuItem value="credit">Credit (owe supplier)</MenuItem>
               </Select>
             </FormControl>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>

@@ -2,6 +2,7 @@
 
 from app.models.audit_log import AuditLog
 from app.repositories.audit_repository import AuditRepository
+from app.utils.audit_scrub import scrub_audit_payload
 from app.utils.ids import new_uuid
 from app.utils.request_context import get_request_context
 
@@ -31,8 +32,8 @@ class AuditService:
             action=action,
             entity_type=entity_type,
             entity_id=entity_id,
-            old_data=old_data,
-            new_data=new_data,
+            old_data=scrub_audit_payload(old_data) if old_data is not None else None,
+            new_data=scrub_audit_payload(new_data) if new_data is not None else None,
             ip_address=ip_address if ip_address is not None else (ctx.ip_address if ctx else None),
             user_agent=user_agent if user_agent is not None else (ctx.user_agent if ctx else None),
         )

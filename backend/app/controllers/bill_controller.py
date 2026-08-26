@@ -27,6 +27,8 @@ def create_bill():
         customer_phone=payload.get("customer_phone"),
         customer_email=payload.get("customer_email"),
         customer_id=payload.get("customer_id"),
+        transport_charge=payload.get("transport_charge") or 0,
+        warehouse_id=payload.get("warehouse_id"),
     )
     return success_response(data=data, status_code=201)
 

@@ -16,10 +16,15 @@ def list_logs():
         q=request.args.get("q"),
         from_date=request.args.get("from"),
         to_date=request.args.get("to"),
+        module=request.args.get("module"),
         page=int(request.args.get("page", 1)),
         per_page=int(request.args.get("per_page", 50)),
     )
     return success_response(data=data, meta=meta)
+
+
+def catalog_meta():
+    return success_response(data=AuditLogService.catalog_meta())
 
 
 def get_log(log_id: str):

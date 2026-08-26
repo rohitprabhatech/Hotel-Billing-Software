@@ -14,3 +14,14 @@
 | TEST-BAKE-ISO-001 | Use Tenant A token on Tenant B industry IDs | 403 or 404 | P0 |
 
 Do not run destructive tests on production data.
+
+## Automated (Phase 07 gate — BIZ-43)
+
+```bash
+cd backend
+python -m pytest tests/test_biz40_bakery_production.py tests/test_biz41_bakery_batch_expiry_wastage.py tests/test_biz42_custom_cake_orders.py tests/test_biz43_bakery_testing_gate.py -q
+```
+
+Sign-off: [`docs/14-sprints/biz-43-bakery-gate-report.md`](../../14-sprints/biz-43-bakery-gate-report.md).
+
+Covers production BOM effects, batch-on-produce, FEFO sell/wastage, cake order advances + status pipeline, isolation, permissions, audit.

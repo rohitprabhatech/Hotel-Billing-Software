@@ -20,6 +20,8 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined';
 import {
   AppBar,
   Box,
@@ -101,6 +103,20 @@ const billingNav = [
     label: 'Grocery POS',
     icon: <ShoppingCartOutlinedIcon />,
     module: 'barcode_pos',
+    hideForBusinessTypes: ['stationery'],
+  },
+  {
+    to: PATHS.billingStationery,
+    label: 'Stationery POS',
+    icon: <MenuBookOutlinedIcon />,
+    module: 'barcode_pos',
+    businessTypes: ['stationery'],
+  },
+  {
+    to: PATHS.billingHardware,
+    label: 'Hardware POS',
+    icon: <StraightenOutlinedIcon />,
+    module: 'uom_measurement',
   },
   {
     to: PATHS.billingClothing,
@@ -200,6 +216,18 @@ function pageMeta(pathname) {
     return {
       title: 'Grocery POS',
       subtitle: 'Scan-first billing with barcode lookup, weight quantities, and udhari.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingStationery)) {
+    return {
+      title: 'Stationery POS',
+      subtitle: 'Search-first billing with barcode, bulk rates, and optional credit.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingHardware)) {
+    return {
+      title: 'Hardware POS',
+      subtitle: 'Bill by length, weight, or area with clear unit prices.',
     };
   }
   if (pathname.startsWith(PATHS.billingClothing)) {
@@ -338,8 +366,16 @@ export default function BillingLayout() {
         ...billingNav,
       ];
     }
-    return filterByModule(items);
-  }, [isOwner, canReports, canStockMovements, filterByModule]);
+    return filterByModule(items, user?.tenant?.business_type);
+  }, [
+    isOwner,
+    canReports,
+    canStockMovements,
+    canViewPurchases,
+    canViewExpenses,
+    filterByModule,
+    user?.tenant?.business_type,
+  ]);
 
   const meta = pageMeta(location.pathname);
 

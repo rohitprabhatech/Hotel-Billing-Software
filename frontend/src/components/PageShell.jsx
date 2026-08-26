@@ -11,6 +11,8 @@ export default function PageShell({ children, spacing = 3, sx = {}, maxWidth }) 
       sx={{
         width: '100%',
         maxWidth: maxWidth || '100%',
+        minWidth: 0,
+        boxSizing: 'border-box',
         ...sx,
       }}
     >

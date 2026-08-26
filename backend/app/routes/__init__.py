@@ -21,6 +21,7 @@ from app.routes.expense_routes import expenses_bp
 from app.routes.purchase_routes import purchases_bp
 from app.routes.supplier_routes import suppliers_bp
 from app.routes.menu_routes import menu_bp
+from app.routes.mobile_routes import mobile_bp
 from app.routes.combo_routes import combos_bp
 from app.routes.cafe_routes import cafe_bp
 from app.routes.kot_routes import kots_bp
@@ -30,13 +31,33 @@ from app.routes.module_stub_routes import variants_bp
 from app.routes.tenant_routes import tenants_bp
 from app.routes.whatsapp_webhook_routes import whatsapp_webhook_bp
 from app.routes.grocery_routes import grocery_bp
+from app.routes.hardware_routes import hardware_bp
 from app.routes.clothing_routes import clothing_bp
+from app.routes.installation_routes import installations_bp
 from app.routes.item_image_routes import item_images_bp
 from app.routes.batch_routes import batches_bp
 from app.routes.sales_return_routes import returns_bp
+from app.routes.repair_routes import repairs_bp
+from app.routes.quotation_routes import quotations_bp
+from app.routes.challan_routes import challans_bp
+from app.routes.warehouse_routes import stock_transfers_bp, warehouses_bp
 from app.routes.serial_unit_routes import serial_units_bp
 from app.routes.wastage_routes import wastage_bp
+from app.routes.production_routes import productions_bp
+from app.routes.bakery_routes import bakery_bp
+from app.routes.custom_order_routes import custom_orders_bp
+from app.routes.delivery_routes import deliveries_bp
+from app.routes.price_list_routes import price_lists_bp
+from app.routes.wholesale_routes import wholesale_bp
+from app.routes.sales_order_routes import sales_orders_bp
+from app.routes.purchase_order_routes import purchase_orders_bp
+from app.routes.furniture_routes import furniture_bp
+from app.routes.stationery_routes import stationery_bp
+from app.routes.books_routes import books_bp
 from app.routes.user_routes import users_bp
+from app.routes.tour_package_routes import tour_packages_bp, travel_bp
+from app.routes.travel_booking_routes import travel_bookings_bp
+from app.routes.travel_agent_routes import commissions_bp, travel_agents_bp
 
 
 def register_blueprints(app):
@@ -65,9 +86,33 @@ def register_blueprints(app):
     api_v1.register_blueprint(combos_bp)
     api_v1.register_blueprint(cafe_bp)
     api_v1.register_blueprint(wastage_bp)
+    api_v1.register_blueprint(productions_bp)
+    api_v1.register_blueprint(bakery_bp)
+    api_v1.register_blueprint(custom_orders_bp)
+    api_v1.register_blueprint(deliveries_bp)
+    api_v1.register_blueprint(furniture_bp)
+    api_v1.register_blueprint(wholesale_bp)
+    api_v1.register_blueprint(tour_packages_bp)
+    api_v1.register_blueprint(travel_bp)
+    api_v1.register_blueprint(travel_bookings_bp)
+    api_v1.register_blueprint(travel_agents_bp)
+    api_v1.register_blueprint(commissions_bp)
+    api_v1.register_blueprint(price_lists_bp)
+    api_v1.register_blueprint(sales_orders_bp)
+    api_v1.register_blueprint(purchase_orders_bp)
+    api_v1.register_blueprint(stationery_bp)
+    api_v1.register_blueprint(books_bp)
     api_v1.register_blueprint(grocery_bp)
+    api_v1.register_blueprint(hardware_bp)
     api_v1.register_blueprint(clothing_bp)
+    api_v1.register_blueprint(mobile_bp)
     api_v1.register_blueprint(returns_bp)
+    api_v1.register_blueprint(repairs_bp)
+    api_v1.register_blueprint(quotations_bp)
+    api_v1.register_blueprint(challans_bp)
+    api_v1.register_blueprint(warehouses_bp)
+    api_v1.register_blueprint(stock_transfers_bp)
+    api_v1.register_blueprint(installations_bp)
     api_v1.register_blueprint(serial_units_bp)
     api_v1.register_blueprint(item_images_bp)
     api_v1.register_blueprint(batches_bp)

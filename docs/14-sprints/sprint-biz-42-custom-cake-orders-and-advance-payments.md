@@ -105,7 +105,19 @@ BIZ-41, BIZ-04
 
 ## Status
 
-NOT STARTED
+COMPLETED
+
+## Deliverables
+
+- Shared `custom_product_orders` + `custom_order_payments` (`order_type=bakery`, `CO-#####`)
+- API: `/api/v1/custom-orders` (+ `/bakery/cake-orders` aliases)
+- Advances must be < total on create; additional advances up to remaining
+- Status board: BOOKED → CONFIRMED → IN_PRODUCTION → READY → DELIVERED
+- Billing creates / records advance; Owner/Manager manage status
+- Notifications: delivery scheduled, order ready
+- UI: Owner Cake Orders page
+- Migration: `20260825_biz42_custom_product_orders`
+- Tests: `test_biz42_custom_cake_orders.py` (5 passed)
 
 ## Phase
 

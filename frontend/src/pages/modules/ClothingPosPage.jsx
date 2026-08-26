@@ -50,7 +50,7 @@ export default function ClothingPosPage() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const res = await fetchClothingPosCatalog({ q: q || undefined, limit: 200 });
+      const res = await fetchClothingPosCatalog({ q: q || undefined, limit: 100 });
       setItems(res.data?.items || []);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load clothing catalog');

@@ -1,21 +1,23 @@
 # Hardware Stores — API
 
-Namespace: `/api/v1/hardware/...`
+Namespace: `/api/v1/hardware/...` (module gate: `uom_measurement`; also used by building material).
 
-Do **not** re-document common `/bills`, `/customers`, `/items` here — use those.
+Common `/bills`, `/customers`, `/items` remain the primary write path; quote helpers feed Hardware POS.
 
 | Method | Endpoint | Purpose | Auth | Permission | Tenant |
 |--------|----------|---------|------|------------|--------|
-| GET/POST | `/api/v1/hardware/units` | UOM master | JWT | industry + role | Yes |
-| GET | `/api/v1/hardware/products/{id}/price-history` | Price history | JWT | industry + role | Yes |
-| GET/POST | `/api/v1/hardware/credit` | Credit accounts | JWT | industry + role | Yes |
+| GET | `/api/v1/hardware/units` | UoM catalog (length/weight/area/etc.) | JWT | items.read | Yes |
+| GET | `/api/v1/hardware/pos-catalog` | Active items with sale UoM + qty step | JWT | items.read | Yes |
+| POST | `/api/v1/hardware/quote` | Line quote: qty × unit price (+ stock convert) | JWT | billing | Yes |
+| POST | `/api/v1/hardware/convert` | Convert quantity between compatible UoMs | JWT | items.read | Yes |
 
 ## Contract notes
 
 - **Authentication:** Bearer JWT (business user).
 - **Tenant scope:** from JWT only.
-- **Validation:** 400 on bad payload; 409 on unique conflicts (e.g. IMEI).
-- **Errors:** 401 / 403 / 404 / 402 (subscription).
+- **Module:** `403` when `uom_measurement` is off (e.g. restaurant).
+- **Quote body:** `{ "item_id", "quantity" }` → `unit_price`, `line_total`, `sale_uom`, `stock_quantity_deducted`.
+- **Price:** item price is per **sale_uom** (defaults to stock `uom`).
 
 ### Example response envelope
 

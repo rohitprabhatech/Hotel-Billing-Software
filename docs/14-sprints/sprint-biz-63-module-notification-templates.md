@@ -38,6 +38,7 @@ Template keys per module.
 ### API Tasks
 
 - reuse notifications
+- `GET /notifications/templates`
 
 ### UI/UX Tasks
 
@@ -53,29 +54,26 @@ Template keys per module.
 
 ## Database Changes
 
-Conceptual entities only (no SQL in this plan):
-
-- optional
+None (in-code registry; optional DB table deferred).
 
 Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
 
 ## API Requirements
 
-Conceptual endpoints (do not implement until sprint approval):
-
-- notifications
+- `GET /api/v1/notifications/templates` — module-filtered catalog
+- Existing list/mark-read endpoints unchanged
 
 ## Frontend Pages
 
-- N/A
+- N/A (NotificationBell reuses existing feed)
 
 ## User Roles
 
-All recipients per role.
+Owner, Manager, Billing user (same as notifications).
 
 ## Tenant Isolation
 
-Yes.
+Yes — catalog filtered by tenant modules; emits scoped by `tenant_id`.
 
 ## Audit Requirements
 
@@ -88,6 +86,8 @@ This sprint.
 ## Acceptance Criteria
 
 - At least 5 industry events notify
+- Templates listed in docs
+- Rate limit / dedupe reduces spam
 
 ## Dependencies
 
@@ -103,7 +103,7 @@ BIZ-62
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

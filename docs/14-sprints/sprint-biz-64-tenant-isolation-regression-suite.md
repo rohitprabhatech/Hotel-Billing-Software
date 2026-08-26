@@ -32,7 +32,7 @@ Coverage for every new table/API.
 
 ### Database Tasks
 
-- Fixtures two tenants
+- Fixtures two tenants (+ Billing User on tenant B)
 
 ### API Tasks
 
@@ -52,17 +52,13 @@ Coverage for every new table/API.
 
 ## Database Changes
 
-Conceptual entities only (no SQL in this plan):
-
-- All tenant-owned
+None.
 
 Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
 
 ## API Requirements
 
-Conceptual endpoints (do not implement until sprint approval):
-
-- All industry
+Industry GET/PATCH IDOR probes (no new product APIs).
 
 ## Frontend Pages
 
@@ -70,7 +66,7 @@ Conceptual endpoints (do not implement until sprint approval):
 
 ## User Roles
 
-Attacker as Billing User of tenant A.
+Attacker: peer-tenant Owner (permission parity) + Billing User of tenant B on billing-readable paths.
 
 ## Tenant Isolation
 
@@ -98,11 +94,11 @@ BIZ-63
 
 ## Definition of Done
 
-- Suite in CI
+- Suite in CI (`pytest` / `-m isolation`)
 
 ## Status
 
-NOT STARTED
+COMPLETED
 
 ## Phase
 

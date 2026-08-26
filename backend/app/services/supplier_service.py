@@ -265,6 +265,12 @@ class SupplierService:
             "email_masked": mask_email(supplier.email),
             "address": supplier.address,
             "notes": supplier.notes,
+            "balance": float(getattr(supplier, "balance", 0) or 0),
+            "credit_limit": (
+                float(supplier.credit_limit)
+                if getattr(supplier, "credit_limit", None) is not None
+                else None
+            ),
             "is_active": supplier.is_active,
             "created_at": supplier.created_at.isoformat() if supplier.created_at else None,
             "updated_at": supplier.updated_at.isoformat() if supplier.updated_at else None,

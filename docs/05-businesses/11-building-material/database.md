@@ -24,13 +24,12 @@
 
 | Entity | Class | Purpose |
 |--------|-------|---------|
-| Warehouse | BUSINESS-SPECIFIC | Location |
-| StockTransfer | BUSINESS-SPECIFIC | Inter-warehouse |
-| Quotation | BUSINESS-SPECIFIC | Trade quote |
-| DeliveryChallan | BUSINESS-SPECIFIC | Challan |
-| TransportCharge | BUSINESS-SPECIFIC | Freight line/fee |
-| CreditAccount | BUSINESS-SPECIFIC | Credit |
-| PriceHistory | BUSINESS-SPECIFIC | Prices |
+| Quotation / QuotationItem | BUSINESS-SPECIFIC (BIZ-36) | Trade quote → bill |
+| DeliveryChallan / DeliveryChallanItem | BUSINESS-SPECIFIC (BIZ-36) | Dispatch document + PDF |
+| Warehouse / WarehouseStock | BUSINESS-SPECIFIC (BIZ-38) | Multi-location balances |
+| StockTransfer / StockTransferItem | BUSINESS-SPECIFIC (BIZ-38) | Inter-warehouse moves |
+| TransportCharge | via bill/challan fields (BIZ-37) | Freight fee |
+| CreditAccount | SHARED LEDGER | Credit (BIZ-09 / BIZ-37) |
 
 ## Relationships (summary)
 

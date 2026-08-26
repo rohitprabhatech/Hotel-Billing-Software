@@ -1,18 +1,19 @@
 # Stationery Shops — Frontend
 
-Conceptual routes under `modules/stationery/` (not implemented yet).
+Routes (BIZ-44):
 
-| Page | Purpose | Roles | Components | API deps | UX |
-|------|---------|-------|------------|----------|-----|
-| Stationery Dashboard | Stationery Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Fast POS | Stationery Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Products / Brands | Stationery Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Credit | Stationery Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Reports | Stationery Shops ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
+| Page | Path | Roles | Notes |
+|------|------|-------|-------|
+| Stationery POS | `/owner/stationery`, `/billing/stationery` | Owner / Manager / Billing | Search-first + barcode + credit checkout |
+| Credit | `/owner/credit`, `/billing/credit` | Owner / Manager / Billing | Shared grocery credit UI (`customer_credit`) |
+| Items / Customers / Bills / Reports | common paths | As permitted | Shared |
 
 ## Shared UI
 
-Reuse common Billing, Customers, Reports pages. Industry nav items appear only when the module is enabled.
+- Nav item **Stationery POS** appears only when `business_type === 'stationery'` and module `barcode_pos` is on.
+- **Grocery POS** is hidden for stationery tenants (`hideForBusinessTypes`).
+- Service: `frontend/src/services/stationeryService.js`
+- Page: `frontend/src/pages/modules/StationeryPosPage.jsx`
 
 ## Responsive
 

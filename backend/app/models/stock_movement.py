@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Numeric, String, Text
+from sqlalchemy import ForeignKey, Index, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -11,6 +11,14 @@ from app.models.base import TimestampMixin
 
 class StockMovement(db.Model, TimestampMixin):
     __tablename__ = "stock_movements"
+    __table_args__ = (
+        Index(
+            "ix_stock_movements_tenant_item_created",
+            "tenant_id",
+            "item_id",
+            "created_at",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(

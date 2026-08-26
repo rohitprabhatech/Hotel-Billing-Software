@@ -16,8 +16,11 @@ import {
   FormControlLabel,
   FormLabel,
   IconButton,
+  InputLabel,
+  MenuItem,
   Radio,
   RadioGroup,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -36,6 +39,7 @@ import { createBill } from '../../services/billService';
 import { getCustomer } from '../../services/customerService';
 import { fetchGroceryPosCatalog } from '../../services/groceryService';
 import { getItemByBarcode } from '../../services/itemService';
+import { listWarehouses } from '../../services/warehouseService';
 import {
   DEFAULT_PAYMENT_METHOD,
   PAYMENT_CASH,
@@ -62,6 +66,8 @@ function applyTierPrice(line) {
 export default function GroceryPosPage() {
   const moduleEnabled = useModuleGate('barcode_pos');
   const creditEnabled = useModuleGate('customer_credit');
+  const priceListsEnabled = useModuleGate('price_lists');
+  const warehouseEnabled = useModuleGate('warehouse');
   const barcodeRef = useRef(null);
   const [barcode, setBarcode] = useState('');
   const [cart, setCart] = useState([]);
@@ -73,18 +79,56 @@ export default function GroceryPosPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [warehouses, setWarehouses] = useState([]);
+  const [warehouseId, setWarehouseId] = useState('');
 
   const focusScan = useCallback(() => {
     window.requestAnimationFrame(() => barcodeRef.current?.focus());
   }, []);
 
   useEffect(() => {
+    if (!moduleEnabled || !warehouseEnabled) return;
+    listWarehouses()
+      .then((res) => {
+        const rows = res.data || [];
+        setWarehouses(rows);
+        const def = rows.find((w) => w.is_default) || rows[0];
+        if (def) setWarehouseId((prev) => prev || def.id);
+      })
+      .catch(() => {});
+  }, [moduleEnabled, warehouseEnabled]);
+
+  useEffect(() => {
     if (!moduleEnabled) return;
-    fetchGroceryPosCatalog({ limit: 50 })
+    fetchGroceryPosCatalog({
+      limit: 50,
+      customer_id: priceListsEnabled && selectedCustomer?.id ? selectedCustomer.id : undefined,
+    })
       .then((res) => setRecentScans((res.data?.items || []).slice(0, 8)))
       .catch(() => {});
     focusScan();
-  }, [moduleEnabled, focusScan]);
+  }, [moduleEnabled, focusScan, priceListsEnabled, selectedCustomer?.id]);
+
+  useEffect(() => {
+    if (!moduleEnabled || !priceListsEnabled || !selectedCustomer?.id) return;
+    fetchGroceryPosCatalog({ limit: 100, customer_id: selectedCustomer.id })
+      .then((res) => {
+        const priceMap = Object.fromEntries(
+          (res.data?.items || []).map((item) => [
+            item.id,
+            Number(item.base_price ?? item.list_price ?? item.price),
+          ]),
+        );
+        setCart((prev) =>
+          prev.map((line) =>
+            priceMap[line.item_id]
+              ? applyTierPrice({ ...line, base_price: priceMap[line.item_id] })
+              : line,
+          ),
+        );
+      })
+      .catch(() => {});
+  }, [moduleEnabled, priceListsEnabled, selectedCustomer?.id]);
 
   const cartTotal = useMemo(() => cart.reduce((sum, line) => sum + lineTotal(line), 0), [cart]);
   const lineCount = useMemo(() => cart.reduce((sum, line) => sum + Number(line.quantity || 0), 0), [cart]);
@@ -115,7 +159,7 @@ export default function GroceryPosPage() {
                 ...line,
                 quantity: nextQty,
                 price_tiers: item.price_tiers || line.price_tiers || [],
-                base_price: Number(item.price ?? line.base_price),
+                base_price: Number(item.base_price ?? item.list_price ?? item.price ?? line.base_price),
               })
             : line,
         );
@@ -126,8 +170,8 @@ export default function GroceryPosPage() {
           item_id: item.id,
           name: item.name,
           barcode: item.barcode,
-          base_price: Number(item.price),
-          price: Number(item.price),
+          base_price: Number(item.base_price ?? item.list_price ?? item.price),
+          price: Number(item.base_price ?? item.list_price ?? item.price),
           gst_percentage: Number(item.gst_percentage || 0),
           quantity: Number(increment),
           uom,
@@ -207,6 +251,7 @@ export default function GroceryPosPage() {
       const res = await createBill({
         payment_method: paymentMethod,
         customer_id: selectedCustomer?.id || null,
+        warehouse_id: warehouseEnabled && warehouseId ? warehouseId : undefined,
         items: cart.map((line) => ({
           item_id: line.item_id,
           quantity: line.quantity,
@@ -252,6 +297,25 @@ export default function GroceryPosPage() {
       <Stack spacing={2}>
         {error ? <Alert severity="error">{error}</Alert> : null}
         {success ? <Alert severity="success">{success}</Alert> : null}
+
+        {warehouseEnabled && warehouses.length ? (
+          <FormControl size="small" sx={{ maxWidth: 360 }}>
+            <InputLabel id="pos-warehouse">Sell from warehouse</InputLabel>
+            <Select
+              labelId="pos-warehouse"
+              label="Sell from warehouse"
+              value={warehouseId}
+              onChange={(e) => setWarehouseId(e.target.value)}
+            >
+              {warehouses.map((w) => (
+                <MenuItem key={w.id} value={w.id}>
+                  {w.code} · {w.name}
+                  {w.is_default ? ' (default)' : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : null}
 
         <Card variant="outlined" sx={{ borderWidth: 2, borderColor: 'primary.main' }}>
           <CardContent>

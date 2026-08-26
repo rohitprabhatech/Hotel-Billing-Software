@@ -1,5 +1,10 @@
 import apiClient from './apiClient';
 
+export async function fetchAvailableReports() {
+  const { data } = await apiClient.get('/reports/available');
+  return data;
+}
+
 export async function fetchReportSummary(params = {}) {
   const { data } = await apiClient.get('/reports/summary', { params });
   return data;
@@ -27,6 +32,11 @@ export async function fetchCustomSales(params = {}) {
 
 export async function fetchFbReport(params = {}) {
   const { data } = await apiClient.get('/reports/fb', { params });
+  return data;
+}
+
+export async function fetchOutstandingReport(params = {}) {
+  const { data } = await apiClient.get('/reports/outstanding', { params });
   return data;
 }
 

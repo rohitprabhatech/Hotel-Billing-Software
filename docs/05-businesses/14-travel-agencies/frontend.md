@@ -1,21 +1,21 @@
 # Travel Agencies — Frontend
 
-Conceptual routes under `modules/travel/` (not implemented yet).
+| Page | Path | Roles | Notes |
+|------|------|-------|-------|
+| Tour Packages | `/owner/tour-packages` | Owner / Manager write; Billing read + bill | Module `tour_packages` |
+| Travel Bookings | `/owner/travel-bookings` | Owner / Manager status + details; Billing create + pay | Module `travel_bookings` |
+| Travel Agents | `/owner/travel-agents` | Owner / Manager write; report for billing | Module `travel_commission` |
+| Customers / Bills | shared | As permitted | Common core |
 
-| Page | Purpose | Roles | Components | API deps | UX |
-|------|---------|-------|------------|----------|-----|
-| Travel Dashboard | Travel Agencies ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Packages | Travel Agencies ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Bookings | Travel Agencies ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Itineraries / Documents | Travel Agencies ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Payments / Invoices | Travel Agencies ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Agents / Commission | Travel Agencies ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
-| Reports | Travel Agencies ops | Owner / Manager / Billing (as permitted) | MUI tables/forms | Pack APIs + common | Responsive |
+## UX (BIZ-56 … BIZ-59)
 
-## Shared UI
-
-Reuse common Billing, Customers, Reports pages. Industry nav items appear only when the module is enabled.
+- Create packages with code, destination, duration, price, GST
+- Cards show service pricing; **Create bill** sells without stock
+- Linked catalog item stays untracked (`stock_quantity = null`)
+- Booking board: Booked → Confirmed → In progress → Completed; advances + remaining payments
+- Booking **Details** dialog: Itinerary tab (hotel/vehicle/ticket/activity) + Documents tab (metadata only)
+- Optional agent on booking create; Agents page with commission report by agent + mark paid
 
 ## Responsive
 
-All pages: mobile + desktop; dark mode via existing theme.
+Mobile + desktop; dark mode via existing theme.

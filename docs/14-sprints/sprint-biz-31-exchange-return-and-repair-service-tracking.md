@@ -105,7 +105,7 @@ BIZ-30, BIZ-27
 
 ## Status
 
-NOT STARTED
+COMPLETED (2026-08-25 on `rs/feature/billingV3`)
 
 ## Phase
 

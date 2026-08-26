@@ -34,12 +34,13 @@ import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import {
   fetchAuditAlerts,
+  fetchAuditMeta,
   getAuditLog,
   listAuditLogs,
 } from '../../services/auditService';
 import { listUsers } from '../../services/userService';
 
-const ACTIONS = [
+const CORE_ACTIONS = [
   '',
   'LOGIN',
   'LOGOUT',
@@ -121,9 +122,13 @@ export default function AuditPage() {
   const [logs, setLogs] = useState([]);
   const [users, setUsers] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [modules, setModules] = useState([]);
+  const [entityTypes, setEntityTypes] = useState([]);
+  const [actions, setActions] = useState(CORE_ACTIONS);
   const [filters, setFilters] = useState({
     user_id: '',
     action: '',
+    module: '',
     entity_type: '',
     bill_number: '',
     from: '',
@@ -159,6 +164,15 @@ export default function AuditPage() {
     listUsers()
       .then((res) => setUsers(res.data || []))
       .catch(() => {});
+    fetchAuditMeta()
+      .then((res) => {
+        const data = res.data || {};
+        setModules(data.modules || []);
+        setEntityTypes(data.entity_types || []);
+        const industry = data.industry_actions || [];
+        setActions([...CORE_ACTIONS, ...industry.filter((a) => !CORE_ACTIONS.includes(a))]);
+      })
+      .catch(() => {});
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -178,7 +192,8 @@ export default function AuditPage() {
       <PageShell>
         <Alert severity="info">
           Immutable activity trail for your business — indicators for investigation, not automatic
-          fraud accusations. Audit entries cannot be deleted.
+          fraud accusations. Audit entries cannot be deleted. Secrets and ID document numbers are
+          redacted in snapshots.
         </Alert>
 
         {error ? <Alert severity="error">{error}</Alert> : null}
@@ -234,13 +249,48 @@ export default function AuditPage() {
             </Select>
           </FormControl>
           <FormControl sx={{ minWidth: { xs: '100%', sm: 180 } }}>
+            <InputLabel>Module</InputLabel>
+            <Select
+              label="Module"
+              value={filters.module}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, module: e.target.value, entity_type: '' }))
+              }
+            >
+              <MenuItem value="">All</MenuItem>
+              {modules.map((m) => (
+                <MenuItem key={m.key} value={m.key}>
+                  {m.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 180 } }}>
+            <InputLabel>Entity</InputLabel>
+            <Select
+              label="Entity"
+              value={filters.entity_type}
+              onChange={(e) => setFilters((f) => ({ ...f, entity_type: e.target.value }))}
+            >
+              <MenuItem value="">All</MenuItem>
+              {(filters.module
+                ? modules.find((m) => m.key === filters.module)?.entity_types || []
+                : entityTypes
+              ).map((et) => (
+                <MenuItem key={et} value={et}>
+                  {et}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }}>
             <InputLabel>Action</InputLabel>
             <Select
               label="Action"
               value={filters.action}
               onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value }))}
             >
-              {ACTIONS.map((action) => (
+              {actions.map((action) => (
                 <MenuItem key={action || 'all'} value={action}>
                   {action || 'All'}
                 </MenuItem>

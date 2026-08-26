@@ -26,6 +26,7 @@ class ItemService:
         *,
         q=None,
         barcode=None,
+        isbn=None,
         category_id=None,
         is_active=None,
         stock_status=None,
@@ -43,6 +44,7 @@ class ItemService:
             ctx.tenant_id,
             q=q,
             barcode=barcode,
+            isbn=isbn,
             category_id=category_id,
             is_active=is_active,
             stock_status=status,
@@ -136,6 +138,20 @@ class ItemService:
         return data
 
     @staticmethod
+    def get_item_by_isbn(isbn: str, *, active_only=True):
+        require_permission(PERM_ITEMS_READ)
+        ctx = require_request_context()
+        cleaned = ItemService._normalize_isbn(isbn)
+        if not cleaned:
+            raise ValidationError("ISBN is required")
+        item = ItemRepository.find_by_tenant_and_isbn(ctx.tenant_id, cleaned)
+        if item is None:
+            raise NotFoundError("Item not found for ISBN")
+        if active_only and not item.is_active:
+            raise NotFoundError("Item not found for ISBN")
+        return ItemService.serialize(item)
+
+    @staticmethod
     def create_item(
         *,
         name,
@@ -146,6 +162,7 @@ class ItemService:
         sku=None,
         barcode=None,
         uom=None,
+        sale_uom=None,
         cost_price=None,
         stock_quantity=None,
         minimum_stock_level=None,
@@ -155,6 +172,16 @@ class ItemService:
         block_expired_batches=True,
         tracks_serial=False,
         warranty_months=None,
+        brand=None,
+        model_name=None,
+        isbn=None,
+        author=None,
+        publisher=None,
+        dimension_length=None,
+        dimension_width=None,
+        dimension_height=None,
+        material=None,
+        color=None,
     ):
         require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
@@ -179,7 +206,12 @@ class ItemService:
         if barcode_value and ItemRepository.find_by_tenant_and_barcode(ctx.tenant_id, barcode_value):
             raise ConflictError("Item with this barcode already exists")
 
+        isbn_value = ItemService._normalize_isbn(isbn)
+        if isbn_value and ItemRepository.find_by_tenant_and_isbn(ctx.tenant_id, isbn_value):
+            raise ConflictError("Item with this ISBN already exists")
+
         uom_value = ItemService._normalize_uom(uom)
+        sale_uom_value = ItemService._normalize_optional_uom(sale_uom)
 
         price_dec = ItemService._parse_money(price, "price")
         cost_dec = ItemService._parse_optional_money(cost_price, "cost_price")
@@ -201,6 +233,7 @@ class ItemService:
             sku=sku_value,
             barcode=barcode_value,
             uom=uom_value,
+            sale_uom=sale_uom_value,
             description=(description or "").strip() or None,
             price=price_dec,
             cost_price=cost_dec,
@@ -214,6 +247,22 @@ class ItemService:
             block_expired_batches=True if block_expired_batches is None else bool(block_expired_batches),
             tracks_serial=tracks_serial_flag,
             warranty_months=ItemService._parse_warranty_months(warranty_months),
+            brand=ItemService._optional_text(brand, max_len=80),
+            model_name=ItemService._optional_text(model_name, max_len=120),
+            isbn=isbn_value,
+            author=ItemService._optional_text(author, max_len=160),
+            publisher=ItemService._optional_text(publisher, max_len=160),
+            dimension_length=ItemService._parse_optional_dimension(
+                dimension_length, "dimension_length"
+            ),
+            dimension_width=ItemService._parse_optional_dimension(
+                dimension_width, "dimension_width"
+            ),
+            dimension_height=ItemService._parse_optional_dimension(
+                dimension_height, "dimension_height"
+            ),
+            material=ItemService._optional_text(material, max_len=120),
+            color=ItemService._optional_text(color, max_len=80),
         )
         ItemRepository.add(item)
         AuditService.log(
@@ -241,6 +290,8 @@ class ItemService:
         barcode_provided=False,
         uom=None,
         uom_provided=False,
+        sale_uom=None,
+        sale_uom_provided=False,
         cost_price=None,
         cost_price_provided=False,
         stock_quantity=None,
@@ -259,6 +310,26 @@ class ItemService:
         tracks_serial_provided=False,
         warranty_months=None,
         warranty_months_provided=False,
+        brand=None,
+        brand_provided=False,
+        model_name=None,
+        model_name_provided=False,
+        isbn=None,
+        isbn_provided=False,
+        author=None,
+        author_provided=False,
+        publisher=None,
+        publisher_provided=False,
+        dimension_length=None,
+        dimension_length_provided=False,
+        dimension_width=None,
+        dimension_width_provided=False,
+        dimension_height=None,
+        dimension_height_provided=False,
+        material=None,
+        material_provided=False,
+        color=None,
+        color_provided=False,
     ):
         require_permission(PERM_ITEMS_WRITE)
         ctx = require_request_context()
@@ -314,6 +385,8 @@ class ItemService:
 
         if uom_provided:
             item.uom = ItemService._normalize_uom(uom)
+        if sale_uom_provided:
+            item.sale_uom = ItemService._normalize_optional_uom(sale_uom)
 
         if price is not None:
             new_price = ItemService._parse_money(price, "price")
@@ -371,6 +444,37 @@ class ItemService:
 
         if warranty_months_provided:
             item.warranty_months = ItemService._parse_warranty_months(warranty_months)
+        if brand_provided:
+            item.brand = ItemService._optional_text(brand, max_len=80)
+        if model_name_provided:
+            item.model_name = ItemService._optional_text(model_name, max_len=120)
+        if isbn_provided:
+            isbn_value = ItemService._normalize_isbn(isbn)
+            if isbn_value:
+                existing_isbn = ItemRepository.find_by_tenant_and_isbn(ctx.tenant_id, isbn_value)
+                if existing_isbn and existing_isbn.id != item.id:
+                    raise ConflictError("Item with this ISBN already exists")
+            item.isbn = isbn_value
+        if author_provided:
+            item.author = ItemService._optional_text(author, max_len=160)
+        if publisher_provided:
+            item.publisher = ItemService._optional_text(publisher, max_len=160)
+        if dimension_length_provided:
+            item.dimension_length = ItemService._parse_optional_dimension(
+                dimension_length, "dimension_length"
+            )
+        if dimension_width_provided:
+            item.dimension_width = ItemService._parse_optional_dimension(
+                dimension_width, "dimension_width"
+            )
+        if dimension_height_provided:
+            item.dimension_height = ItemService._parse_optional_dimension(
+                dimension_height, "dimension_height"
+            )
+        if material_provided:
+            item.material = ItemService._optional_text(material, max_len=120)
+        if color_provided:
+            item.color = ItemService._optional_text(color, max_len=80)
 
         new_data = ItemService.serialize(item)
         AuditService.log(
@@ -636,11 +740,24 @@ class ItemService:
         return cleaned or None
 
     @staticmethod
+    def _normalize_isbn(value) -> str | None:
+        if value is None:
+            return None
+        cleaned = str(value).strip().replace("-", "").replace(" ", "")
+        return cleaned or None
+
+    @staticmethod
     def _normalize_uom(value) -> str:
         try:
             return normalize_uom(value, default=DEFAULT_UOM)
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
+
+    @staticmethod
+    def _normalize_optional_uom(value) -> str | None:
+        if value is None or str(value).strip() == "":
+            return None
+        return ItemService._normalize_uom(value)
 
     @staticmethod
     def _parse_money(value, field_name: str) -> Decimal:
@@ -669,6 +786,29 @@ class ItemService:
         if qty < 0:
             raise ValidationError("stock_quantity cannot be negative")
         return qty.quantize(Decimal("0.001"))
+
+    @staticmethod
+    def _parse_optional_dimension(value, field_name: str) -> Decimal | None:
+        if value is None or value == "":
+            return None
+        try:
+            amount = Decimal(str(value))
+        except (InvalidOperation, ValueError, TypeError) as exc:
+            raise ValidationError(f"Invalid {field_name}") from exc
+        if amount < 0:
+            raise ValidationError(f"{field_name} cannot be negative")
+        return amount.quantize(Decimal("0.001"))
+
+    @staticmethod
+    def _optional_text(value, *, max_len: int) -> str | None:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        if not cleaned:
+            return None
+        if len(cleaned) > max_len:
+            raise ValidationError(f"Value must be at most {max_len} characters")
+        return cleaned
 
     @staticmethod
     def _parse_warranty_months(value) -> int | None:
@@ -709,6 +849,7 @@ class ItemService:
             "sku": item.sku,
             "barcode": item.barcode,
             "uom": item.uom,
+            "sale_uom": getattr(item, "sale_uom", None) or item.uom,
             "description": item.description,
             "price": float(item.price),
             "cost_price": float(item.cost_price) if item.cost_price is not None else None,
@@ -729,6 +870,28 @@ class ItemService:
             "tracks_variants": bool(getattr(item, "tracks_variants", False)),
             "tracks_serial": bool(getattr(item, "tracks_serial", False)),
             "warranty_months": getattr(item, "warranty_months", None),
+            "brand": getattr(item, "brand", None),
+            "model_name": getattr(item, "model_name", None),
+            "isbn": getattr(item, "isbn", None),
+            "author": getattr(item, "author", None),
+            "publisher": getattr(item, "publisher", None),
+            "dimension_length": (
+                float(item.dimension_length)
+                if getattr(item, "dimension_length", None) is not None
+                else None
+            ),
+            "dimension_width": (
+                float(item.dimension_width)
+                if getattr(item, "dimension_width", None) is not None
+                else None
+            ),
+            "dimension_height": (
+                float(item.dimension_height)
+                if getattr(item, "dimension_height", None) is not None
+                else None
+            ),
+            "material": getattr(item, "material", None),
+            "color": getattr(item, "color", None),
             "created_by": item.created_by,
             "created_by_name": item.creator.name if item.creator else None,
             "created_at": item.created_at.isoformat() if item.created_at else None,

@@ -13,9 +13,20 @@ from app.utils.money import qty
 class RecipeStockService:
     @staticmethod
     def expand_for_deduction(tenant_id: str, sold: dict[str, Decimal]) -> dict[str, Decimal]:
-        """Map sold catalog item quantities to stock item quantities via recipes."""
+        """Map sold catalog item quantities to stock item quantities via recipes.
+
+        When the production module is enabled (bakery), ingredients are consumed at
+        production time — selling deducts finished-goods stock instead.
+        """
         if not sold:
             return {}
+        from app.repositories.tenant_repository import TenantRepository
+        from app.services.module_service import ModuleService
+
+        tenant = TenantRepository.get_by_id(tenant_id)
+        if tenant and ModuleService.is_enabled_for_tenant(tenant, "production"):
+            return {str(item_id): qty(sold_qty) for item_id, sold_qty in sold.items()}
+
         recipes = RecipeRepository.map_active_by_menu_item_ids(tenant_id, list(sold.keys()))
         expanded: dict[str, Decimal] = {}
         for item_id, sold_qty in sold.items():

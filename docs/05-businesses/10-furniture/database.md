@@ -1,40 +1,32 @@
 # Furniture Shops — Database
 
-> Conceptual only. No tables created in documentation phase.
+> BIZ-47: furniture specs live as columns on common `items` (not a separate FurnitureSpec table).
 
 ## COMMON ENTITIES reused
 
 | Entity | Class | Notes |
 |--------|-------|-------|
-| Tenant | COMMON ENTITY | Reused |
-| User | COMMON ENTITY | Reused |
-| Role | COMMON ENTITY | Reused |
-| Category | COMMON ENTITY | Reused |
-| Product / Item | COMMON ENTITY | Reused |
-| Customer | COMMON ENTITY | Reused |
-| Bill | COMMON ENTITY | Reused |
-| BillItem | COMMON ENTITY | Reused |
-| Payment | COMMON ENTITY | Reused |
-| StockMovement | COMMON ENTITY | Reused |
-| Notification | COMMON ENTITY | Reused |
-| AuditLog | COMMON ENTITY | Reused |
-| BusinessSettings | COMMON ENTITY | Reused |
+| Tenant / User / Role | COMMON ENTITY | Reused |
+| Category / Item | COMMON ENTITY | Item extended with furniture fields |
+| Customer / Bill / Payment / StockMovement / AuditLog | COMMON ENTITY | Reused |
 
-## BUSINESS-SPECIFIC ENTITIES
+## BUSINESS-SPECIFIC (on `items` — BIZ-47)
 
-| Entity | Class | Purpose |
-|--------|-------|---------|
-| FurnitureSpec | BUSINESS-SPECIFIC | Dims/material/color |
-| CustomOrder | BUSINESS-SPECIFIC | Custom job |
-| Quotation | BUSINESS-SPECIFIC | Customer quote |
-| DeliveryJob | BUSINESS-SPECIFIC | Delivery |
-| InstallationJob | BUSINESS-SPECIFIC | Install |
+| Column | Type | Notes |
+|--------|------|-------|
+| `dimension_length` | Numeric(12,3), nullable | L |
+| `dimension_width` | Numeric(12,3), nullable | W |
+| `dimension_height` | Numeric(12,3), nullable | H |
+| `material` | String(120), nullable | Indexed with tenant |
+| `color` | String(80), nullable | Catalog finish color |
 
-## Relationships (summary)
+Migration: `20260826_biz47_furniture_product_attributes`
 
-- All specific entities carry `tenant_id` (RESTRICT to Tenant).
-- Prefer FK to `Bill` / `Product` / `Customer` rather than duplicating money columns.
-- Serial/IMEI uniqueness is **per tenant**.
+## Custom orders (BIZ-48)
+
+Reuses shared `custom_product_orders` / `custom_order_payments` with `order_type=furniture` (no new tables). Freeform dims/material map to `size` / `flavor`; catalog L/W/H stay on items.
+
+Later pack entities (quotes, delivery, installation) reuse shared modules from prior phases.
 
 ## See also
 

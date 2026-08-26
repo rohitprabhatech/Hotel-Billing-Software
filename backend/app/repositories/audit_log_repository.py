@@ -25,6 +25,7 @@ class AuditLogRepository:
         user_id: str | None = None,
         action: str | None = None,
         entity_type: str | None = None,
+        entity_types: list[str] | None = None,
         entity_id: str | None = None,
         bill_number: str | None = None,
         q: str | None = None,
@@ -39,7 +40,9 @@ class AuditLogRepository:
             query = query.filter(AuditLog.user_id == user_id)
         if action:
             query = query.filter(AuditLog.action == action)
-        if entity_type:
+        if entity_types:
+            query = query.filter(AuditLog.entity_type.in_(entity_types))
+        elif entity_type:
             query = query.filter(AuditLog.entity_type == entity_type)
         if entity_id:
             query = query.filter(AuditLog.entity_id == entity_id)

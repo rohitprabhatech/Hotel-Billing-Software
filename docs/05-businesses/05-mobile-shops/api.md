@@ -6,10 +6,12 @@ Do **not** re-document common `/bills`, `/customers`, `/items` here — use thos
 
 | Method | Endpoint | Purpose | Auth | Permission | Tenant |
 |--------|----------|---------|------|------------|--------|
-| GET/POST | `/api/v1/mobile/serials` | IMEI inventory | JWT | industry + role | Yes |
-| POST | `/api/v1/mobile/serials/{id}/sell` | Attach to bill | JWT | industry + role | Yes |
-| GET/POST | `/api/v1/mobile/warranties` | Warranty records | JWT | industry + role | Yes |
-| GET/POST | `/api/v1/mobile/repairs` | Repair tickets | JWT | industry + role | Yes |
+| GET | `/api/v1/serial-units` | IMEI inventory (shared) | JWT | `serial_imei` | Yes |
+| GET/POST | `/api/v1/repairs` | Repair tickets (shared) | JWT | `repair_service` | Yes |
+| GET | `/api/v1/mobile/sales` | Sales by brand/model + IMEI stock | JWT Owner/Manager | `serial_imei` + reports | Yes |
+| GET | `/api/v1/mobile/customer-history` | Customer bills with IMEI lines | JWT | `serial_imei` + customers | Yes |
+
+Item catalog fields for this pack: `brand`, `model_name` on `PUT/POST /items` (optional strings).
 
 ## Contract notes
 

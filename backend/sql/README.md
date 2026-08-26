@@ -1,15 +1,18 @@
 # SQL & Schema Apply Guide
 
 **Product:** Business Billing · Prabha Technology Pvt. Ltd.  
-**Canonical greenfield schema:** `02_schema.sql` (**53** application tables; aligned with SQLAlchemy models)  
+**Canonical greenfield schema:** `02_schema.sql` (**94** application tables; aligned with SQLAlchemy models)  
 **Upgrade path (existing / hosted DBs):** Alembic (`flask db upgrade`) — **do not** re-run `02_schema.sql` on live data.
 
-**Alembic head (current):** `20260825_audit_db_hardening`  
-(after `20260825_biz29_serial_units`)
+**Alembic head (current):** `20260826_biz66_perf_indexes`  
+(industry modules through BIZ-68; see `docs/03-database/11-alembic-revision-order.md`)
+
+**Regenerate greenfield SQL (local only):**  
+`python scripts/regenerate_02_schema.py` — overwrites `02_schema.sql` from models. Never apply the output to production.
 
 ---
 
-## Application tables (53)
+## Application tables (94)
 
 ### Core / SaaS foundation
 
@@ -27,7 +30,13 @@
 | Grocery | `item_price_tiers`, `item_batches` |
 | Clothing | `item_variants`, `item_images`, `sales_returns`, `sales_return_items`, `sales_return_counters` |
 | F&B | `dining_tables`, `orders`, `order_items`, `order_item_addons`, `order_number_counters`, `kots`, `kot_items`, `kot_number_counters`, `recipes`, `recipe_ingredients`, `item_addon_groups`, `item_addons`, `combos`, `combo_items`, `wastage_entries` |
-| Mobile / Electronics (BIZ-29) | `serial_units` (+ `items.tracks_serial`, `bill_items.serial_*`) |
+| Mobile / Electronics | `serial_units`, `repair_orders`, `repair_number_counters`, `installation_orders`, `installation_number_counters`, `item_accessories` |
+| Hardware / warehouse | `warehouses`, `warehouse_stocks`, `stock_transfers`, `stock_transfer_items`, `stock_transfer_number_counters` |
+| Bakery | `production_runs`, `production_run_items`, `production_run_number_counters`, `custom_product_orders`, `custom_order_payments`, `custom_order_number_counters` |
+| Trade docs | `quotations`, `quotation_items`, `quotation_number_counters`, `delivery_challans`, `delivery_challan_items`, `delivery_challan_number_counters`, `sales_orders`, `sales_order_items`, `sales_order_number_counters`, `purchase_orders`, `purchase_order_items`, `purchase_order_number_counters` |
+| Furniture / delivery | `delivery_jobs`, `delivery_number_counters` |
+| Wholesale | `price_lists`, `price_list_items`, `customer_price_lists` |
+| Travel | `tour_packages`, `travel_agents`, `travel_bookings`, `travel_booking_payments`, `travel_booking_documents`, `travel_itinerary_items`, `travel_commission_entries`, `travel_booking_number_counters` |
 
 ---
 
@@ -38,13 +47,13 @@
 
 Optional: `python sql/apply_schema.py` if your ops flow uses that helper.
 
-Then stamp or upgrade Alembic so `alembic_version` matches head.
+Then stamp Alembic so `alembic_version` matches head (`20260826_biz66_perf_indexes`), or run `flask db upgrade` on an empty DB that already has `alembic_version` seeded.
 
 ---
 
 ## Existing / hosted database (upgrade)
 
-Prefer **one** of the paths below. Always **inspect** first. **Do not modify production from this agent run without an explicit ops request.**
+Prefer **one** of the paths below. Always **inspect** first. **Do not modify production from agent runs without an explicit ops request.**
 
 ### 0) Inspect first (read-only, required on live)
 
@@ -80,10 +89,13 @@ If `master_admins` count is **0**, set `MASTER_ADMIN_*` in `.env` (do not commit
 ## Cloud MySQL readiness (config only — no cloud upload)
 
 - Charset: `utf8mb4` (URL `charset=utf8mb4` + SQLAlchemy `connect_args`)
+- Collation: `utf8mb4_unicode_ci` on greenfield tables
 - Pool: `DB_POOL_SIZE`, `DB_POOL_MAX_OVERFLOW`, `DB_POOL_TIMEOUT`, `DB_POOL_RECYCLE`
 - Financial columns: `DECIMAL` / `Numeric`
+- Stock guard: `chk_items_stock` (`stock_quantity IS NULL OR stock_quantity >= 0`)
 - Timezone reports: `REPORT_TIMEZONE` (default `Asia/Kolkata`)
 - Migrations: linear Alembic chain; non-destructive upgrades preferred
+- Deferred FK: `bill_items.serial_unit_id` → `serial_units` (cycle-safe `use_alter`)
 
 ---
 
@@ -97,6 +109,6 @@ If `master_admins` count is **0**, set `MASTER_ADMIN_*` in `.env` (do not commit
 
 - Do **not** re-run `02_schema.sql` on a production DB (it drops tables).
 - Use `02_schema.sql` only for empty/dev rebuilds.
-- Keep `02_schema.sql` aligned with models whenever tables/columns/indexes change.
+- Keep `02_schema.sql` aligned with models whenever tables/columns/indexes change (`scripts/regenerate_02_schema.py`).
 
-See also: [`docs/backup-and-recovery.md`](../../docs/backup-and-recovery.md).
+See also: [`docs/03-database/10-industry-modules-ops-runbook.md`](../../docs/03-database/10-industry-modules-ops-runbook.md).

@@ -2,7 +2,17 @@
 
 from decimal import Decimal
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -15,6 +25,12 @@ class Item(db.Model, TimestampMixin):
         UniqueConstraint("tenant_id", "name", name="uq_items_tenant_name"),
         UniqueConstraint("tenant_id", "sku", name="uq_items_tenant_sku"),
         UniqueConstraint("tenant_id", "barcode", name="uq_items_tenant_barcode"),
+        UniqueConstraint("tenant_id", "isbn", name="uq_items_tenant_isbn"),
+        Index("ix_items_tenant_active_name", "tenant_id", "is_active", "name"),
+        CheckConstraint(
+            "stock_quantity IS NULL OR stock_quantity >= 0",
+            name="chk_items_stock",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -31,6 +47,7 @@ class Item(db.Model, TimestampMixin):
     sku: Mapped[str | None] = mapped_column(String(64))
     barcode: Mapped[str | None] = mapped_column(String(64), index=True)
     uom: Mapped[str] = mapped_column(String(16), nullable=False, default="pcs")
+    sale_uom: Mapped[str | None] = mapped_column(String(16))
     description: Mapped[str | None] = mapped_column(Text)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     cost_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
@@ -47,6 +64,16 @@ class Item(db.Model, TimestampMixin):
     tracks_variants: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     tracks_serial: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     warranty_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    brand: Mapped[str | None] = mapped_column(String(80))
+    model_name: Mapped[str | None] = mapped_column(String(120))
+    isbn: Mapped[str | None] = mapped_column(String(32))
+    author: Mapped[str | None] = mapped_column(String(160), index=True)
+    publisher: Mapped[str | None] = mapped_column(String(160))
+    dimension_length: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+    dimension_width: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+    dimension_height: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+    material: Mapped[str | None] = mapped_column(String(120))
+    color: Mapped[str | None] = mapped_column(String(80))
 
     category = relationship("Category", back_populates="items")
     creator = relationship("User", foreign_keys=[created_by])

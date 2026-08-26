@@ -19,5 +19,14 @@
 
 ## Purpose summary
 
-This pack activates only when `business_type = bakery_sweet`.  
-Implementation lives under backend/frontend `modules/bakery/` (conceptual — not created yet).
+This pack activates when `business_type = bakery_sweet`.
+
+**Enabled modules (defaults):** `production`, `recipe`, `batch_expiry`, `custom_orders`, `wastage`.
+
+| Code | Implemented |
+|------|-------------|
+| `recipe` | Shared BIZ-16 (bakery may link BOM to non-menu FG items) |
+| `production` | BIZ-40 `/productions` + Owner Production page |
+| `wastage` | Shared BIZ-18; BIZ-41 FEFO write-off on batch-tracked FG |
+| `batch_expiry` | Shared BIZ-22; BIZ-41 bakery enablement + production→batch |
+| `custom_orders` | BIZ-42 shared `custom_product_orders` (type=bakery) |

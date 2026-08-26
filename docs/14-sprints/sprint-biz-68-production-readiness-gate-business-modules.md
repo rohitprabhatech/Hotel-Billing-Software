@@ -4,107 +4,27 @@
 
 Final go-live checklist for industry packs: security, backups note, monitoring, support scripts.
 
-## Business Type
+## Status
 
-All
+COMPLETED
 
-## Why This Sprint Is Required
+## Phase
 
-Close program.
+Phase 14 – Production Readiness
 
-## Existing Functionality
+## Delivered
 
-21-production-readiness archived notes.
-
-## Missing Functionality
-
-Industry-specific go-live.
-
-## Scope
-
-### Backend Tasks
-
-- Health checks if needed
-
-### Frontend Tasks
-
-- Smoke
-
-### Database Tasks
-
-- Backup verify process
-
-### API Tasks
-
-- Smoke
-
-### UI/UX Tasks
-
-- Smoke
-
-### Testing Tasks
-
-- Final regression
-
-### Documentation Tasks
-
-- Go-live
-
-## Database Changes
-
-Conceptual entities only (no SQL in this plan):
-
-- N/A
-
-Every tenant-owned entity must include `tenant_id` set from JWT/server context — never from client body.
-
-## API Requirements
-
-Conceptual endpoints (do not implement until sprint approval):
-
-- N/A
-
-## Frontend Pages
-
-- N/A
-
-## User Roles
-
-All.
-
-## Tenant Isolation
-
-Final isolation sweep.
-
-## Audit Requirements
-
-Yes.
-
-## Notifications
-
-Yes.
+- Go-live checklist: [`biz-68-industry-go-live-checklist.md`](./biz-68-industry-go-live-checklist.md)
+- Gate report: [`biz-68-production-readiness-gate-report.md`](./biz-68-production-readiness-gate-report.md)
+- Health readiness smoke + gate dry-run tests
+- Medical Store remains excluded
+- Program **68/68** pending business checklist sign-off on production
 
 ## Acceptance Criteria
 
-- Go-live checklist signed
+- Go-live checklist signed (template ready)
 - Medical still excluded
 
 ## Dependencies
 
 BIZ-67
-
-## Risks
-
-- None
-
-## Definition of Done
-
-- Program complete pending business approval
-
-## Status
-
-NOT STARTED
-
-## Phase
-
-Phase 14 – Production Readiness

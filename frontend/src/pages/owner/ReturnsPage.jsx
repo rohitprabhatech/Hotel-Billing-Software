@@ -1,8 +1,10 @@
 import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -34,7 +36,9 @@ import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { fetchClothingPosCatalog } from '../../services/clothingService';
+import { fetchGroceryPosCatalog } from '../../services/groceryService';
 import { createReturn, listReturns, lookupReturnBill } from '../../services/returnService';
+import { listSerialUnits } from '../../services/serialService';
 
 const STEPS = ['Find bill', 'Quantities', 'Confirm'];
 
@@ -60,7 +64,10 @@ export default function ReturnsPage() {
   const [kind, setKind] = useState('RETURN');
   const [reason, setReason] = useState('');
   const [exchangePick, setExchangePick] = useState(null);
+  const [exchangeSerialByLine, setExchangeSerialByLine] = useState({});
+  const [quarantineByLine, setQuarantineByLine] = useState({});
   const [catalog, setCatalog] = useState([]);
+  const [serialStock, setSerialStock] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const loadList = useCallback(async () => {
@@ -91,6 +98,20 @@ export default function ReturnsPage() {
       .filter((line) => line.quantity > 0);
   }, [lookup, qtyByLine]);
 
+  const hasSerialLines = useMemo(
+    () => selectedLines.some((line) => line.is_serial),
+    [selectedLines],
+  );
+  const hasClothingVariantLines = useMemo(
+    () => selectedLines.some((line) => !line.is_serial && line.variant_id),
+    [selectedLines],
+  );
+  const hasPlainItemLines = useMemo(
+    () => selectedLines.some((line) => !line.is_serial && !line.variant_id),
+    [selectedLines],
+  );
+  const hasNonSerialExchangeLines = hasClothingVariantLines || hasPlainItemLines;
+
   const openWizard = () => {
     setWizardOpen(true);
     setStep(0);
@@ -100,6 +121,8 @@ export default function ReturnsPage() {
     setKind('RETURN');
     setReason('');
     setExchangePick(null);
+    setExchangeSerialByLine({});
+    setQuarantineByLine({});
     setError('');
   };
 
@@ -127,10 +150,29 @@ export default function ReturnsPage() {
     setError('');
     if (kind === 'EXCHANGE') {
       try {
-        const res = await fetchClothingPosCatalog({ limit: 200 });
-        setCatalog(res.data?.items || []);
+        if (hasClothingVariantLines) {
+          const res = await fetchClothingPosCatalog({ limit: 200 });
+          setCatalog(res.data?.items || []);
+        } else if (hasPlainItemLines) {
+          const res = await fetchGroceryPosCatalog({ limit: 200 });
+          setCatalog(res.data?.items || []);
+        } else {
+          setCatalog([]);
+        }
+        if (hasSerialLines) {
+          const itemIds = [...new Set(selectedLines.filter((line) => line.is_serial).map((line) => line.item_id))];
+          const batches = await Promise.all(
+            itemIds.map((itemId) =>
+              listSerialUnits({ item_id: itemId, status: 'IN_STOCK', per_page: 100 }).then((res) => res.data || []),
+            ),
+          );
+          setSerialStock(batches.flat());
+        } else {
+          setSerialStock([]);
+        }
       } catch {
         setCatalog([]);
+        setSerialStock([]);
       }
     }
     setStep(2);
@@ -142,9 +184,20 @@ export default function ReturnsPage() {
       setError('Reason is required.');
       return;
     }
-    if (kind === 'EXCHANGE' && !exchangePick) {
-      setError('Select the size/color to give in exchange.');
-      return;
+    if (kind === 'EXCHANGE') {
+      const serialLine = selectedLines.find((line) => line.is_serial);
+      if (serialLine && !exchangeSerialByLine[serialLine.bill_item_id]) {
+        setError('Select the replacement serial / IMEI for exchange.');
+        return;
+      }
+      if (hasNonSerialExchangeLines && !exchangePick) {
+        setError(
+          hasClothingVariantLines
+            ? 'Select the size/color to give in exchange.'
+            : 'Select the replacement item to give in exchange.',
+        );
+        return;
+      }
     }
     setSaving(true);
     setError('');
@@ -156,11 +209,17 @@ export default function ReturnsPage() {
         items: selectedLines.map((line) => ({
           bill_item_id: line.bill_item_id,
           quantity: line.quantity,
-          ...(kind === 'EXCHANGE'
+          ...(kind === 'EXCHANGE' && line.is_serial
+            ? { exchange_serial_unit_id: exchangeSerialByLine[line.bill_item_id]?.id }
+            : {}),
+          ...(kind === 'EXCHANGE' && !line.is_serial
             ? {
-                exchange_item_id: exchangePick.item_id,
-                exchange_variant_id: exchangePick.variant_id,
+                exchange_item_id: exchangePick?.item_id,
+                exchange_variant_id: exchangePick?.variant_id,
               }
+            : {}),
+          ...(kind === 'RETURN' && line.is_serial
+            ? { quarantine: Boolean(quarantineByLine[line.bill_item_id]) }
             : {}),
         })),
       };
@@ -218,7 +277,7 @@ export default function ReturnsPage() {
           ) : !rows.length ? (
             <EmptyState
               title="No returns yet"
-              description="Look up a finalized bill, restock the returned size/color, or exchange into another variant."
+              description="Look up a finalized bill, restock returned goods, or exchange into another item / size / serial."
               actionLabel={canWrite ? 'New return / exchange' : undefined}
               onAction={canWrite ? openWizard : undefined}
             />
@@ -302,7 +361,14 @@ export default function ReturnsPage() {
                 <TableBody>
                   {lookup.items.map((line) => (
                     <TableRow key={line.bill_item_id}>
-                      <TableCell>{line.item_name}</TableCell>
+                      <TableCell>
+                        {line.item_name}
+                        {line.serial_number ? (
+                          <Typography variant="caption" display="block" color="text.secondary">
+                            IMEI: {line.serial_number}
+                          </Typography>
+                        ) : null}
+                      </TableCell>
                       <TableCell align="right">{line.quantity_sold}</TableCell>
                       <TableCell align="right">{line.quantity_returned}</TableCell>
                       <TableCell align="right">
@@ -330,7 +396,17 @@ export default function ReturnsPage() {
               <FormControl>
                 <RadioGroup row value={kind} onChange={(e) => setKind(e.target.value)}>
                   <FormControlLabel value="RETURN" control={<Radio />} label="Return (refund / restock)" />
-                  <FormControlLabel value="EXCHANGE" control={<Radio />} label="Exchange size/color" />
+                  <FormControlLabel
+                    value="EXCHANGE"
+                    control={<Radio />}
+                    label={
+                      hasSerialLines
+                        ? 'Exchange serial / IMEI'
+                        : hasClothingVariantLines
+                          ? 'Exchange size/color'
+                          : 'Exchange item'
+                    }
+                  />
                 </RadioGroup>
               </FormControl>
               <TextField
@@ -341,7 +417,30 @@ export default function ReturnsPage() {
                 fullWidth
                 placeholder="Wrong size, damaged, customer request"
               />
-              {kind === 'EXCHANGE' ? (
+              {kind === 'RETURN' && hasSerialLines ? (
+                <Stack spacing={1}>
+                  {selectedLines
+                    .filter((line) => line.is_serial)
+                    .map((line) => (
+                      <FormControlLabel
+                        key={line.bill_item_id}
+                        control={
+                          <Checkbox
+                            checked={Boolean(quarantineByLine[line.bill_item_id])}
+                            onChange={(e) =>
+                              setQuarantineByLine((prev) => ({
+                                ...prev,
+                                [line.bill_item_id]: e.target.checked,
+                              }))
+                            }
+                          />
+                        }
+                        label={`Quarantine ${line.serial_number || 'serial unit'} (do not resell as new)`}
+                      />
+                    ))}
+                </Stack>
+              ) : null}
+              {kind === 'EXCHANGE' && hasClothingVariantLines ? (
                 <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Tap the replacement size/color. That variant is deducted; the returned one is restocked.
@@ -365,6 +464,68 @@ export default function ReturnsPage() {
                     <Alert severity="info">Exchanging into {exchangePick.label}</Alert>
                   ) : null}
                 </Box>
+              ) : null}
+              {kind === 'EXCHANGE' && hasPlainItemLines ? (
+                <Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Tap the replacement title. That item is deducted; the returned one is restocked.
+                  </Typography>
+                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                    {(catalog || []).slice(0, 24).map((item) => (
+                      <Button
+                        key={item.id}
+                        size="small"
+                        variant={exchangePick?.item_id === item.id ? 'contained' : 'outlined'}
+                        onClick={() =>
+                          setExchangePick({
+                            item_id: item.id,
+                            label: item.name,
+                          })
+                        }
+                      >
+                        {item.name}
+                        {item.isbn ? ` · ${item.isbn}` : ''}
+                      </Button>
+                    ))}
+                  </Stack>
+                  {exchangePick ? (
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      Exchanging into {exchangePick.label}
+                    </Alert>
+                  ) : null}
+                </Box>
+              ) : null}
+              {kind === 'EXCHANGE' && hasSerialLines ? (
+                <Stack spacing={2}>
+                  {selectedLines
+                    .filter((line) => line.is_serial)
+                    .map((line) => (
+                      <Autocomplete
+                        key={line.bill_item_id}
+                        options={serialStock.filter(
+                          (unit) =>
+                            unit.item_id === line.item_id &&
+                            unit.id !== line.serial_unit_id &&
+                            unit.status === 'IN_STOCK',
+                        )}
+                        getOptionLabel={(option) => `${option.serial} · ${option.item_name || line.item_name}`}
+                        value={exchangeSerialByLine[line.bill_item_id] || null}
+                        onChange={(_, value) =>
+                          setExchangeSerialByLine((prev) => ({ ...prev, [line.bill_item_id]: value }))
+                        }
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label={`Replacement IMEI for ${line.serial_number || line.item_name}`}
+                            required
+                          />
+                        )}
+                      />
+                    ))}
+                  <Typography variant="body2" color="text.secondary">
+                    The returned IMEI is quarantined; the replacement is bound to the original bill line.
+                  </Typography>
+                </Stack>
               ) : null}
             </Stack>
           ) : null}

@@ -72,39 +72,47 @@ export default function CustomerPicker({
       loading={loading}
       disabled={disabled}
       getOptionLabel={(option) => formatCustomerLabel(option)}
-      isOptionEqualToValue={(option, val) => option.id === val.id}
+      isOptionEqualToValue={(option, val) => option?.id === val?.id}
       filterOptions={(x) => x}
-      renderOption={(props, option) => (
-        <Box component="li" {...props} key={option.id}>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="body2" fontWeight={600} noWrap>
-              {option.name}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {[option.phone_masked, option.email_masked].filter(Boolean).join(' · ') || 'No contact'}
-              {Number(option.balance || 0) > 0
-                ? ` · Due ₹${Number(option.balance).toFixed(2)}`
-                : ''}
-            </Typography>
+      renderOption={(props, option) => {
+        const { key, ...liProps } = props;
+        return (
+          <Box component="li" key={option.id ?? key} {...liProps}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="body2" fontWeight={600} noWrap>
+                {option.name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {[option.phone_masked, option.email_masked].filter(Boolean).join(' · ') ||
+                  'No contact'}
+                {Number(option.balance || 0) > 0
+                  ? ` · Due ₹${Number(option.balance).toFixed(2)}`
+                  : ''}
+              </Typography>
+            </Box>
           </Box>
-        </Box>
-      )}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label={label}
-          placeholder="Search by name or phone"
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {loading ? <CircularProgress color="inherit" size={18} /> : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
-          }}
-        />
-      )}
+        );
+      }}
+      renderInput={(params) => {
+        // MUI v6+ may omit params.InputProps; never read .endAdornment blindly.
+        const inputSlot = params.InputProps ?? params.slotProps?.input ?? {};
+        return (
+          <TextField
+            {...params}
+            label={label}
+            placeholder="Search by name or phone"
+            InputProps={{
+              ...inputSlot,
+              endAdornment: (
+                <>
+                  {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                  {inputSlot.endAdornment}
+                </>
+              ),
+            }}
+          />
+        );
+      }}
     />
   );
 }

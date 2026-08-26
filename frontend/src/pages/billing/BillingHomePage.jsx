@@ -10,10 +10,12 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
+import IndustryDashboardPanel from '../../components/IndustryDashboardPanel';
 import KpiCard from '../../components/KpiCard';
 import PageShell from '../../components/PageShell';
 import Section from '../../components/Section';
@@ -25,8 +27,10 @@ import { PATHS } from '../../routes/paths';
 import { paymentMethodLabel } from '../../utils/paymentMethod';
 
 export default function BillingHomePage() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const navigate = useNavigate();
+  const businessName = user?.tenant?.business_name || user?.tenant?.name || 'Billing';
+  const businessTypeLabel = user?.tenant?.business_type_label || null;
   const [summary, setSummary] = useState({ total_sales: 0, bill_count: 0 });
   const [recent, setRecent] = useState([]);
   const [waFailedCount, setWaFailedCount] = useState(0);
@@ -68,6 +72,20 @@ export default function BillingHomePage() {
       </PageActions>
 
       <PageShell>
+        <Box sx={{ mb: 0.5 }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+            {businessName}
+          </Typography>
+          {businessTypeLabel ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {businessTypeLabel} · Billing dashboard
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Billing dashboard
+            </Typography>
+          )}
+        </Box>
         {role === 'OWNER' ? (
           <Alert severity="info">
             You are in the Billing workspace. Use <strong>Owner Dashboard</strong> in the sidebar
@@ -75,6 +93,7 @@ export default function BillingHomePage() {
           </Alert>
         ) : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+        <IndustryDashboardPanel compact workspace="billing" />
         {waFailedCount > 0 ? (
           <Alert
             severity="warning"

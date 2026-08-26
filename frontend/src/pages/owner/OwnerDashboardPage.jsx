@@ -46,6 +46,7 @@ import { listNotifications } from '../../services/notificationService';
 import { fetchReportSummary } from '../../services/reportService';
 import { paymentMethodLabel } from '../../utils/paymentMethod';
 import { RestaurantDashboardWidgets } from '../modules/MenuPage';
+import IndustryDashboardPanel from '../../components/IndustryDashboardPanel';
 
 const STOCK_ALERT_TYPES = new Set(['LOW_STOCK', 'OUT_OF_STOCK']);
 const WA_FAILED_TYPE = 'WHATSAPP_DELIVERY_FAILED';
@@ -210,6 +211,7 @@ export default function OwnerDashboardPage() {
       </Card>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+      <IndustryDashboardPanel />
       <RestaurantDashboardWidgets />
       <Alert severity="info">
         Sales totals include finalized bills only. Cancelled bills are shown separately.

@@ -37,6 +37,24 @@ export default class RouteErrorBoundary extends Component {
               The rest of the app is still available. You can try again or open another page from
               the menu.
             </Typography>
+            {import.meta.env.DEV && this.state.error?.message ? (
+              <Typography
+                variant="caption"
+                component="pre"
+                sx={{
+                  m: 0,
+                  p: 1.25,
+                  borderRadius: 1,
+                  bgcolor: 'action.hover',
+                  color: 'error.main',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontFamily: 'ui-monospace, monospace',
+                }}
+              >
+                {String(this.state.error.message)}
+              </Typography>
+            ) : null}
             <Button variant="contained" onClick={this.handleRetry} sx={{ alignSelf: 'flex-start' }}>
               Try again
             </Button>

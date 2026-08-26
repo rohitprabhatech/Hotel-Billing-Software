@@ -39,11 +39,11 @@ export default function LandingNav({
         : 'text.primary'
       : activeHash === href
         ? '#FFFFFF'
-        : 'rgba(244,248,250,0.82)',
-    opacity: scrolled ? (activeHash === href ? 1 : 0.78) : 1,
-    px: 0.4,
+        : 'rgba(255,255,255,0.88)',
+    opacity: 1,
+    px: 0.5,
     py: 0.5,
-    transition: 'color 0.15s ease, opacity 0.15s ease',
+    transition: 'color 0.15s ease',
     '&::after': {
       content: '""',
       position: 'absolute',
@@ -52,13 +52,12 @@ export default function LandingNav({
       bottom: -2,
       height: 2,
       borderRadius: 1,
-      bgcolor: scrolled ? 'primary.main' : '#F4F8FA',
+      bgcolor: scrolled ? 'primary.main' : '#FFFFFF',
       transform: activeHash === href ? 'scaleX(1)' : 'scaleX(0)',
       transition: 'transform 0.18s ease',
     },
     '&:hover': {
       color: scrolled ? 'primary.main' : '#FFFFFF',
-      opacity: 1,
       '&::after': { transform: 'scaleX(1)' },
     },
   });
@@ -73,15 +72,12 @@ export default function LandingNav({
         flexShrink: 0,
         display: 'grid',
         placeItems: 'center',
-        bgcolor: scrolled ? 'primary.main' : '#F4F8FA',
+        bgcolor: scrolled ? 'primary.main' : 'rgba(255,255,255,0.96)',
         color: scrolled ? 'primary.contrastText' : '#123A48',
         fontFamily: DISPLAY_FONT,
         fontWeight: 700,
         fontSize: size > 32 ? '0.78rem' : '0.7rem',
         letterSpacing: '-0.05em',
-        boxShadow: scrolled
-          ? (t) => (t.palette.mode === 'dark' ? 'none' : '0 4px 12px rgba(31,78,95,0.22)')
-          : 'none',
       }}
     >
       BB
@@ -99,37 +95,38 @@ export default function LandingNav({
           borderBottom: '1px solid',
           borderColor: scrolled
             ? 'divider'
-            : isDark
-              ? 'rgba(255,255,255,0.08)'
-              : 'rgba(18,58,72,0.12)',
+            : 'rgba(255,255,255,0.12)',
+          // Solid bar — avoid muddy translucent teal over the hero
           bgcolor: scrolled
             ? isDark
-              ? 'rgba(12, 18, 24, 0.92)'
-              : 'rgba(255, 255, 255, 0.92)'
-            : isDark
-              ? 'rgba(10, 16, 22, 0.55)'
-              : 'rgba(18, 58, 72, 0.28)',
-          backdropFilter: 'blur(16px) saturate(1.15)',
-          color: scrolled ? 'text.primary' : '#F4F8FA',
+              ? 'rgba(15, 22, 28, 0.96)'
+              : 'rgba(255, 255, 255, 0.97)'
+            : '#123A48',
+          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          color: scrolled ? 'text.primary' : '#FFFFFF',
           boxShadow: scrolled
             ? isDark
-              ? '0 8px 24px rgba(0,0,0,0.35)'
-              : '0 8px 24px rgba(15, 36, 44, 0.07)'
-            : 'none',
-          transition: 'box-shadow 0.22s ease, background-color 0.22s ease, color 0.22s ease',
-          '& .MuiButton-text, & .MuiIconButton-root': {
-            color: 'inherit',
+              ? '0 4px 16px rgba(0,0,0,0.35)'
+              : '0 4px 16px rgba(15, 36, 44, 0.06)'
+            : '0 1px 0 rgba(255,255,255,0.06)',
+          transition:
+            'box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease',
+          '& .MuiIconButton-root': {
+            color: scrolled ? 'text.primary' : '#FFFFFF',
           },
-          '& .MuiButton-outlined': {
-            borderColor: scrolled ? undefined : 'rgba(244,248,250,0.45)',
-            color: scrolled ? undefined : '#F4F8FA',
+          '& .MuiButton-text': {
+            color: scrolled ? 'text.primary' : '#FFFFFF',
+            '&:hover': {
+              bgcolor: scrolled ? 'action.hover' : 'rgba(255,255,255,0.1)',
+            },
           },
           '& .MuiButton-contained': scrolled
             ? undefined
             : {
-                bgcolor: '#F4F8FA',
+                bgcolor: '#FFFFFF',
                 color: '#123A48',
-                '&:hover': { bgcolor: '#FFFFFF' },
+                boxShadow: 'none',
+                '&:hover': { bgcolor: '#F4F8FA', boxShadow: 'none' },
               },
         }}
       >
@@ -175,7 +172,7 @@ export default function LandingNav({
                 sx={{
                   display: { xs: 'none', sm: 'block' },
                   lineHeight: 1.2,
-                  color: scrolled ? 'text.secondary' : 'rgba(244,248,250,0.7)',
+                  color: scrolled ? 'text.secondary' : 'rgba(255,255,255,0.72)',
                 }}
               >
                 by Prabha Technology

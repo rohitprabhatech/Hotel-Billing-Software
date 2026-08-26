@@ -33,17 +33,11 @@ export default function LandingNav({
     fontSize: '0.88rem',
     fontWeight: 600,
     whiteSpace: 'nowrap',
-    color: scrolled
-      ? activeHash === href
-        ? 'primary.main'
-        : 'text.primary'
-      : activeHash === href
-        ? '#FFFFFF'
-        : 'rgba(255,255,255,0.88)',
-    opacity: 1,
-    px: 0.5,
+    color: activeHash === href ? 'primary.main' : 'text.primary',
+    opacity: activeHash === href ? 1 : 0.78,
+    px: 0.4,
     py: 0.5,
-    transition: 'color 0.15s ease',
+    transition: 'color 0.15s ease, opacity 0.15s ease',
     '&::after': {
       content: '""',
       position: 'absolute',
@@ -52,12 +46,13 @@ export default function LandingNav({
       bottom: -2,
       height: 2,
       borderRadius: 1,
-      bgcolor: scrolled ? 'primary.main' : '#FFFFFF',
+      bgcolor: 'primary.main',
       transform: activeHash === href ? 'scaleX(1)' : 'scaleX(0)',
       transition: 'transform 0.18s ease',
     },
     '&:hover': {
-      color: scrolled ? 'primary.main' : '#FFFFFF',
+      color: 'primary.main',
+      opacity: 1,
       '&::after': { transform: 'scaleX(1)' },
     },
   });
@@ -72,12 +67,14 @@ export default function LandingNav({
         flexShrink: 0,
         display: 'grid',
         placeItems: 'center',
-        bgcolor: scrolled ? 'primary.main' : 'rgba(255,255,255,0.96)',
-        color: scrolled ? 'primary.contrastText' : '#123A48',
+        bgcolor: 'primary.main',
+        color: 'primary.contrastText',
         fontFamily: DISPLAY_FONT,
         fontWeight: 700,
         fontSize: size > 32 ? '0.78rem' : '0.7rem',
         letterSpacing: '-0.05em',
+        boxShadow: (t) =>
+          t.palette.mode === 'dark' ? 'none' : '0 4px 12px rgba(31,78,95,0.22)',
       }}
     >
       BB
@@ -93,41 +90,15 @@ export default function LandingNav({
           top: 0,
           zIndex: 40,
           borderBottom: '1px solid',
-          borderColor: scrolled
-            ? 'divider'
-            : 'rgba(255,255,255,0.12)',
-          // Solid bar — avoid muddy translucent teal over the hero
-          bgcolor: scrolled
-            ? isDark
-              ? 'rgba(15, 22, 28, 0.96)'
-              : 'rgba(255, 255, 255, 0.97)'
-            : '#123A48',
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          color: scrolled ? 'text.primary' : '#FFFFFF',
+          borderColor: 'divider',
+          bgcolor: isDark ? 'rgba(12, 18, 24, 0.88)' : 'rgba(255, 255, 255, 0.88)',
+          backdropFilter: 'blur(16px) saturate(1.2)',
           boxShadow: scrolled
             ? isDark
-              ? '0 4px 16px rgba(0,0,0,0.35)'
-              : '0 4px 16px rgba(15, 36, 44, 0.06)'
-            : '0 1px 0 rgba(255,255,255,0.06)',
-          transition:
-            'box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease',
-          '& .MuiIconButton-root': {
-            color: scrolled ? 'text.primary' : '#FFFFFF',
-          },
-          '& .MuiButton-text': {
-            color: scrolled ? 'text.primary' : '#FFFFFF',
-            '&:hover': {
-              bgcolor: scrolled ? 'action.hover' : 'rgba(255,255,255,0.1)',
-            },
-          },
-          '& .MuiButton-contained': scrolled
-            ? undefined
-            : {
-                bgcolor: '#FFFFFF',
-                color: '#123A48',
-                boxShadow: 'none',
-                '&:hover': { bgcolor: '#F4F8FA', boxShadow: 'none' },
-              },
+              ? '0 8px 24px rgba(0,0,0,0.35)'
+              : '0 8px 24px rgba(15, 36, 44, 0.07)'
+            : 'none',
+          transition: 'box-shadow 0.22s ease, background-color 0.22s ease',
         }}
       >
         <Box
@@ -162,18 +133,14 @@ export default function LandingNav({
                   letterSpacing: '-0.03em',
                   lineHeight: 1.1,
                   whiteSpace: 'nowrap',
-                  color: 'inherit',
                 }}
               >
                 {COMPANY.productName}
               </Typography>
               <Typography
                 variant="caption"
-                sx={{
-                  display: { xs: 'none', sm: 'block' },
-                  lineHeight: 1.2,
-                  color: scrolled ? 'text.secondary' : 'rgba(255,255,255,0.72)',
-                }}
+                color="text.secondary"
+                sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
               >
                 by Prabha Technology
               </Typography>

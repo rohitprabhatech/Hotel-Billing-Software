@@ -169,6 +169,30 @@ def test_deactivate_customer_soft_delete(client):
     assert still_there.get_json()["data"]["is_active"] is False
 
 
+def test_billing_user_deactivate_customer_is_audited(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+    created = client.post(
+        "/api/v1/customers",
+        headers=billing,
+        json={"name": "Rahul Patil", "phone_country_code": "91", "phone": "9876566666"},
+    )
+    customer_id = created.get_json()["data"]["id"]
+
+    deleted = client.delete(f"/api/v1/customers/{customer_id}", headers=billing)
+    assert deleted.status_code == 200, deleted.get_json()
+
+    logs = client.get(
+        "/api/v1/audit-logs",
+        headers=owner,
+        query_string={"action": "DEACTIVATE_CUSTOMER", "category": "customer"},
+    ).get_json()["data"]
+    match = next((r for r in logs if r.get("entity_id") == customer_id), None)
+    assert match is not None
+    assert match["user_name"]
+    assert match.get("user_role") == "BILLING_USER"
+
+
 def test_billing_user_can_create_customer(client):
     headers = login(client, "billing@hotela.com", "Billing@12345")
     response = client.post(

@@ -25,6 +25,11 @@ export async function setTableStatus(id, status) {
   return data;
 }
 
+export async function listTableBills(tableId, params = {}) {
+  const { data } = await apiClient.get(`/tables/${tableId}/bills`, { params });
+  return data;
+}
+
 export async function mergeTables(payload) {
   const { data } = await apiClient.post('/tables/merge', payload);
   return data;

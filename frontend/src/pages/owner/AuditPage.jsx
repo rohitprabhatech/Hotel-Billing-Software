@@ -1,3 +1,4 @@
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import {
   Alert,
@@ -30,87 +31,36 @@ import { useEffect, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
 import PageShell from '../../components/PageShell';
+import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import {
+  ACTIVITY_CATEGORIES,
+  DATE_PRESETS,
+  dateRangeForPreset,
+  formatAuditAction,
+  formatUserRole,
+} from '../../utils/auditLabels';
+import {
+  deleteAuditLog,
   fetchAuditAlerts,
-  fetchAuditMeta,
   getAuditLog,
   listAuditLogs,
 } from '../../services/auditService';
 import { listUsers } from '../../services/userService';
 
-const CORE_ACTIONS = [
-  '',
-  'LOGIN',
-  'LOGOUT',
-  'PASSWORD_CHANGED',
-  'PASSWORD_RESET_REQUESTED',
-  'CREATE_BILL',
-  'CANCEL_BILL',
-  'PRINT_BILL',
-  'REPRINT_BILL',
-  'BILL_SENT_WHATSAPP',
-  'BILL_WHATSAPP_FAILED',
-  'BILL_SENT_EMAIL',
-  'BILL_EMAIL_FAILED',
-  'STOCK_ADJUSTED',
-  'STOCK_UPDATED',
-  'ITEM_CREATED',
-  'ITEM_UPDATED',
-  'ITEM_DEACTIVATED',
-  'ITEM_REACTIVATED',
-  'UPDATE_PRICE',
-  'CHANGE_GST',
-  'CREATE_CATEGORY',
-  'UPDATE_CATEGORY',
-  'DEACTIVATE_CATEGORY',
-  'CREATE_USER',
-  'UPDATE_USER',
-  'DEACTIVATE_USER',
-  'UPDATE_PROFILE',
-  'UPDATE_TENANT',
-  'REGISTER_BUSINESS',
-  'EMAIL_CHANGED',
-  'EMAIL_VERIFIED',
-  'EMAIL_CHANGE_REQUESTED',
-  'EXPORT_REPORT',
-];
-
-function severityColor(severity) {
-  if (severity === 'medium') return 'warning';
-  if (severity === 'low') return 'default';
-  return 'info';
-}
+const PAGE_SIZE = 20;
 
 function describeLog(row) {
+  if (row.action === 'DEACTIVATE_CUSTOMER') {
+    return row.old_data?.name || row.new_data?.name || 'Customer removed';
+  }
   if (row.action === 'CANCEL_BILL') {
     return row.new_data?.cancellation_reason || 'Bill cancelled';
   }
-  if (row.action === 'BILL_SENT_WHATSAPP') {
-    return `WhatsApp sent${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
+  if (row.action === 'DEACTIVATE_USER') {
+    return row.old_data?.name || row.new_data?.name || 'User deactivated';
   }
-  if (row.action === 'BILL_WHATSAPP_FAILED') {
-    return `WhatsApp failed${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
-  }
-  if (row.action === 'BILL_SENT_EMAIL') {
-    return `Email sent${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
-  }
-  if (row.action === 'BILL_EMAIL_FAILED') {
-    return `Email failed${row.new_data?.recipient ? ` · ${row.new_data.recipient}` : ''}`;
-  }
-  if (row.action === 'STOCK_ADJUSTED') {
-    const d = row.new_data?.delta;
-    const stock = row.new_data?.stock_quantity;
-    const bits = [];
-    if (d != null) bits.push(`${Number(d) > 0 ? '+' : ''}${Number(d)}`);
-    if (stock != null) bits.push(`→ ${stock}`);
-    if (row.new_data?.reason) bits.push(row.new_data.reason);
-    return bits.length ? bits.join(' · ') : 'Stock adjusted';
-  }
-  if (row.action === 'PASSWORD_CHANGED') return 'Password changed';
-  if (row.action === 'LOGIN') return 'Signed in';
-  if (row.action === 'LOGOUT') return 'Signed out';
   if (row.bill_number) return `Bill ${row.bill_number}`;
   if (row.new_data?.bill_number) return `Bill ${row.new_data.bill_number}`;
   if (row.new_data?.name) return row.new_data.name;
@@ -118,40 +68,60 @@ function describeLog(row) {
   return row.entity_type || '—';
 }
 
+function severityColor(severity) {
+  if (severity === 'medium') return 'warning';
+  if (severity === 'low') return 'default';
+  return 'info';
+}
+
 export default function AuditPage() {
   const [logs, setLogs] = useState([]);
+  const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [users, setUsers] = useState([]);
   const [alerts, setAlerts] = useState([]);
-  const [modules, setModules] = useState([]);
-  const [entityTypes, setEntityTypes] = useState([]);
-  const [actions, setActions] = useState(CORE_ACTIONS);
+  const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
     user_id: '',
-    action: '',
-    module: '',
-    entity_type: '',
-    bill_number: '',
+    category: '',
+    datePreset: 'today',
     from: '',
     to: '',
     q: '',
   });
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const buildParams = (nextPage = page) => {
+    const params = { page: nextPage, per_page: PAGE_SIZE };
+    if (filters.user_id) params.user_id = filters.user_id;
+    if (filters.category) params.category = filters.category;
+    if (filters.q.trim()) params.q = filters.q.trim();
+
+    if (filters.datePreset === 'custom') {
+      if (filters.from) params.from = filters.from;
+      if (filters.to) params.to = filters.to;
+    } else {
+      const range = dateRangeForPreset(filters.datePreset);
+      if (range.from) params.from = range.from;
+      if (range.to) params.to = range.to;
+    }
+    return params;
+  };
+
+  const load = async (nextPage = page) => {
     setError('');
     setLoading(true);
     try {
-      const params = {};
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) params[key] = value;
-      });
       const [logsRes, alertsRes] = await Promise.all([
-        listAuditLogs({ ...params, per_page: 100 }),
+        listAuditLogs(buildParams(nextPage)),
         fetchAuditAlerts(),
       ]);
       setLogs(logsRes.data || []);
+      setMeta(logsRes.meta || { page: nextPage, per_page: PAGE_SIZE, total: 0 });
+      setPage(logsRes.meta?.page || nextPage);
       setAlerts(alertsRes.data?.alerts || []);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to load audit activity.');
@@ -164,18 +134,11 @@ export default function AuditPage() {
     listUsers()
       .then((res) => setUsers(res.data || []))
       .catch(() => {});
-    fetchAuditMeta()
-      .then((res) => {
-        const data = res.data || {};
-        setModules(data.modules || []);
-        setEntityTypes(data.entity_types || []);
-        const industry = data.industry_actions || [];
-        setActions([...CORE_ACTIONS, ...industry.filter((a) => !CORE_ACTIONS.includes(a))]);
-      })
-      .catch(() => {});
-    load();
+    load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const onApplyFilters = () => load(1);
 
   const openDetail = async (row) => {
     setError('');
@@ -187,14 +150,27 @@ export default function AuditPage() {
     }
   };
 
+  const onDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteAuditLog(deleteTarget.id);
+      setDeleteTarget(null);
+      await load(page);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Unable to delete activity record.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <>
       <PageShell>
-        <Alert severity="info">
-          Immutable activity trail for your business — indicators for investigation, not automatic
-          fraud accusations. Audit entries cannot be deleted. Secrets and ID document numbers are
-          redacted in snapshots.
-        </Alert>
+        <Typography variant="h5" fontWeight={700} gutterBottom>
+          Audit & Activity
+        </Typography>
 
         {error ? <Alert severity="error">{error}</Alert> : null}
 
@@ -204,17 +180,14 @@ export default function AuditPage() {
               display: 'grid',
               gap: 2,
               gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              mb: 2,
             }}
           >
-            {alerts.map((alert) => (
+            {alerts.slice(0, 4).map((alert) => (
               <Card key={`${alert.type}-${alert.message}`}>
-                <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
-                  <Stack direction="row" spacing={1} alignItems="center" mb={1} flexWrap="wrap" useFlexGap>
-                    <Chip
-                      size="small"
-                      label={alert.severity || 'info'}
-                      color={severityColor(alert.severity)}
-                    />
+                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Stack direction="row" spacing={1} alignItems="center" mb={0.5} flexWrap="wrap" useFlexGap>
+                    <Chip size="small" label={alert.severity || 'info'} color={severityColor(alert.severity)} />
                     <Typography variant="subtitle2">{alert.title}</Typography>
                   </Stack>
                   <Typography variant="body2" color="text.secondary">
@@ -228,11 +201,35 @@ export default function AuditPage() {
 
         <FilterBar
           actions={
-            <Button variant="contained" onClick={load} disabled={loading}>
-              Apply
+            <Button variant="contained" onClick={onApplyFilters} disabled={loading}>
+              Search
             </Button>
           }
         >
+          <TextField
+            label="Search Activity"
+            placeholder="Customer, user, bill #, activity…"
+            value={filters.q}
+            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onApplyFilters();
+            }}
+            sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
+          />
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+            <InputLabel>Activity Type</InputLabel>
+            <Select
+              label="Activity Type"
+              value={filters.category}
+              onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
+            >
+              {ACTIVITY_CATEGORIES.map((opt) => (
+                <MenuItem key={opt.value || 'all'} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
             <InputLabel>User</InputLabel>
             <Select
@@ -240,7 +237,7 @@ export default function AuditPage() {
               value={filters.user_id}
               onChange={(e) => setFilters((f) => ({ ...f, user_id: e.target.value }))}
             >
-              <MenuItem value="">All</MenuItem>
+              <MenuItem value="">All Users</MenuItem>
               {users.map((u) => (
                 <MenuItem key={u.id} value={u.id}>
                   {u.name}
@@ -248,77 +245,40 @@ export default function AuditPage() {
               ))}
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: { xs: '100%', sm: 180 } }}>
-            <InputLabel>Module</InputLabel>
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }}>
+            <InputLabel>Date</InputLabel>
             <Select
-              label="Module"
-              value={filters.module}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, module: e.target.value, entity_type: '' }))
-              }
+              label="Date"
+              value={filters.datePreset}
+              onChange={(e) => setFilters((f) => ({ ...f, datePreset: e.target.value }))}
             >
-              <MenuItem value="">All</MenuItem>
-              {modules.map((m) => (
-                <MenuItem key={m.key} value={m.key}>
-                  {m.label}
+              {DATE_PRESETS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: { xs: '100%', sm: 180 } }}>
-            <InputLabel>Entity</InputLabel>
-            <Select
-              label="Entity"
-              value={filters.entity_type}
-              onChange={(e) => setFilters((f) => ({ ...f, entity_type: e.target.value }))}
-            >
-              <MenuItem value="">All</MenuItem>
-              {(filters.module
-                ? modules.find((m) => m.key === filters.module)?.entity_types || []
-                : entityTypes
-              ).map((et) => (
-                <MenuItem key={et} value={et}>
-                  {et}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }}>
-            <InputLabel>Action</InputLabel>
-            <Select
-              label="Action"
-              value={filters.action}
-              onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value }))}
-            >
-              {actions.map((action) => (
-                <MenuItem key={action || 'all'} value={action}>
-                  {action || 'All'}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label="Search"
-            value={filters.q}
-            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
-            sx={{ minWidth: { xs: '100%', sm: 160 }, flex: 1 }}
-          />
-          <TextField
-            label="From"
-            type="date"
-            value={filters.from}
-            onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: { xs: '100%', sm: 150 } }}
-          />
-          <TextField
-            label="To"
-            type="date"
-            value={filters.to}
-            onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: { xs: '100%', sm: 150 } }}
-          />
+          {filters.datePreset === 'custom' ? (
+            <>
+              <TextField
+                label="From"
+                type="date"
+                value={filters.from}
+                onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: { xs: '100%', sm: 150 } }}
+              />
+              <TextField
+                label="To"
+                type="date"
+                value={filters.to}
+                onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: { xs: '100%', sm: 150 } }}
+              />
+            </>
+          ) : null}
         </FilterBar>
 
         <TableCard>
@@ -327,47 +287,69 @@ export default function AuditPage() {
               <CircularProgress size={28} />
             </Box>
           ) : (
-            <Table size="small" sx={{ minWidth: 900 }}>
+            <Table size="small" sx={{ minWidth: 860 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Date & Time</TableCell>
-                  <TableCell>User</TableCell>
                   <TableCell>Action</TableCell>
-                  <TableCell>Entity</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell align="right">Details</TableCell>
+                  <TableCell>User</TableCell>
+                  <TableCell>Role</TableCell>
+                  <TableCell>Date</TableCell>
+                  <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {logs.map((row) => (
                   <TableRow key={row.id} hover>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-                        {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
-                      </Typography>
+                      <Stack spacing={0.25}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {formatAuditAction(row.action)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          <TruncateText value={describeLog(row)} maxWidth={220} />
+                        </Typography>
+                      </Stack>
                     </TableCell>
                     <TableCell>
                       <TruncateText value={row.user_name || '—'} maxWidth={140} />
                     </TableCell>
                     <TableCell>
-                      <Chip size="small" label={row.action} variant="outlined" />
+                      <Typography variant="body2" color="text.secondary">
+                        {row.user_role_label || formatUserRole(row.user_role)}
+                      </Typography>
                     </TableCell>
                     <TableCell>
-                      <TruncateText value={row.entity_type || '—'} maxWidth={100} />
-                    </TableCell>
-                    <TableCell>
-                      <TruncateText value={describeLog(row)} maxWidth={220} />
+                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                        {row.created_at
+                          ? new Date(row.created_at).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                            })
+                          : '—'}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Tooltip title="View details">
-                        <IconButton
-                          size="small"
-                          aria-label="View activity details"
-                          onClick={() => openDetail(row)}
-                        >
-                          <VisibilityOutlinedIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="View details">
+                          <IconButton
+                            size="small"
+                            aria-label="View activity details"
+                            onClick={() => openDetail(row)}
+                          >
+                            <VisibilityOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Activity">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            aria-label="Delete activity"
+                            onClick={() => setDeleteTarget(row)}
+                          >
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -381,22 +363,62 @@ export default function AuditPage() {
             />
           ) : null}
         </TableCard>
+
+        {!loading && logs.length ? (
+          <PaginationBar
+            page={page}
+            total={meta.total}
+            pageSize={PAGE_SIZE}
+            onPageChange={(next) => load(next)}
+          />
+        ) : null}
       </PageShell>
 
-      <Dialog
-        open={Boolean(selected)}
-        onClose={() => setSelected(null)}
-        fullWidth
-        maxWidth="sm"
-        scroll="paper"
-      >
-        <DialogTitle>
-          <TruncateText value={selected?.action || 'Activity details'} maxWidth="100%" variant="h6" />
-        </DialogTitle>
+      <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Activity?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              This audit record will be removed from the activity list.
+            </Typography>
+            <Typography variant="body2">
+              <strong>Activity:</strong> {formatAuditAction(deleteTarget?.action)}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Performed By:</strong> {deleteTarget?.user_name || '—'}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Date:</strong>{' '}
+              {deleteTarget?.created_at
+                ? new Date(deleteTarget.created_at).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                : '—'}
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={onDelete} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(selected)} onClose={() => setSelected(null)} fullWidth maxWidth="sm" scroll="paper">
+        <DialogTitle>{formatAuditAction(selected?.action)}</DialogTitle>
         <DialogContent dividers>
           {selected ? (
             <Stack spacing={2}>
-              <Typography variant="body2"><strong>User:</strong> {selected.user_name || '—'}</Typography>
+              <Typography variant="body2">
+                <strong>User:</strong> {selected.user_name || '—'}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Role:</strong>{' '}
+                {selected.user_role_label || formatUserRole(selected.user_role)}
+              </Typography>
               <Typography variant="body2">
                 <strong>Date:</strong>{' '}
                 {selected.created_at ? new Date(selected.created_at).toLocaleString() : '—'}
@@ -404,21 +426,24 @@ export default function AuditPage() {
               <Typography variant="body2">
                 <strong>Entity:</strong> {selected.entity_type} {selected.entity_id || ''}
               </Typography>
-              <Typography variant="body2"><strong>Bill:</strong> {selected.bill_number || '—'}</Typography>
+              <Typography variant="body2">
+                <strong>Bill:</strong> {selected.bill_number || '—'}
+              </Typography>
               {selected.action === 'CANCEL_BILL' ? (
                 <>
                   <Typography variant="body2">
-                    <strong>Reason:</strong>{' '}
-                    {selected.new_data?.cancellation_reason || '—'}
+                    <strong>Reason:</strong> {selected.new_data?.cancellation_reason || '—'}
                   </Typography>
                   <Typography variant="body2">
-                    <strong>Amount:</strong>{' '}
-                    ₹{Number(selected.new_data?.grand_total || selected.old_data?.grand_total || 0).toFixed(2)}
+                    <strong>Amount:</strong> ₹
+                    {Number(selected.new_data?.grand_total || selected.old_data?.grand_total || 0).toFixed(2)}
                   </Typography>
                 </>
               ) : null}
               {selected.ip_address ? (
-                <Typography variant="body2"><strong>IP:</strong> {selected.ip_address}</Typography>
+                <Typography variant="body2">
+                  <strong>IP:</strong> {selected.ip_address}
+                </Typography>
               ) : null}
               <Typography variant="subtitle2">Previous values</Typography>
               <Box

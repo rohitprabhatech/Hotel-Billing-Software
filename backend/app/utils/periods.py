@@ -121,4 +121,46 @@ def resolve_period(period: str, tz_name: str = "Asia/Kolkata", from_date=None, t
             "Previous Period",
         )
 
+    if period == "last_7_days":
+        end_local = today + timedelta(days=1)
+        start_local = today - timedelta(days=6)
+        prev_end_local = start_local
+        prev_start_local = start_local - timedelta(days=7)
+        return (
+            to_utc_naive(start_local),
+            to_utc_naive(end_local),
+            "Last 7 Days",
+            to_utc_naive(prev_start_local),
+            to_utc_naive(prev_end_local),
+            "Previous 7 Days",
+        )
+
+    if period == "last_30_days":
+        end_local = today + timedelta(days=1)
+        start_local = today - timedelta(days=29)
+        prev_end_local = start_local
+        prev_start_local = start_local - timedelta(days=30)
+        return (
+            to_utc_naive(start_local),
+            to_utc_naive(end_local),
+            "Last 30 Days",
+            to_utc_naive(prev_start_local),
+            to_utc_naive(prev_end_local),
+            "Previous 30 Days",
+        )
+
+    if period == "this_year":
+        start_local = today.replace(month=1, day=1)
+        end_local = today + timedelta(days=1)
+        prev_start_local = start_local.replace(year=start_local.year - 1)
+        prev_end_local = start_local
+        return (
+            to_utc_naive(start_local),
+            to_utc_naive(end_local),
+            "This Year",
+            to_utc_naive(prev_start_local),
+            to_utc_naive(prev_end_local),
+            "Last Year",
+        )
+
     raise ValueError("Invalid period")

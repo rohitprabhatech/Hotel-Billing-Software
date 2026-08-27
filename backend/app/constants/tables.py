@@ -3,12 +3,14 @@
 TABLE_STATUS_AVAILABLE = "available"
 TABLE_STATUS_OCCUPIED = "occupied"
 TABLE_STATUS_RESERVED = "reserved"
+TABLE_STATUS_BILL_PENDING = "bill_pending"
 
 ALLOWED_TABLE_STATUSES: frozenset[str] = frozenset(
     {
         TABLE_STATUS_AVAILABLE,
         TABLE_STATUS_OCCUPIED,
         TABLE_STATUS_RESERVED,
+        TABLE_STATUS_BILL_PENDING,
     }
 )
 
@@ -16,13 +18,23 @@ TABLE_STATUS_LABELS: dict[str, str] = {
     TABLE_STATUS_AVAILABLE: "Available",
     TABLE_STATUS_OCCUPIED: "Occupied",
     TABLE_STATUS_RESERVED: "Reserved",
+    TABLE_STATUS_BILL_PENDING: "Bill Pending",
 }
 
 # Valid direct status transitions for a standalone (non-merged-secondary) table.
 TABLE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    TABLE_STATUS_AVAILABLE: frozenset({TABLE_STATUS_OCCUPIED, TABLE_STATUS_RESERVED}),
-    TABLE_STATUS_OCCUPIED: frozenset({TABLE_STATUS_AVAILABLE}),
-    TABLE_STATUS_RESERVED: frozenset({TABLE_STATUS_AVAILABLE, TABLE_STATUS_OCCUPIED}),
+    TABLE_STATUS_AVAILABLE: frozenset(
+        {TABLE_STATUS_OCCUPIED, TABLE_STATUS_RESERVED}
+    ),
+    TABLE_STATUS_OCCUPIED: frozenset(
+        {TABLE_STATUS_AVAILABLE, TABLE_STATUS_BILL_PENDING}
+    ),
+    TABLE_STATUS_RESERVED: frozenset(
+        {TABLE_STATUS_AVAILABLE, TABLE_STATUS_OCCUPIED}
+    ),
+    TABLE_STATUS_BILL_PENDING: frozenset(
+        {TABLE_STATUS_AVAILABLE, TABLE_STATUS_OCCUPIED}
+    ),
 }
 
 

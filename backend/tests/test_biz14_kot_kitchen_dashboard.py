@@ -72,6 +72,33 @@ def test_kot_reprint_is_idempotent(client):
     assert body["print_count"] == 2
 
 
+def test_kot_incremental_for_new_items(client):
+    headers = login(client, "owner@hotela.com", "Owner@12345")
+    cat_id = _category(client, headers, "Inc KOT Cat")
+    item_a = _item(client, headers, cat_id, "Inc Item A")
+    item_b = _item(client, headers, cat_id, "Inc Item B")
+    order = _open_order(client, headers, item_a["id"])
+
+    first = client.post(f"/api/v1/orders/{order['id']}/kot", headers=headers)
+    assert first.status_code == 201, first.get_json()
+    first_kot = first.get_json()["data"]
+    assert len(first_kot["items"]) == 1
+
+    added = client.post(
+        f"/api/v1/orders/{order['id']}/items",
+        headers=headers,
+        json={"item_id": item_b["id"], "quantity": "1"},
+    )
+    assert added.status_code in (200, 201), added.get_json()
+
+    second = client.post(f"/api/v1/orders/{order['id']}/kot", headers=headers)
+    assert second.status_code == 201, second.get_json()
+    second_kot = second.get_json()["data"]
+    assert second_kot["id"] != first_kot["id"]
+    assert len(second_kot["items"]) == 1
+    assert second_kot["items"][0]["item_name"] == "Inc Item B"
+
+
 def test_kot_not_allowed_for_cancelled_order(client):
     headers = login(client, "owner@hotela.com", "Owner@12345")
     cat_id = _category(client, headers, "Cancel KOT Cat")

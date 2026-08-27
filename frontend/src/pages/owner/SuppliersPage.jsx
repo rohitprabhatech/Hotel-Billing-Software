@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
 import LoadingBlock from '../../components/LoadingBlock';
@@ -29,8 +30,10 @@ import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { PageActions } from '../../context/PageActionsContext';
+import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { filterControlWideSx } from '../../layouts/shell';
+import { PATHS } from '../../routes/paths';
 import {
   createSupplier,
   deactivateSupplier,
@@ -52,7 +55,9 @@ const emptyForm = {
 const PAGE_SIZE = 25;
 
 export default function SuppliersPage() {
+  const { user } = useAuth();
   const { canManageSuppliers } = usePermissions();
+  const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
   const [suppliers, setSuppliers] = useState([]);
   const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [q, setQ] = useState('');
@@ -66,6 +71,7 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(true);
 
   const load = async (nextPage = page, search = q) => {
+    if (isHotel) return;
     setError('');
     setLoading(true);
     try {
@@ -85,9 +91,10 @@ export default function SuppliersPage() {
   };
 
   useEffect(() => {
+    if (isHotel) return;
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isHotel]);
 
   const openCreate = () => {
     setEditing(null);
@@ -157,6 +164,12 @@ export default function SuppliersPage() {
       setError(err.response?.data?.error?.message || 'Failed to update supplier status');
     }
   };
+
+  if (isHotel) {
+    const home =
+      user?.role === 'OWNER' || user?.role === 'MANAGER' ? PATHS.ownerDashboard : PATHS.billingHome;
+    return <Navigate to={home} replace />;
+  }
 
   return (
     <>

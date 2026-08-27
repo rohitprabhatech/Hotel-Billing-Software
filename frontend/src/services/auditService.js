@@ -19,3 +19,8 @@ export async function fetchAuditMeta() {
   const { data } = await apiClient.get('/audit-logs/meta');
   return data;
 }
+
+export async function deleteAuditLog(id) {
+  const { data } = await apiClient.delete(`/audit-logs/${id}`);
+  return data;
+}

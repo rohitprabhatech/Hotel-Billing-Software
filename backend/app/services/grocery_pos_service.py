@@ -8,6 +8,7 @@ from app.repositories.tenant_repository import TenantRepository
 from app.services.bulk_pricing_service import BulkPricingService
 from app.services.item_service import ItemService
 from app.services.module_service import ModuleService
+from app.utils.exceptions import NotFoundError
 from app.utils.permission_access import require_permission
 from app.utils.request_context import require_request_context
 
@@ -17,6 +18,10 @@ class GroceryPosService:
     def pos_catalog(*, q: str | None = None, limit: int = POS_CATALOG_DEFAULT_LIMIT, customer_id: str | None = None):
         require_permission(PERM_ITEMS_READ)
         ctx = require_request_context()
+        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        if tenant is None:
+            raise NotFoundError("Tenant not found")
+        ModuleService.require_enabled(tenant, "barcode_pos")
         rows, _ = ItemRepository.list_by_tenant(
             ctx.tenant_id,
             q=q,
@@ -24,12 +29,11 @@ class GroceryPosService:
             page=1,
             per_page=clamp_pos_catalog_limit(limit),
         )
-        tenant = TenantRepository.get_by_id(ctx.tenant_id)
         bulk_enabled = bool(
-            tenant and ModuleService.is_enabled_for_tenant(tenant, "bulk_pricing")
+            ModuleService.is_enabled_for_tenant(tenant, "bulk_pricing")
         )
         list_enabled = bool(
-            tenant and ModuleService.is_enabled_for_tenant(tenant, "price_lists")
+            ModuleService.is_enabled_for_tenant(tenant, "price_lists")
         )
         tiers_by_item = {}
         if bulk_enabled and rows:

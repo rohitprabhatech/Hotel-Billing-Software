@@ -8,11 +8,13 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
+import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
+import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -60,25 +62,199 @@ import { isAccountPath, subscriptionAllowsAccess } from '../utils/subscriptionAc
 
 const drawerWidth = DRAWER_WIDTH;
 
+/**
+ * Billing sidebar order — hotel groups follow desk workflow:
+ * Sell → Floor → Menu → Customers → Reports → Account.
+ * Other business types keep a flat sell-first list without hotel-only sections.
+ */
 const billingNav = [
-  { to: PATHS.billingHome, label: 'Dashboard', icon: <PointOfSaleOutlinedIcon />, end: true },
-  { to: PATHS.billingNew, label: 'New Bill', icon: <ReceiptLongOutlinedIcon /> },
-  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
-  { to: PATHS.billingItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
-  { to: PATHS.billingCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
-  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
-  { to: PATHS.billingSuppliers, label: 'Suppliers', icon: <LocalShippingOutlinedIcon /> },
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+
+  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant'] },
+  {
+    to: PATHS.billingRestaurantBilling,
+    label: 'Table Bill',
+    icon: <PointOfSaleOutlinedIcon />,
+    module: 'table_management',
+    businessTypes: ['hotel_restaurant'],
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingNew,
+    label: 'Quick Bill',
+    icon: <BoltOutlinedIcon />,
+    businessTypes: ['hotel_restaurant'],
+  },
+  {
+    to: PATHS.billingNew,
+    label: 'New Bill',
+    icon: <ReceiptLongOutlinedIcon />,
+    hideForBusinessTypes: ['hotel_restaurant'],
+  },
+  {
+    to: PATHS.billingBills,
+    label: "Today's Bills",
+    icon: <ReceiptLongOutlinedIcon />,
+    businessTypes: ['hotel_restaurant'],
+  },
+  {
+    to: PATHS.billingBills,
+    label: 'Bills',
+    icon: <ReceiptLongOutlinedIcon />,
+    hideForBusinessTypes: ['hotel_restaurant'],
+  },
+
+  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant'] },
+  {
+    to: PATHS.billingTables,
+    label: 'Tables',
+    icon: <TableRestaurantOutlinedIcon />,
+    module: 'table_management',
+    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+  },
+  {
+    to: PATHS.billingKitchen,
+    label: 'Kitchen',
+    icon: <KitchenOutlinedIcon />,
+    module: 'kitchen',
+    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+  },
+  {
+    to: PATHS.billingOrders,
+    label: 'Open Orders',
+    icon: <ListAltOutlinedIcon />,
+    module: 'order_channels',
+    businessTypes: ['hotel_restaurant'],
+  },
   {
     to: PATHS.billingOrders,
     label: 'Orders',
-    icon: <ReceiptLongOutlinedIcon />,
+    icon: <ListAltOutlinedIcon />,
     module: 'order_channels',
+    businessTypes: ['cafe_tea'],
+  },
+
+  { type: 'section', label: 'Menu', businessTypes: ['hotel_restaurant'] },
+  {
+    to: PATHS.billingMenu,
+    label: 'Menu Board',
+    icon: <RestaurantMenuOutlinedIcon />,
+    module: 'restaurant_menu',
+    businessTypes: ['hotel_restaurant'],
   },
   {
     to: PATHS.billingMenu,
     label: 'Menu',
     icon: <RestaurantMenuOutlinedIcon />,
     module: 'restaurant_menu',
+    businessTypes: ['cafe_tea'],
+  },
+  {
+    to: PATHS.billingItems,
+    label: 'Items',
+    icon: <Inventory2OutlinedIcon />,
+    businessTypes: ['hotel_restaurant'],
+  },
+  {
+    to: PATHS.billingCategories,
+    label: 'Categories',
+    icon: <CategoryOutlinedIcon />,
+    businessTypes: ['hotel_restaurant'],
+  },
+  {
+    to: PATHS.billingItems,
+    label: 'Items',
+    icon: <Inventory2OutlinedIcon />,
+    hideForBusinessTypes: ['hotel_restaurant'],
+  },
+  {
+    to: PATHS.billingCategories,
+    label: 'Categories',
+    icon: <CategoryOutlinedIcon />,
+    hideForBusinessTypes: ['hotel_restaurant'],
+  },
+
+  { type: 'section', label: 'Customers', businessTypes: ['hotel_restaurant'] },
+  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  {
+    to: PATHS.billingSuppliers,
+    label: 'Suppliers',
+    icon: <LocalShippingOutlinedIcon />,
+    hideForBusinessTypes: ['hotel_restaurant'],
+  },
+
+  {
+    to: PATHS.billingCafe,
+    label: 'Cafe POS',
+    icon: <LocalCafeOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+  },
+  {
+    to: PATHS.billingGrocery,
+    label: 'Grocery POS',
+    icon: <ShoppingCartOutlinedIcon />,
+    module: 'barcode_pos',
+    businessTypes: ['grocery_kirana', 'wholesale'],
+  },
+  {
+    to: PATHS.billingStationery,
+    label: 'Stationery POS',
+    icon: <MenuBookOutlinedIcon />,
+    module: 'barcode_pos',
+    businessTypes: ['stationery', 'book_store'],
+  },
+  {
+    to: PATHS.billingHardware,
+    label: 'Hardware POS',
+    icon: <StraightenOutlinedIcon />,
+    module: 'uom_measurement',
+    businessTypes: ['hardware', 'building_material'],
+  },
+  {
+    to: PATHS.billingClothing,
+    label: 'Clothing POS',
+    icon: <CheckroomOutlinedIcon />,
+    module: 'variants',
+    businessTypes: ['clothing'],
+  },
+  {
+    to: PATHS.billingReturns,
+    label: 'Returns / Exchange',
+    icon: <AssignmentReturnOutlinedIcon />,
+    module: 'returns_exchange',
+  },
+
+  { type: 'section', label: 'Account' },
+  { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+];
+
+/** Slim sidebar for hotel Billing Users — primary desk workflow only. */
+const hotelBillingUserNav = [
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Billing' },
+  {
+    to: PATHS.billingRestaurantBilling,
+    label: 'Table Bill',
+    icon: <PointOfSaleOutlinedIcon />,
+    module: 'table_management',
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingNew,
+    label: 'Quick Bill',
+    icon: <BoltOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingBills,
+    label: "Today's Bills",
+    icon: <ReceiptLongOutlinedIcon />,
   },
   {
     to: PATHS.billingTables,
@@ -87,66 +263,64 @@ const billingNav = [
     module: 'table_management',
   },
   {
-    to: PATHS.billingKitchen,
-    label: 'Kitchen',
-    icon: <KitchenOutlinedIcon />,
-    module: 'kitchen',
+    to: PATHS.billingItems,
+    label: 'Items',
+    icon: <Inventory2OutlinedIcon />,
   },
   {
-    to: PATHS.billingCafe,
-    label: 'Cafe POS',
-    icon: <LocalCafeOutlinedIcon />,
-    module: 'addons_combos',
+    to: PATHS.billingCategories,
+    label: 'Categories',
+    icon: <CategoryOutlinedIcon />,
   },
-  {
-    to: PATHS.billingGrocery,
-    label: 'Grocery POS',
-    icon: <ShoppingCartOutlinedIcon />,
-    module: 'barcode_pos',
-    hideForBusinessTypes: ['stationery'],
-  },
-  {
-    to: PATHS.billingStationery,
-    label: 'Stationery POS',
-    icon: <MenuBookOutlinedIcon />,
-    module: 'barcode_pos',
-    businessTypes: ['stationery'],
-  },
-  {
-    to: PATHS.billingHardware,
-    label: 'Hardware POS',
-    icon: <StraightenOutlinedIcon />,
-    module: 'uom_measurement',
-  },
-  {
-    to: PATHS.billingClothing,
-    label: 'Clothing POS',
-    icon: <CheckroomOutlinedIcon />,
-    module: 'variants',
-  },
-  {
-    to: PATHS.billingReturns,
-    label: 'Returns / Exchange',
-    icon: <AssignmentReturnOutlinedIcon />,
-    module: 'returns_exchange',
-  },
-  {
-    to: PATHS.billingCredit,
-    label: 'Credit / Udhari',
-    icon: <AccountBalanceWalletOutlinedIcon />,
-    module: 'customer_credit',
-  },
+  { type: 'section', label: 'Account' },
   { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  {
+    to: PATHS.billingChangePassword,
+    label: 'Settings',
+    icon: <LockOutlinedIcon />,
+  },
 ];
 
-function pageMeta(pathname) {
+/** Drop section headers that have no visible link items before the next section. */
+function pruneEmptySections(items) {
+  const result = [];
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i];
+    if (item.type !== 'section') {
+      result.push(item);
+      continue;
+    }
+    let hasLinks = false;
+    for (let j = i + 1; j < items.length; j += 1) {
+      if (items[j].type === 'section') break;
+      hasLinks = true;
+      break;
+    }
+    if (hasLinks) result.push(item);
+  }
+  return result;
+}
+
+function pageMeta(pathname, businessType) {
   if (pathname === PATHS.billingHome || pathname === `${PATHS.billingHome}/`) {
+    if (businessType === 'hotel_restaurant') {
+      return {
+        title: 'Hotel Billing',
+        subtitle: 'Select table → add items → pay → print.',
+      };
+    }
     return {
       title: 'Billing Dashboard',
       subtitle: "Today's billing overview and quick actions.",
     };
   }
   if (pathname.startsWith(PATHS.billingNew)) {
+    if (businessType === 'hotel_restaurant') {
+      return {
+        title: 'Quick Bill',
+        subtitle: 'Bill without a table — search, add, pay, print.',
+      };
+    }
     return {
       title: 'New Bill',
       subtitle: 'Create and manage the current customer bill.',
@@ -154,20 +328,29 @@ function pageMeta(pathname) {
   }
   if (pathname.startsWith(PATHS.billingBills)) {
     return {
-      title: "Today's Bills",
-      subtitle: 'Review bills generated today.',
+      title: businessType === 'hotel_restaurant' ? "Today's Bills" : "Today's Bills",
+      subtitle:
+        businessType === 'hotel_restaurant'
+          ? 'Bills generated today — reprint or review.'
+          : 'Review bills generated today.',
     };
   }
   if (pathname.startsWith(PATHS.billingItems)) {
     return {
-      title: 'Items',
-      subtitle: 'Add and manage catalog items for billing.',
+      title: businessType === 'hotel_restaurant' ? 'Menu Items' : 'Items',
+      subtitle:
+        businessType === 'hotel_restaurant'
+          ? 'Add or edit dishes and prices used in billing.'
+          : 'Add and manage catalog items for billing.',
     };
   }
   if (pathname.startsWith(PATHS.billingCategories)) {
     return {
       title: 'Categories',
-      subtitle: 'Browse categories available for billing items.',
+      subtitle:
+        businessType === 'hotel_restaurant'
+          ? 'Group menu items (Veg, Starters, Drinks…).'
+          : 'Browse categories available for billing items.',
     };
   }
   if (pathname.startsWith(PATHS.billingCustomers)) {
@@ -197,13 +380,22 @@ function pageMeta(pathname) {
   if (pathname.startsWith(PATHS.billingTables)) {
     return {
       title: 'Tables',
-      subtitle: 'Dining table board for restaurants and cafes.',
+      subtitle:
+        businessType === 'hotel_restaurant'
+          ? 'See which tables are free, occupied, or bill pending.'
+          : 'Dining table board for restaurants and cafes.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingRestaurantBilling)) {
+    return {
+      title: 'Table Bill',
+      subtitle: 'Select table → add items → pay → print.',
     };
   }
   if (pathname.startsWith(PATHS.billingKitchen)) {
     return {
       title: 'Kitchen',
-      subtitle: 'Live kitchen board — queued, preparing, and ready tickets.',
+      subtitle: 'Live kitchen tickets — queued, preparing, ready.',
     };
   }
   if (pathname.startsWith(PATHS.billingCafe)) {
@@ -256,14 +448,20 @@ function pageMeta(pathname) {
   }
   if (pathname.startsWith(PATHS.billingOrders)) {
     return {
-      title: 'Orders',
-      subtitle: 'Open dine-in, takeaway, and delivery orders.',
+      title: businessType === 'hotel_restaurant' ? 'Open Orders' : 'Orders',
+      subtitle:
+        businessType === 'hotel_restaurant'
+          ? 'All open dine-in, takeaway, and delivery orders.'
+          : 'Open dine-in, takeaway, and delivery orders.',
     };
   }
   if (pathname.startsWith(PATHS.billingMenu)) {
     return {
-      title: 'Menu',
-      subtitle: 'Active menu items grouped by course/category.',
+      title: businessType === 'hotel_restaurant' ? 'Menu Board' : 'Menu',
+      subtitle:
+        businessType === 'hotel_restaurant'
+          ? 'Active dishes grouped by category — ready to bill.'
+          : 'Active menu items grouped by course/category.',
     };
   }
   if (pathname.startsWith(PATHS.billingReports)) {
@@ -275,7 +473,10 @@ function pageMeta(pathname) {
   if (pathname.startsWith(PATHS.billingStockMovements)) {
     return {
       title: 'Stock Movements',
-      subtitle: 'Track inventory changes across items.',
+      subtitle:
+        businessType === 'hotel_restaurant'
+          ? 'Ingredient and stock changes (sale deducts at bill settle).'
+          : 'Track inventory changes across items.',
     };
   }
   if (pathname.startsWith(PATHS.billingProfile)) {
@@ -321,40 +522,40 @@ export default function BillingLayout() {
   }, []);
 
   const navItems = useMemo(() => {
+    const businessType = user?.tenant?.business_type;
+    const isHotel = businessType === 'hotel_restaurant';
+    const isBillingUser = role === 'BILLING_USER';
     let items;
+
+    // Hotel Billing User: keep sidebar short and desk-focused.
+    if (isHotel && isBillingUser) {
+      items = [...hotelBillingUserNav];
+      if (canReports) {
+        const accountIdx = items.findIndex(
+          (row) => row.type === 'section' && row.label === 'Account'
+        );
+        const reportsBlock = [
+          { type: 'section', label: 'Reports' },
+          {
+            to: PATHS.billingReports,
+            label: 'Reports',
+            icon: <AssessmentOutlinedIcon />,
+          },
+        ];
+        if (accountIdx >= 0) {
+          items = [...items.slice(0, accountIdx), ...reportsBlock, ...items.slice(accountIdx)];
+        } else {
+          items = [...items, ...reportsBlock];
+        }
+      }
+      return pruneEmptySections(filterByModule(items, businessType));
+    }
+
     if (!isOwner) {
       items = [
         { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
         ...billingNav.slice(1),
       ];
-      if (canReports) {
-        items.push({
-          to: PATHS.billingReports,
-          label: 'Reports',
-          icon: <AssessmentOutlinedIcon />,
-        });
-      }
-      if (canStockMovements) {
-        items.push({
-          to: PATHS.billingStockMovements,
-          label: 'Stock Movements',
-          icon: <SwapVertOutlinedIcon />,
-        });
-      }
-      if (canViewPurchases) {
-        items.push({
-          to: PATHS.billingPurchases,
-          label: 'Purchases',
-          icon: <ShoppingCartOutlinedIcon />,
-        });
-      }
-      if (canViewExpenses) {
-        items.push({
-          to: PATHS.billingExpenses,
-          label: 'Expenses',
-          icon: <PaymentsOutlinedIcon />,
-        });
-      }
     } else {
       items = [
         {
@@ -366,9 +567,62 @@ export default function BillingLayout() {
         ...billingNav,
       ];
     }
-    return filterByModule(items, user?.tenant?.business_type);
+
+    const extras = [];
+    if (!isOwner) {
+      if (canReports) {
+        extras.push({
+          to: PATHS.billingReports,
+          label: 'Reports',
+          icon: <AssessmentOutlinedIcon />,
+        });
+      }
+      if (canStockMovements) {
+        extras.push({
+          to: PATHS.billingStockMovements,
+          label: 'Stock Movements',
+          icon: <SwapVertOutlinedIcon />,
+        });
+      }
+      if (canViewPurchases) {
+        extras.push({
+          to: PATHS.billingPurchases,
+          label: 'Purchases',
+          icon: <ShoppingCartOutlinedIcon />,
+          hideForBusinessTypes: ['hotel_restaurant'],
+        });
+      }
+      if (canViewExpenses) {
+        extras.push({
+          to: PATHS.billingExpenses,
+          label: 'Expenses',
+          icon: <PaymentsOutlinedIcon />,
+        });
+      }
+    }
+
+    if (extras.length) {
+      const accountIdx = items.findIndex(
+        (row) => row.type === 'section' && row.label === 'Account'
+      );
+      const block = [
+        {
+          type: 'section',
+          label: isHotel ? 'Reports' : 'More',
+        },
+        ...extras,
+      ];
+      if (accountIdx >= 0) {
+        items = [...items.slice(0, accountIdx), ...block, ...items.slice(accountIdx)];
+      } else {
+        items = [...items, ...block];
+      }
+    }
+
+    return pruneEmptySections(filterByModule(items, businessType));
   }, [
     isOwner,
+    role,
     canReports,
     canStockMovements,
     canViewPurchases,
@@ -377,7 +631,7 @@ export default function BillingLayout() {
     user?.tenant?.business_type,
   ]);
 
-  const meta = pageMeta(location.pathname);
+  const meta = pageMeta(location.pathname, user?.tenant?.business_type);
 
   const onLogout = async () => {
     try {
@@ -399,31 +653,93 @@ export default function BillingLayout() {
             </Typography>
           </Tooltip>
           <Typography variant="caption" color="text.secondary">
-            {isOwner ? 'Owner · Billing' : isManager ? 'Manager · Billing' : 'Billing'}
+            {user?.tenant?.business_type === 'hotel_restaurant'
+              ? 'Hotel Billing'
+              : isOwner
+                ? 'Owner · Billing'
+                : isManager
+                  ? 'Manager · Billing'
+                  : 'Billing'}
           </Typography>
         </Box>
       </Toolbar>
       <Divider />
-      <List sx={{ px: 1, pt: 1, flexGrow: 1 }}>
-        {navItems.map((item) => (
-          <ListItemButton
-            key={`${item.to}-${item.label}`}
-            component={NavLink}
-            to={item.to}
-            end={item.end}
-            onClick={() => setMobileOpen(false)}
-            sx={{
-              '&.active': {
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                '& .MuiListItemIcon-root': { color: 'inherit' },
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
+      <List
+        sx={{
+          px: 1,
+          pt: 0.75,
+          pb: 1.5,
+          flexGrow: 1,
+          overflowY: 'auto',
+        }}
+      >
+        {navItems.map((item, index) => {
+          if (item.type === 'section') {
+            return (
+              <Typography
+                key={`section-${item.label}-${index}`}
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  display: 'block',
+                  px: 1.5,
+                  pt: index === 0 ? 0.75 : 1.75,
+                  pb: 0.5,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  fontSize: '0.65rem',
+                }}
+              >
+                {item.label}
+              </Typography>
+            );
+          }
+          return (
+            <ListItemButton
+              key={`${item.to}-${item.label}`}
+              component={NavLink}
+              to={item.to}
+              end={item.end}
+              onClick={() => setMobileOpen(false)}
+              sx={{
+                borderRadius: 1.25,
+                mb: 0.35,
+                minHeight: 42,
+                px: 1.25,
+                '&.active': {
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  '& .MuiListItemIcon-root': { color: 'inherit' },
+                },
+                ...(item.emphasize
+                  ? {
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: 'action.hover',
+                      fontWeight: 650,
+                      '&.active': {
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText',
+                        borderColor: 'primary.main',
+                        '& .MuiListItemIcon-root': { color: 'inherit' },
+                      },
+                    }
+                  : null),
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+              <ListItemText
+                primary={item.label}
+                primaryTypographyProps={{
+                  fontSize: '0.875rem',
+                  fontWeight: item.emphasize ? 650 : 550,
+                  noWrap: true,
+                }}
+              />
+            </ListItemButton>
+          );
+        })}
       </List>
     </Box>
   );

@@ -77,8 +77,11 @@ export function ModulesProvider({ children }) {
           ) {
             return false;
           }
+          // Section headers stay visible when any following sibling group would show;
+          // they are filtered only by explicit hide/businessTypes on the section itself.
           return true;
         }),
+      isSection: (item) => item?.type === 'section',
     };
   }, [enabledModules, modulesDetail, loading, error, refresh]);
 

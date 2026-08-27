@@ -5,9 +5,13 @@ from datetime import datetime, timedelta, timezone
 from flask import current_app
 
 from app.constants.audit_catalog import entity_types_for_module, list_audit_meta
-from app.models.role import ROLE_OWNER
-from app.repositories.audit_log_repository import AuditLogRepository
+from app.models.role import ROLE_BILLING_USER, ROLE_MANAGER, ROLE_OWNER
+from app.repositories.audit_log_repository import (
+    ACTIVITY_CATEGORY_FILTERS,
+    AuditLogRepository,
+)
 from app.repositories.bill_repository import BillRepository
+from app.repositories.user_repository import UserRepository
 from app.utils.exceptions import ForbiddenError, NotFoundError, ValidationError
 from app.utils.periods import day_bounds, local_now, parse_date, to_utc_naive
 from app.utils.request_context import require_request_context
@@ -17,6 +21,12 @@ CANCEL_TODAY_THRESHOLD = 3
 USER_CANCEL_THRESHOLD = 2
 REPRINT_TODAY_THRESHOLD = 3
 HIGH_DISCOUNT_AMOUNT = 100.0
+
+ROLE_LABELS = {
+    ROLE_OWNER: "Owner",
+    ROLE_MANAGER: "Manager",
+    ROLE_BILLING_USER: "Billing User",
+}
 
 
 class AuditLogService:
@@ -48,6 +58,7 @@ class AuditLogService:
         from_date=None,
         to_date=None,
         module=None,
+        category=None,
         page=1,
         per_page=50,
     ):
@@ -68,17 +79,34 @@ class AuditLogService:
             if module_types is None:
                 raise ValidationError(f"Unknown audit module: {module}")
 
-        # Explicit entity_type wins over module expansion when both sent.
+        category_actions = None
+        category_entity_types = None
+        if category:
+            key = str(category).strip().lower()
+            spec = ACTIVITY_CATEGORY_FILTERS.get(key)
+            if spec is None:
+                raise ValidationError(f"Unknown activity category: {category}")
+            category_actions = spec.get("actions")
+            category_entity_types = spec.get("entity_types")
+
+        # Explicit entity_type wins over module/category expansion when sent.
         entity_types = None
+        filter_actions = None
         if entity_type:
             entity_type = str(entity_type).strip().upper() or None
+        elif category_entity_types and not category_actions:
+            entity_types = category_entity_types
         elif module_types:
             entity_types = module_types
+
+        if category_actions and not action:
+            filter_actions = category_actions
 
         rows, total = AuditLogRepository.list_by_tenant(
             ctx.tenant_id,
             user_id=user_id,
             action=action,
+            actions=filter_actions,
             entity_type=entity_type,
             entity_types=entity_types,
             entity_id=entity_id,
@@ -89,8 +117,15 @@ class AuditLogService:
             page=page,
             per_page=per_page,
         )
+        role_map = UserRepository.map_roles_by_ids(
+            [r.user_id for r in rows if r.user_id],
+            ctx.tenant_id,
+        )
         return (
-            [AuditLogService.serialize(r, brief=True) for r in rows],
+            [
+                AuditLogService.serialize(r, brief=True, user_role=role_map.get(r.user_id))
+                for r in rows
+            ],
             {
                 "page": max(int(page or 1), 1),
                 "per_page": min(max(int(per_page or 50), 1), 100),
@@ -104,7 +139,26 @@ class AuditLogService:
         row = AuditLogRepository.get_by_id_and_tenant(log_id, ctx.tenant_id)
         if row is None:
             raise NotFoundError("Audit log not found")
-        return AuditLogService.serialize(row, brief=False)
+        role_map = UserRepository.map_roles_by_ids(
+            [row.user_id] if row.user_id else [],
+            ctx.tenant_id,
+        )
+        return AuditLogService.serialize(
+            row,
+            brief=False,
+            user_role=role_map.get(row.user_id),
+        )
+
+    @staticmethod
+    def delete_log(log_id: str):
+        ctx = AuditLogService._ensure_owner()
+        deleted = AuditLogRepository.soft_delete(log_id, ctx.tenant_id)
+        if not deleted:
+            raise NotFoundError("Audit log not found")
+        from app.extensions import db
+
+        db.session.commit()
+        return {"message": "Activity record removed"}
 
     @staticmethod
     def alerts():
@@ -226,7 +280,7 @@ class AuditLogService:
         }
 
     @staticmethod
-    def serialize(row, *, brief: bool = True):
+    def serialize(row, *, brief: bool = True, user_role: str | None = None):
         bill_number = None
         if isinstance(row.new_data, dict):
             bill_number = row.new_data.get("bill_number")
@@ -237,10 +291,16 @@ class AuditLogService:
             if bill:
                 bill_number = bill.bill_number
 
+        role_label = ROLE_LABELS.get(user_role or "", user_role or None)
+        if user_role and not role_label:
+            role_label = user_role.replace("_", " ").title()
+
         data = {
             "id": row.id,
             "user_id": row.user_id,
             "user_name": row.user_name,
+            "user_role": user_role,
+            "user_role_label": role_label,
             "action": row.action,
             "entity_type": row.entity_type,
             "entity_id": row.entity_id,

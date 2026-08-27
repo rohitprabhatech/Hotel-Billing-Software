@@ -49,6 +49,18 @@ class UserRepository:
         )
 
     @staticmethod
+    def map_roles_by_ids(user_ids: list[str], tenant_id: str) -> dict[str, str]:
+        if not user_ids:
+            return {}
+        rows = (
+            db.session.query(User.id, Role.name)
+            .join(Role, User.role_id == Role.id)
+            .filter(User.tenant_id == tenant_id, User.id.in_(user_ids))
+            .all()
+        )
+        return {row[0]: row[1] for row in rows}
+
+    @staticmethod
     def list_active_owners(tenant_id: str) -> list[User]:
         return (
             db.session.query(User)

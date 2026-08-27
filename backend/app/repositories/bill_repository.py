@@ -41,6 +41,7 @@ class BillRepository:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         q: str | None = None,
+        reference: str | None = None,
         payment_method: str | None = None,
         whatsapp_status: str | None = None,
         email_status: str | None = None,
@@ -58,6 +59,10 @@ class BillRepository:
             query = query.filter(Bill.payment_method == payment_method)
         if customer_id:
             query = query.filter(Bill.customer_id == customer_id)
+        if reference:
+            cleaned_ref = (reference or "").strip()
+            if cleaned_ref:
+                query = query.filter(func.lower(Bill.table_number) == cleaned_ref.lower())
         if date_from:
             query = query.filter(Bill.created_at >= date_from)
         if date_to:

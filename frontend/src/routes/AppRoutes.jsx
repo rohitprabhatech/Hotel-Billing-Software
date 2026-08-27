@@ -9,6 +9,8 @@ import LoginPage from '../pages/auth/LoginPage';
 import MasterLoginPage from '../pages/master/MasterLoginPage';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import ProtectedRoute from './ProtectedRoute';
+import RequireModule from './RequireModule';
+import { PATHS } from './paths';
 
 const HomePage = lazy(() => import('../pages/HomePage'));
 const PrivacyPolicyPage = lazy(() => import('../pages/legal/PrivacyPolicyPage'));
@@ -80,6 +82,7 @@ const TourPackagesPage = lazy(() => import('../pages/owner/TourPackagesPage'));
 const TravelBookingsPage = lazy(() => import('../pages/owner/TravelBookingsPage'));
 const TravelAgentsPage = lazy(() => import('../pages/owner/TravelAgentsPage'));
 const PrintKotPage = lazy(() => import('../pages/print/PrintKotPage'));
+const RestaurantBillingPage = lazy(() => import('../pages/modules/RestaurantBillingPage'));
 
 const VariantsPage = lazy(() => import('../pages/owner/VariantsPage'));
 const SerialUnitsPage = lazy(() => import('../pages/owner/SerialUnitsPage'));
@@ -139,39 +142,47 @@ export default function AppRoutes() {
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="purchases" element={<PurchasesPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
-            <Route path="tables" element={<TablesPage />} />
-            <Route path="menu" element={<MenuPage />} />
-            <Route path="orders" element={<OrdersPage />} />
-            <Route path="orders/new" element={<NewOrderPage />} />
-            <Route path="kitchen" element={<KitchenPage />} />
-            <Route path="cafe" element={<CafePosPage />} />
-            <Route path="grocery" element={<GroceryPosPage />} />
-            <Route path="stationery" element={<StationeryPosPage />} />
-            <Route path="hardware" element={<HardwarePosPage />} />
-            <Route path="clothing" element={<ClothingPosPage />} />
-            <Route path="returns" element={<ReturnsPage />} />
-            <Route path="credit" element={<GroceryCreditPage />} />
-            <Route path="outstanding" element={<OutstandingReportPage />} />
-            <Route path="recipes" element={<RecipesPage />} />
-            <Route path="production" element={<ProductionPage />} />
-            <Route path="cake-orders" element={<CakeOrdersPage />} />
-            <Route path="furniture-orders" element={<FurnitureOrdersPage />} />
-            <Route path="wastage" element={<WastagePage />} />
-            <Route path="batches" element={<BatchesPage />} />
-            <Route path="variants" element={<VariantsPage />} />
-            <Route path="serials" element={<SerialUnitsPage />} />
-            <Route path="repairs" element={<RepairsPage />} />
-            <Route path="installations" element={<InstallationsPage />} />
-            <Route path="deliveries" element={<DeliveriesPage />} />
-            <Route path="quotations" element={<QuotationsPage />} />
-            <Route path="price-lists" element={<PriceListsPage />} />
-            <Route path="sales-orders" element={<SalesOrdersPage />} />
-            <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-            <Route path="challans" element={<ChallansPage />} />
-            <Route path="warehouses" element={<WarehousesPage />} />
-            <Route path="tour-packages" element={<TourPackagesPage />} />
-            <Route path="travel-bookings" element={<TravelBookingsPage />} />
-            <Route path="travel-agents" element={<TravelAgentsPage />} />
+            <Route path="tables" element={<RequireModule module="table_management"><TablesPage /></RequireModule>} />
+            <Route
+              path="restaurant-billing"
+              element={
+                <RequireModule module="table_management">
+                  <RestaurantBillingPage />
+                </RequireModule>
+              }
+            />
+            <Route path="menu" element={<RequireModule module="restaurant_menu"><MenuPage /></RequireModule>} />
+            <Route path="orders" element={<RequireModule module="order_channels"><OrdersPage /></RequireModule>} />
+            <Route path="orders/new" element={<RequireModule module="order_channels"><NewOrderPage /></RequireModule>} />
+            <Route path="kitchen" element={<RequireModule module="kitchen"><KitchenPage /></RequireModule>} />
+            <Route path="cafe" element={<RequireModule module="addons_combos"><CafePosPage /></RequireModule>} />
+            <Route path="grocery" element={<RequireModule module="barcode_pos"><GroceryPosPage /></RequireModule>} />
+            <Route path="stationery" element={<RequireModule module="barcode_pos"><StationeryPosPage /></RequireModule>} />
+            <Route path="hardware" element={<RequireModule module="uom_measurement"><HardwarePosPage /></RequireModule>} />
+            <Route path="clothing" element={<RequireModule module="variants"><ClothingPosPage /></RequireModule>} />
+            <Route path="returns" element={<RequireModule module="returns_exchange"><ReturnsPage /></RequireModule>} />
+            <Route path="credit" element={<RequireModule module="customer_credit"><GroceryCreditPage /></RequireModule>} />
+            <Route path="outstanding" element={<RequireModule module="customer_credit"><OutstandingReportPage /></RequireModule>} />
+            <Route path="recipes" element={<RequireModule module="recipe"><RecipesPage /></RequireModule>} />
+            <Route path="production" element={<RequireModule module="production"><ProductionPage /></RequireModule>} />
+            <Route path="cake-orders" element={<RequireModule module="custom_orders"><CakeOrdersPage /></RequireModule>} />
+            <Route path="furniture-orders" element={<RequireModule module="custom_orders"><FurnitureOrdersPage /></RequireModule>} />
+            <Route path="wastage" element={<RequireModule module="wastage"><WastagePage /></RequireModule>} />
+            <Route path="batches" element={<RequireModule module="batch_expiry"><BatchesPage /></RequireModule>} />
+            <Route path="variants" element={<RequireModule module="variants"><VariantsPage /></RequireModule>} />
+            <Route path="serials" element={<RequireModule module="serial_imei"><SerialUnitsPage /></RequireModule>} />
+            <Route path="repairs" element={<RequireModule module="repair_service"><RepairsPage /></RequireModule>} />
+            <Route path="installations" element={<RequireModule module="installation"><InstallationsPage /></RequireModule>} />
+            <Route path="deliveries" element={<RequireModule module="delivery_tracking"><DeliveriesPage /></RequireModule>} />
+            <Route path="quotations" element={<RequireModule module="quotation"><QuotationsPage /></RequireModule>} />
+            <Route path="price-lists" element={<RequireModule module="price_lists"><PriceListsPage /></RequireModule>} />
+            <Route path="sales-orders" element={<RequireModule module="sales_orders"><SalesOrdersPage /></RequireModule>} />
+            <Route path="purchase-orders" element={<RequireModule module="purchase_orders"><PurchaseOrdersPage /></RequireModule>} />
+            <Route path="challans" element={<RequireModule module="delivery_challan"><ChallansPage /></RequireModule>} />
+            <Route path="warehouses" element={<RequireModule module="warehouse"><WarehousesPage /></RequireModule>} />
+            <Route path="tour-packages" element={<RequireModule module="tour_packages"><TourPackagesPage /></RequireModule>} />
+            <Route path="travel-bookings" element={<RequireModule module="travel_bookings"><TravelBookingsPage /></RequireModule>} />
+            <Route path="travel-agents" element={<RequireModule module="travel_commission"><TravelAgentsPage /></RequireModule>} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="item-activity" element={<ItemActivityPage />} />
             <Route path="stock-movements" element={<StockMovementsPage />} />
@@ -197,18 +208,26 @@ export default function AppRoutes() {
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="purchases" element={<PurchasesPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
-            <Route path="tables" element={<TablesPage />} />
-            <Route path="menu" element={<MenuPage />} />
-            <Route path="orders" element={<OrdersPage />} />
-            <Route path="orders/new" element={<NewOrderPage />} />
-            <Route path="kitchen" element={<KitchenPage />} />
-            <Route path="cafe" element={<CafePosPage />} />
-            <Route path="grocery" element={<GroceryPosPage />} />
-            <Route path="stationery" element={<StationeryPosPage />} />
-            <Route path="hardware" element={<HardwarePosPage />} />
-            <Route path="clothing" element={<ClothingPosPage />} />
-            <Route path="returns" element={<ReturnsPage />} />
-            <Route path="credit" element={<GroceryCreditPage />} />
+            <Route path="tables" element={<RequireModule module="table_management"><TablesPage /></RequireModule>} />
+            <Route
+              path="restaurant-billing"
+              element={
+                <RequireModule module="table_management">
+                  <RestaurantBillingPage />
+                </RequireModule>
+              }
+            />
+            <Route path="menu" element={<RequireModule module="restaurant_menu"><MenuPage /></RequireModule>} />
+            <Route path="orders" element={<RequireModule module="order_channels"><OrdersPage /></RequireModule>} />
+            <Route path="orders/new" element={<RequireModule module="order_channels"><NewOrderPage /></RequireModule>} />
+            <Route path="kitchen" element={<RequireModule module="kitchen"><KitchenPage /></RequireModule>} />
+            <Route path="cafe" element={<RequireModule module="addons_combos"><CafePosPage /></RequireModule>} />
+            <Route path="grocery" element={<RequireModule module="barcode_pos"><GroceryPosPage /></RequireModule>} />
+            <Route path="stationery" element={<RequireModule module="barcode_pos"><StationeryPosPage /></RequireModule>} />
+            <Route path="hardware" element={<RequireModule module="uom_measurement"><HardwarePosPage /></RequireModule>} />
+            <Route path="clothing" element={<RequireModule module="variants"><ClothingPosPage /></RequireModule>} />
+            <Route path="returns" element={<RequireModule module="returns_exchange"><ReturnsPage /></RequireModule>} />
+            <Route path="credit" element={<RequireModule module="customer_credit"><GroceryCreditPage /></RequireModule>} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="stock-movements" element={<StockMovementsPage />} />
             <Route path="profile" element={<ProfilePage />} />
@@ -226,7 +245,9 @@ export default function AppRoutes() {
             path="/print/kots/:kotId"
             element={
               <RouteErrorBoundary>
-                <PrintKotPage />
+                <RequireModule module="kitchen" fallbackTo={PATHS.billingHome}>
+                  <PrintKotPage />
+                </RequireModule>
               </RouteErrorBoundary>
             }
           />

@@ -76,11 +76,22 @@ def test_alerts_endpoint(client):
     assert any(a["type"] == "LOGIN_ACTIVITY" for a in payload["alerts"])
 
 
-def test_no_delete_audit_endpoint(client):
+def test_owner_can_delete_audit_log(client):
     owner, _, _ = _create_bill_with_cancel(client)
     rows = client.get("/api/v1/audit-logs", headers=owner).get_json()["data"]
-    response = client.delete(f"/api/v1/audit-logs/{rows[0]['id']}", headers=owner)
-    assert response.status_code in {404, 405}
+    log_id = rows[0]["id"]
+    response = client.delete(f"/api/v1/audit-logs/{log_id}", headers=owner)
+    assert response.status_code == 200
+
+    listed = client.get("/api/v1/audit-logs", headers=owner).get_json()["data"]
+    assert all(r["id"] != log_id for r in listed)
+
+
+def test_billing_user_cannot_delete_audit_log(client):
+    owner, billing, _ = _create_bill_with_cancel(client)
+    rows = client.get("/api/v1/audit-logs", headers=owner).get_json()["data"]
+    response = client.delete(f"/api/v1/audit-logs/{rows[0]['id']}", headers=billing)
+    assert response.status_code == 403
 
 
 def test_cross_tenant_audit_isolation(client):

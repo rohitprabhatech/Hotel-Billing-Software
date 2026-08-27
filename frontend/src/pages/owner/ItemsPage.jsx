@@ -1,4 +1,5 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
@@ -806,13 +807,30 @@ export default function ItemsPage() {
                           </Tooltip>
                         ) : null}
                         {canWriteItems ? (
-                          <Tooltip title="Edit">
+                          <Tooltip title="Edit Item">
                             <IconButton
                               size="small"
                               aria-label={`Edit ${item.name}`}
                               onClick={() => openEdit(item)}
                             >
                               <EditOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        {canWriteItems && item.is_active ? (
+                          <Tooltip title="Delete Item">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              aria-label={`Delete ${item.name}`}
+                              onClick={() => {
+                                setDeactivateTarget(item);
+                                setDeactivateReason('');
+                                setError('');
+                                setSuccess('');
+                              }}
+                            >
+                              <DeleteOutlineOutlinedIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         ) : null}
@@ -1161,12 +1179,12 @@ export default function ItemsPage() {
       </Dialog>
 
       <Dialog open={Boolean(deactivateTarget)} onClose={() => setDeactivateTarget(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Deactivate Item</DialogTitle>
+        <DialogTitle>Delete Item?</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             <Typography variant="body2">
-              Soft-deactivate <strong>{deactivateTarget?.name}</strong>. It will leave new bills
-              but remain in history and owner item activity.
+              Are you sure you want to delete <strong>{deactivateTarget?.name}</strong>? It will be
+              marked inactive and hidden from new billing. Old bills stay unchanged.
             </Typography>
             <TextField
               label="Reason (optional)"
@@ -1181,8 +1199,8 @@ export default function ItemsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeactivateTarget(null)}>Cancel</Button>
-          <Button variant="contained" color="warning" onClick={confirmDeactivate} disabled={saving}>
-            {saving ? 'Saving...' : 'Deactivate'}
+          <Button variant="contained" color="error" onClick={confirmDeactivate} disabled={saving}>
+            {saving ? 'Saving...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

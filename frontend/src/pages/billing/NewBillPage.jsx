@@ -1,6 +1,7 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import RemoveOutlinedIcon from '@mui/icons-material/RemoveOutlined';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import {
   Alert,
@@ -30,10 +31,13 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
 import TruncateText from '../../components/TruncateText';
+import { useAuth } from '../../context/AuthContext';
+import { useModuleGate } from '../../context/ModulesContext';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { uomLabel } from '../../utils/uom';
 import {
@@ -43,13 +47,14 @@ import {
   sendBillEmail,
   sendBillWhatsapp,
 } from '../../services/billService';
-import { listCategories } from '../../services/categoryService';
+import { createCategory, listCategories } from '../../services/categoryService';
 import { getItemByBarcode, listItems } from '../../services/itemService';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PATHS } from '../../routes/paths';
 import { listItemVariants } from '../../services/variantService';
 import { getSerialUnitBySerial, listSerialUnits } from '../../services/serialService';
 import { listItemAccessories } from '../../services/itemService';
 import { listWarehouses } from '../../services/warehouseService';
-import { useModuleGate } from '../../context/ModulesContext';
 import VariantStockGrid from '../../components/VariantStockGrid';
 import {
   DEFAULT_PAYMENT_METHOD,
@@ -88,6 +93,10 @@ function sortCategoriesHierarchically(categories) {
 }
 
 export default function NewBillPage() {
+  const { user } = useAuth();
+  const { canWriteCategories } = usePermissions();
+  const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
+  const tablesEnabled = useModuleGate('table_management');
   const variantsEnabled = useModuleGate('variants');
   const serialImeiEnabled = useModuleGate('serial_imei');
   const warrantyEnabled = useModuleGate('warranty');
@@ -111,6 +120,10 @@ export default function NewBillPage() {
   const [customerEmail, setCustomerEmail] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [error, setError] = useState('');
+  const [removeConfirm, setRemoveConfirm] = useState(null);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [categorySaving, setCategorySaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingItems, setLoadingItems] = useState(true);
   const [createdBill, setCreatedBill] = useState(null);
@@ -407,6 +420,53 @@ export default function NewBillPage() {
 
   const removeLine = (lineKey) => {
     setCart((prev) => prev.filter((line) => line.line_key !== lineKey));
+    setRemoveConfirm(null);
+  };
+
+  const bumpHotelQty = (line, delta) => {
+    if (line.serial_unit_id) {
+      setError('Serialized items are sold one unit at a time.');
+      return;
+    }
+    const next = Number(line.quantity) + delta;
+    if (next < 1) {
+      setRemoveConfirm({ lineKey: line.line_key, name: line.name });
+      return;
+    }
+    setQty(line.line_key, next);
+  };
+
+  const saveHotelCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      setError('Category name is required.');
+      return;
+    }
+    setCategorySaving(true);
+    setError('');
+    try {
+      const created = await createCategory({
+        name: categoryForm.name.trim(),
+        description: categoryForm.description.trim() || null,
+      });
+      const row = created.data;
+      setCategoryDialogOpen(false);
+      setCategoryForm({ name: '', description: '' });
+      if (row) {
+        setCategories((prev) => {
+          if (prev.some((c) => c.id === row.id)) return prev;
+          return [...prev, row];
+        });
+        setCategoryId(row.id);
+        search(q, row.id);
+      } else {
+        const res = await listCategories();
+        setCategories((res.data || []).filter((c) => c.is_active));
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not add category'));
+    } finally {
+      setCategorySaving(false);
+    }
   };
 
   const clearCart = () => {
@@ -572,6 +632,23 @@ export default function NewBillPage() {
   return (
     <>
       <PageShell>
+        {isHotel && tablesEnabled ? (
+          <Alert
+            severity="info"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                component={RouterLink}
+                to={PATHS.billingRestaurantBilling}
+              >
+                Table Billing
+              </Button>
+            }
+          >
+            Quick Billing — no table required. For dine-in, use Table Billing.
+          </Alert>
+        ) : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
 
         <Box
@@ -661,6 +738,21 @@ export default function NewBillPage() {
                     sx={{ maxWidth: 220 }}
                   />
                 ))}
+                {isHotel && canWriteCategories ? (
+                  <Chip
+                    size="small"
+                    icon={<AddOutlinedIcon sx={{ fontSize: '16px !important' }} />}
+                    label="Add Category"
+                    color="primary"
+                    variant="outlined"
+                    clickable
+                    onClick={() => {
+                      setError('');
+                      setCategoryDialogOpen(true);
+                    }}
+                    sx={{ fontWeight: 600 }}
+                  />
+                ) : null}
               </Stack>
 
               {loadingItems ? (
@@ -885,20 +977,61 @@ export default function NewBillPage() {
                             : ''}
                         </Typography>
                       ) : null}
-                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1 }}>
-                        <TextField
-                          type="number"
-                          size="small"
-                          label="Qty"
-                          value={line.quantity}
-                          onChange={(e) => setQty(line.line_key, e.target.value)}
-                          inputProps={{ min: 0.001, step: '1' }}
-                          sx={{ width: 88 }}
-                          disabled={Boolean(line.serial_unit_id)}
-                        />
-                        <Typography variant="caption" color="text.secondary">
-                          × ₹{line.price.toFixed(2)}
-                        </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                        {isHotel && !line.serial_unit_id ? (
+                          <>
+                            <IconButton
+                              size="small"
+                              aria-label="Decrease quantity"
+                              onClick={() => bumpHotelQty(line, -1)}
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1,
+                              }}
+                            >
+                              <RemoveOutlinedIcon fontSize="small" />
+                            </IconButton>
+                            <Typography sx={{ minWidth: 28, textAlign: 'center', fontWeight: 700 }}>
+                              {line.quantity}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              aria-label="Increase quantity"
+                              onClick={() => bumpHotelQty(line, 1)}
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1,
+                              }}
+                            >
+                              <AddOutlinedIcon fontSize="small" />
+                            </IconButton>
+                            <Typography variant="caption" color="text.secondary">
+                              × ₹{line.price.toFixed(2)}
+                            </Typography>
+                          </>
+                        ) : (
+                          <>
+                            <TextField
+                              type="number"
+                              size="small"
+                              label="Qty"
+                              value={line.quantity}
+                              onChange={(e) => setQty(line.line_key, e.target.value)}
+                              inputProps={{ min: 0.001, step: '1' }}
+                              sx={{ width: 88 }}
+                              disabled={Boolean(line.serial_unit_id)}
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                              × ₹{line.price.toFixed(2)}
+                            </Typography>
+                          </>
+                        )}
                       </Stack>
                     </Box>
                     <Typography
@@ -911,7 +1044,11 @@ export default function NewBillPage() {
                       <IconButton
                         size="small"
                         aria-label={`Remove ${line.name} from bill`}
-                        onClick={() => removeLine(line.line_key)}
+                        onClick={() =>
+                          isHotel
+                            ? setRemoveConfirm({ lineKey: line.line_key, name: line.name })
+                            : removeLine(line.line_key)
+                        }
                       >
                         <DeleteOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -1262,6 +1399,71 @@ export default function NewBillPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setVariantPick(null)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(removeConfirm)}
+        onClose={() => setRemoveConfirm(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Remove item</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Remove {removeConfirm?.name || 'item'} from order?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemoveConfirm(null)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => removeConfirm && removeLine(removeConfirm.lineKey)}
+          >
+            Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={categoryDialogOpen}
+        onClose={() => !categorySaving && setCategoryDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Add Category</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            <TextField
+              autoFocus
+              label="Category Name"
+              value={categoryForm.name}
+              onChange={(e) => setCategoryForm((prev) => ({ ...prev, name: e.target.value }))}
+              required
+              fullWidth
+              placeholder="Chinese Food"
+            />
+            <TextField
+              label="Description (optional)"
+              value={categoryForm.description}
+              onChange={(e) =>
+                setCategoryForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+              fullWidth
+              multiline
+              minRows={2}
+              placeholder="Chinese food items"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={categorySaving} onClick={() => setCategoryDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button variant="contained" disabled={categorySaving} onClick={saveHotelCategory}>
+            Save Category
+          </Button>
         </DialogActions>
       </Dialog>
     </>

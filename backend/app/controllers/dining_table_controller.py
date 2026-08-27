@@ -29,6 +29,15 @@ def get_table(table_id: str):
     return success_response(data=DiningTableService.get_table(table_id))
 
 
+def list_table_bills(table_id: str):
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    data, meta = DiningTableService.list_table_bills(
+        table_id, page=page, per_page=per_page
+    )
+    return success_response(data=data, meta=meta)
+
+
 def create_table():
     payload = create_dining_table_schema.load(request.get_json() or {})
     data = DiningTableService.create_table(

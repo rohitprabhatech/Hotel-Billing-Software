@@ -1,4 +1,4 @@
-"""Owner audit log routes — no delete endpoints."""
+"""Owner audit log routes."""
 
 from flask import Blueprint
 
@@ -31,3 +31,9 @@ def alerts():
 @roles_required(ROLE_OWNER)
 def get_log(log_id):
     return audit_log_controller.get_log(log_id)
+
+
+@audit_logs_bp.delete("/<log_id>")
+@roles_required(ROLE_OWNER)
+def delete_log(log_id):
+    return audit_log_controller.delete_log(log_id)

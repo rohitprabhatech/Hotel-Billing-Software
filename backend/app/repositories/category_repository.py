@@ -64,6 +64,16 @@ class CategoryRepository:
         )
 
     @staticmethod
+    def count_items(category_id: str, tenant_id: str) -> int:
+        from app.models.item import Item
+
+        return (
+            db.session.query(Item)
+            .filter(Item.tenant_id == tenant_id, Item.category_id == category_id)
+            .count()
+        )
+
+    @staticmethod
     def list_descendant_ids(category_id: str, tenant_id: str) -> set[str]:
         """Return all descendant category IDs for a tenant (not including itself)."""
         rows = (

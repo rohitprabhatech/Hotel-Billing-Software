@@ -11,10 +11,18 @@ from app.constants.business_types import (
 )
 from app.extensions import db
 from app.repositories.tenant_repository import TenantRepository
+from app.schemas.billing_settings_schemas import ALLOWED_PAPER_SIZES
 from app.services.audit_service import AuditService
 from app.services.module_service import ModuleService
 from app.utils.exceptions import NotFoundError, ValidationError
 from app.utils.request_context import require_request_context
+
+PAPER_PRESET_DIMENSIONS = {
+    "58mm": {"width_mm": 58, "height_mm": None},
+    "80mm": {"width_mm": 80, "height_mm": None},
+    "A4": {"width_mm": 210, "height_mm": 297},
+    "A5": {"width_mm": 148, "height_mm": 210},
+}
 
 
 class TenantService:
@@ -98,6 +106,64 @@ class TenantService:
         return TenantService.serialize(tenant, full=True)
 
     @staticmethod
+    def _resolve_billing_dimensions(tenant) -> dict:
+        paper = tenant.bill_paper_size or "80mm"
+        if paper not in ALLOWED_PAPER_SIZES:
+            paper = "80mm"
+        preset = PAPER_PRESET_DIMENSIONS.get(paper)
+        if preset:
+            width = preset["width_mm"]
+            height = preset["height_mm"]
+        else:
+            width = tenant.bill_width_mm or 80
+            height = tenant.bill_height_mm
+        return {
+            "paper_size": paper,
+            "width_mm": width,
+            "height_mm": height,
+        }
+
+    @staticmethod
+    def get_billing_settings():
+        ctx = require_request_context()
+        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        if tenant is None:
+            raise NotFoundError("Tenant not found")
+        return TenantService._resolve_billing_dimensions(tenant)
+
+    @staticmethod
+    def update_billing_settings(payload: dict):
+        ctx = require_request_context()
+        tenant = TenantRepository.get_by_id(ctx.tenant_id)
+        if tenant is None:
+            raise NotFoundError("Tenant not found")
+
+        old = TenantService._resolve_billing_dimensions(tenant)
+        paper = payload["paper_size"]
+        tenant.bill_paper_size = paper
+
+        if paper == "custom":
+            tenant.bill_width_mm = int(payload["width_mm"])
+            height = payload.get("height_mm")
+            tenant.bill_height_mm = int(height) if height else None
+        else:
+            dims = PAPER_PRESET_DIMENSIONS[paper]
+            tenant.bill_width_mm = dims["width_mm"]
+            tenant.bill_height_mm = dims["height_mm"]
+
+        new = TenantService._resolve_billing_dimensions(tenant)
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="UPDATE_BILLING_SETTINGS",
+            entity_type="TENANT",
+            entity_id=tenant.id,
+            old_data=old,
+            new_data=new,
+        )
+        db.session.commit()
+        return new
+
+    @staticmethod
     def serialize(tenant, *, full: bool = True):
         business_type = coerce_business_type(tenant.business_type)
         data = {
@@ -127,6 +193,9 @@ class TenantService:
                         if tenant.default_gst_percent is not None
                         else None
                     ),
+                    "billing_settings": TenantService._resolve_billing_dimensions(tenant),
                 }
             )
+        else:
+            data["billing_settings"] = TenantService._resolve_billing_dimensions(tenant)
         return data

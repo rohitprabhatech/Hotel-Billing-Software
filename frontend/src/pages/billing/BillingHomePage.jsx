@@ -1,10 +1,15 @@
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
+import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutlined';
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -12,7 +17,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
 import IndustryDashboardPanel from '../../components/IndustryDashboardPanel';
@@ -22,17 +27,292 @@ import Section from '../../components/Section';
 import TableCard from '../../components/TableCard';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
+import { useModuleGate } from '../../context/ModulesContext';
 import { fetchTodaySummary, listBills } from '../../services/billService';
+import { listItems } from '../../services/itemService';
+import { listTables } from '../../services/tableService';
 import { PATHS } from '../../routes/paths';
 import { paymentMethodLabel } from '../../utils/paymentMethod';
+
+function money(value) {
+  return `₹${Number(value || 0).toLocaleString('en-IN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
+}
+
+function moneyExact(value) {
+  return `₹${Number(value || 0).toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Hotel-only simple desk home. Other business types keep the standard dashboard below. */
+function HotelBillingHome({
+  businessName,
+  loading,
+  error,
+  summary,
+  tableStats,
+  lowStockCount,
+  recent,
+  navigate,
+}) {
+  return (
+    <>
+      <PageActions>
+        <Stack direction="row" spacing={1}>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingRestaurantBilling}
+            variant="contained"
+            startIcon={<TableRestaurantOutlinedIcon />}
+          >
+            Table Bill
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingNew}
+            variant="outlined"
+            startIcon={<PointOfSaleOutlinedIcon />}
+          >
+            Quick Bill
+          </Button>
+        </Stack>
+      </PageActions>
+
+      <PageShell spacing={2.5}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+            {businessName}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Select a table, add items, take payment, print.
+          </Typography>
+        </Box>
+
+        {error ? <Alert severity="error">{error}</Alert> : null}
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          }}
+        >
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(PATHS.billingRestaurantBilling)}
+            sx={{
+              textAlign: 'left',
+              border: '2px solid',
+              borderColor: 'primary.main',
+              borderRadius: 2,
+              p: { xs: 2.5, sm: 3 },
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              font: 'inherit',
+              color: 'inherit',
+              minHeight: 120,
+              '&:hover': { bgcolor: 'action.hover' },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <TableRestaurantOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                TABLE BILL
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Dining tables — add items, change qty, pay, print.
+            </Typography>
+          </Box>
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(PATHS.billingNew)}
+            sx={{
+              textAlign: 'left',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2,
+              p: { xs: 2.5, sm: 3 },
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              font: 'inherit',
+              color: 'inherit',
+              minHeight: 120,
+              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <PointOfSaleOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                QUICK BILL
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              No table — walk-in / takeaway bill.
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            gridTemplateColumns: {
+              xs: '1fr 1fr',
+              md: 'repeat(5, 1fr)',
+            },
+          }}
+        >
+          <KpiCard
+            title="Today's Sales"
+            value={loading ? '—' : money(summary.total_sales)}
+            icon={<PointOfSaleOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Active Tables"
+            value={loading ? '—' : tableStats.occupied + tableStats.bill_pending}
+            icon={<TableRestaurantOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Available Tables"
+            value={loading ? '—' : tableStats.available}
+            icon={<TableRestaurantOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Pending Bills"
+            value={loading ? '—' : tableStats.bill_pending}
+            icon={<WarningAmberOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Low Stock"
+            value={loading ? '—' : lowStockCount}
+            icon={<Inventory2OutlinedIcon fontSize="small" />}
+          />
+        </Box>
+
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingRestaurantBilling}
+            variant="contained"
+            size="small"
+            startIcon={<TableRestaurantOutlinedIcon />}
+          >
+            Table Bill
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingNew}
+            variant="outlined"
+            size="small"
+            startIcon={<PointOfSaleOutlinedIcon />}
+          >
+            Quick Bill
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingTables}
+            variant="outlined"
+            size="small"
+            startIcon={<TableRestaurantOutlinedIcon />}
+          >
+            Tables
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingItems}
+            variant="outlined"
+            size="small"
+            startIcon={<Inventory2OutlinedIcon />}
+          >
+            Add Item
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingCategories}
+            variant="outlined"
+            size="small"
+            startIcon={<CategoryOutlinedIcon />}
+          >
+            Add Category
+          </Button>
+        </Stack>
+
+        <Section
+          title="Today's Bills"
+          description="Latest bills from this desk."
+          actions={
+            <Button component={RouterLink} to={PATHS.billingBills} size="small">
+              View all
+            </Button>
+          }
+        >
+          <TableCard>
+            {loading ? (
+              <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
+                <CircularProgress size={28} />
+              </Box>
+            ) : (
+              <Table size="small" sx={{ minWidth: 360 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Bill</TableCell>
+                    <TableCell>Payment</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recent.map((bill) => (
+                    <TableRow key={bill.id} hover>
+                      <TableCell sx={{ fontWeight: 600 }}>#{bill.bill_number}</TableCell>
+                      <TableCell>
+                        {bill.payment_method_label || paymentMethodLabel(bill.payment_method)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 650 }}>
+                        {moneyExact(bill.grand_total)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!recent.length ? (
+                    <TableRow>
+                      <TableCell colSpan={3} sx={{ p: 0, border: 0 }}>
+                        <EmptyState
+                          title="No bills yet today"
+                          description="Start with Table Bill or Quick Bill."
+                          actionLabel="Table Bill"
+                          onAction={() => navigate(PATHS.billingRestaurantBilling)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            )}
+          </TableCard>
+        </Section>
+      </PageShell>
+    </>
+  );
+}
 
 export default function BillingHomePage() {
   const { role, user } = useAuth();
   const navigate = useNavigate();
   const businessName = user?.tenant?.business_name || user?.tenant?.name || 'Billing';
   const businessTypeLabel = user?.tenant?.business_type_label || null;
+  const businessType = user?.tenant?.business_type || '';
+  const isHotel = businessType === 'hotel_restaurant';
+  const tablesEnabled = useModuleGate('table_management');
   const [summary, setSummary] = useState({ total_sales: 0, bill_count: 0 });
   const [recent, setRecent] = useState([]);
+  const [tables, setTables] = useState([]);
+  const [lowStockCount, setLowStockCount] = useState(0);
   const [waFailedCount, setWaFailedCount] = useState(0);
   const [emailFailedCount, setEmailFailedCount] = useState(0);
   const [error, setError] = useState('');
@@ -40,23 +320,68 @@ export default function BillingHomePage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
+    const tasks = [
       fetchTodaySummary(),
       listBills({ today: true, per_page: 5 }),
       listBills({ whatsapp_status: 'FAILED', per_page: 1 }),
       listBills({ email_status: 'FAILED', per_page: 1 }),
-    ])
-      .then(([summaryRes, billsRes, failedRes, emailFailedRes]) => {
+    ];
+    if (isHotel && tablesEnabled) {
+      tasks.push(listTables().catch(() => ({ data: [] })));
+      tasks.push(
+        listItems({ is_active: true, per_page: 200 }).catch(() => ({ data: [] }))
+      );
+    }
+    Promise.all(tasks)
+      .then((results) => {
+        const [summaryRes, billsRes, failedRes, emailFailedRes, tablesRes, itemsRes] = results;
         setSummary(summaryRes.data || { total_sales: 0, bill_count: 0 });
         setRecent(billsRes.data || []);
         setWaFailedCount(failedRes.meta?.total || 0);
         setEmailFailedCount(emailFailedRes.meta?.total || 0);
+        if (tablesRes) setTables(tablesRes.data || []);
+        if (itemsRes) {
+          const low = (itemsRes.data || []).filter((item) => {
+            if (item.stock_quantity == null || item.minimum_stock_level == null) return false;
+            return Number(item.stock_quantity) <= Number(item.minimum_stock_level);
+          }).length;
+          setLowStockCount(low);
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.error?.message || 'Failed to load billing dashboard');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [isHotel, tablesEnabled]);
+
+  const tableStats = useMemo(() => {
+    const stats = {
+      total: tables.length,
+      available: 0,
+      occupied: 0,
+      reserved: 0,
+      bill_pending: 0,
+    };
+    tables.forEach((table) => {
+      if (stats[table.status] != null) stats[table.status] += 1;
+    });
+    return stats;
+  }, [tables]);
+
+  if (isHotel && tablesEnabled) {
+    return (
+      <HotelBillingHome
+        businessName={businessName}
+        loading={loading}
+        error={error}
+        summary={summary}
+        tableStats={tableStats}
+        lowStockCount={lowStockCount}
+        recent={recent}
+        navigate={navigate}
+      />
+    );
+  }
 
   return (
     <>
@@ -93,7 +418,9 @@ export default function BillingHomePage() {
           </Alert>
         ) : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+
         <IndustryDashboardPanel compact workspace="billing" />
+
         {waFailedCount > 0 ? (
           <Alert
             severity="warning"
@@ -149,51 +476,18 @@ export default function BillingHomePage() {
           />
           <KpiCard
             title="Today's Sales"
-            value={
-              loading
-                ? '—'
-                : `₹${Number(summary.total_sales || 0).toLocaleString('en-IN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
-            }
+            value={loading ? '—' : moneyExact(summary.total_sales)}
             icon={<PointOfSaleOutlinedIcon fontSize="small" />}
           />
           <KpiCard
             title="Cash"
-            value={
-              loading
-                ? '—'
-                : `₹${Number(summary.cash_sales || 0).toLocaleString('en-IN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
-            }
+            value={loading ? '—' : moneyExact(summary.cash_sales)}
             hint="Today's cash sales"
           />
           <KpiCard
             title="Online"
-            value={
-              loading
-                ? '—'
-                : `₹${Number(summary.online_sales || 0).toLocaleString('en-IN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
-            }
+            value={loading ? '—' : moneyExact(summary.online_sales)}
             hint="Today's online sales"
-          />
-          <KpiCard
-            title="Credit"
-            value={
-              loading
-                ? '—'
-                : `₹${Number(summary.credit_sales || 0).toLocaleString('en-IN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
-            }
-            hint="Today's udhari sales"
           />
         </Box>
 
@@ -232,7 +526,7 @@ export default function BillingHomePage() {
                       </TableCell>
                       <TableCell>{bill.status}</TableCell>
                       <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650 }}>
-                        ₹{Number(bill.grand_total).toFixed(2)}
+                        {moneyExact(bill.grand_total)}
                       </TableCell>
                     </TableRow>
                   ))}

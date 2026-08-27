@@ -19,6 +19,7 @@ from app.repositories.order_repository import OrderRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.services.audit_service import AuditService
 from app.services.bill_service import BillService
+from app.services.module_service import ModuleService
 from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
 from app.utils.exceptions import InsufficientStockError, NotFoundError, ValidationError
@@ -75,6 +76,9 @@ class OrderSettlementService:
             service_charge=service_charge,
             service_charge_percent=service_charge_percent,
         )
+        if total_service_charge > 0:
+            tenant = TenantRepository.get_by_id(ctx.tenant_id)
+            ModuleService.require_enabled(tenant, "service_charge")
         order_subtotal = money(
             sum(money(line.unit_price * line.quantity) for line in order.items)
         )

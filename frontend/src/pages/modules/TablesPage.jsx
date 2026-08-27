@@ -43,6 +43,7 @@ const STATUS_OPTIONS = [
   { value: 'available', label: 'Available' },
   { value: 'occupied', label: 'Occupied' },
   { value: 'reserved', label: 'Reserved' },
+  { value: 'bill_pending', label: 'Bill Pending' },
 ];
 
 const NEXT_STATUS = {
@@ -50,16 +51,24 @@ const NEXT_STATUS = {
     { value: 'occupied', label: 'Seat / Occupy' },
     { value: 'reserved', label: 'Reserve' },
   ],
-  occupied: [{ value: 'available', label: 'Clear table' }],
+  occupied: [
+    { value: 'bill_pending', label: 'Bill pending' },
+    { value: 'available', label: 'Clear table' },
+  ],
   reserved: [
     { value: 'occupied', label: 'Seat guests' },
     { value: 'available', label: 'Cancel reservation' },
+  ],
+  bill_pending: [
+    { value: 'occupied', label: 'Back to occupied' },
+    { value: 'available', label: 'Clear table' },
   ],
 };
 
 function statusColor(status) {
   if (status === 'occupied') return 'warning';
   if (status === 'reserved') return 'info';
+  if (status === 'bill_pending') return 'error';
   return 'success';
 }
 

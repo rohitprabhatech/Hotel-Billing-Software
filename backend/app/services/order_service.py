@@ -10,7 +10,12 @@ from app.constants.orders import (
     assert_valid_order_channel,
 )
 from app.constants.permissions import PERM_ORDERS_READ, PERM_ORDERS_WRITE
-from app.constants.tables import TABLE_STATUS_AVAILABLE, TABLE_STATUS_OCCUPIED, TABLE_STATUS_RESERVED
+from app.constants.tables import (
+    TABLE_STATUS_AVAILABLE,
+    TABLE_STATUS_BILL_PENDING,
+    TABLE_STATUS_OCCUPIED,
+    TABLE_STATUS_RESERVED,
+)
 from app.extensions import db
 from app.models.cafe_offer import OrderItemAddon
 from app.models.order import Order, OrderItem
@@ -99,6 +104,8 @@ class OrderService:
                 raise ConflictError("This table already has an open order")
             if table.status == TABLE_STATUS_OCCUPIED:
                 raise ConflictError("Table is already occupied")
+            if table.status == TABLE_STATUS_BILL_PENDING:
+                raise ConflictError("Table has a bill pending — settle or reopen the order first")
         elif dining_table_id:
             raise ValidationError("Table can only be set for dine-in orders")
 
@@ -257,8 +264,27 @@ class OrderService:
         parsed_qty = qty(quantity)
         if parsed_qty <= 0:
             raise ValidationError("Quantity must be greater than zero")
+        old_qty = float(line.quantity)
         line.quantity = parsed_qty
         OrderService._recalculate_totals(order)
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="UPDATE_ORDER_ITEM",
+            entity_type="ORDER",
+            entity_id=order.id,
+            old_data={
+                "line_id": line.id,
+                "item_name": line.item_name,
+                "quantity": old_qty,
+                "dining_table_id": order.dining_table_id,
+            },
+            new_data={
+                "line_id": line.id,
+                "item_name": line.item_name,
+                "quantity": float(parsed_qty),
+                "dining_table_id": order.dining_table_id,
+            },
+        )
         db.session.commit()
         return OrderService.serialize(order, include_items=True)
 

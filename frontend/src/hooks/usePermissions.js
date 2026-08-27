@@ -10,6 +10,7 @@ export function usePermissions() {
       user,
       hasPermission: (permission) => hasPermission(user, permission),
       canWriteItems: hasPermission(user, 'items.write'),
+      canWriteCategories: hasPermission(user, 'categories.write'),
       canStockItems: hasPermission(user, 'items.stock'),
       canReports: hasPermission(user, 'reports'),
       canStockMovements: hasPermission(user, 'stock_movements'),

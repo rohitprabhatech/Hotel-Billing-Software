@@ -23,7 +23,7 @@ def list_tables():
 
 
 @tables_bp.post("")
-@roles_required(ROLE_OWNER, ROLE_MANAGER)
+@roles_required(*_STAFF)
 @module_required("table_management")
 @permission_required(PERM_TABLES_WRITE)
 def create_table():
@@ -52,6 +52,14 @@ def unmerge_tables():
 @permission_required(PERM_TABLES_READ)
 def get_table(table_id):
     return dining_table_controller.get_table(table_id)
+
+
+@tables_bp.get("/<table_id>/bills")
+@roles_required(*_STAFF)
+@module_required("table_management")
+@permission_required(PERM_TABLES_READ)
+def list_table_bills(table_id):
+    return dining_table_controller.list_table_bills(table_id)
 
 
 @tables_bp.patch("/<table_id>")

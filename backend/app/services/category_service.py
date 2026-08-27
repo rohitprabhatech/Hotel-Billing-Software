@@ -167,6 +167,13 @@ class CategoryService:
                     "Cannot deactivate a category that has child categories. "
                     "Reassign or deactivate the child categories first."
                 )
+            item_count = CategoryRepository.count_items(category.id, ctx.tenant_id)
+            if item_count > 0:
+                raise ValidationError(
+                    f"This category contains {item_count} item"
+                    f"{'' if item_count == 1 else 's'}. "
+                    "Please move or remove these items before deleting the category."
+                )
 
         old = CategoryService.serialize(category)
         category.is_active = bool(is_active)

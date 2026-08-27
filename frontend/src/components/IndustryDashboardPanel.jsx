@@ -26,13 +26,20 @@ import { PATHS } from '../routes/paths';
 const INDUSTRY_PANELS = {
   hotel_restaurant: {
     title: 'Restaurant & hotel',
-    blurb: 'Menu, tables, and kitchen flow for dining service.',
+    blurb: 'Table-first billing, kitchen tickets, and dine-in flow.',
     accent: '#1F4E5F',
     actions: [
-      { to: PATHS.ownerMenu, label: 'Menu', icon: RestaurantMenuOutlinedIcon, module: 'restaurant_menu' },
+      {
+        to: PATHS.ownerRestaurantBilling,
+        label: 'Table Billing',
+        icon: PointOfSaleOutlinedIcon,
+        module: 'table_management',
+      },
       { to: PATHS.ownerTables, label: 'Tables', icon: TableRestaurantOutlinedIcon, module: 'table_management' },
-      { to: PATHS.ownerOrders, label: 'Orders', icon: ReceiptLongOutlinedIcon, module: 'order_channels' },
+      { to: PATHS.ownerMenu, label: 'Menu', icon: RestaurantMenuOutlinedIcon, module: 'restaurant_menu' },
       { to: PATHS.ownerKitchen, label: 'Kitchen', icon: RestaurantMenuOutlinedIcon, module: 'kitchen' },
+      { to: PATHS.ownerWastage, label: 'Wastage', icon: Inventory2OutlinedIcon, module: 'wastage' },
+      { to: PATHS.billingStockMovements, label: 'Stock Movements', icon: Inventory2OutlinedIcon },
     ],
   },
   cafe_tea: {
@@ -60,7 +67,7 @@ const INDUSTRY_PANELS = {
     blurb: 'Size/color variants, POS, and returns.',
     accent: '#6B4F7A',
     actions: [
-      { to: PATHS.ownerClothing, label: 'Clothing POS', icon: LocalMallOutlinedIcon, module: 'barcode_pos' },
+      { to: PATHS.ownerClothing, label: 'Clothing POS', icon: LocalMallOutlinedIcon, module: 'variants' },
       { to: PATHS.ownerVariants, label: 'Variants', icon: Inventory2OutlinedIcon, module: 'variants' },
       { to: PATHS.ownerReturns, label: 'Returns', icon: ReceiptLongOutlinedIcon, module: 'returns_exchange' },
     ],
@@ -181,6 +188,7 @@ const DEFAULT_PANEL = {
 const OWNER_TO_BILLING = {
   [PATHS.ownerMenu]: PATHS.billingMenu,
   [PATHS.ownerTables]: PATHS.billingTables,
+  [PATHS.ownerRestaurantBilling]: PATHS.billingRestaurantBilling,
   [PATHS.ownerOrders]: PATHS.billingOrders,
   [PATHS.ownerKitchen]: PATHS.billingKitchen,
   [PATHS.ownerCafe]: PATHS.billingCafe,
@@ -194,7 +202,9 @@ const OWNER_TO_BILLING = {
   [PATHS.ownerCustomers]: PATHS.billingCustomers,
   [PATHS.ownerPurchases]: PATHS.billingPurchases,
   [PATHS.ownerReports]: PATHS.billingReports,
+  [PATHS.ownerStockMovements]: PATHS.billingStockMovements,
   [PATHS.billingNew]: PATHS.billingNew,
+  [PATHS.billingStockMovements]: PATHS.billingStockMovements,
 };
 
 export default function IndustryDashboardPanel({ compact = false, workspace = 'owner' }) {

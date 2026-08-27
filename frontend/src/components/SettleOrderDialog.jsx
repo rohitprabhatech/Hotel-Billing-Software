@@ -32,7 +32,7 @@ function money(value) {
   })}`;
 }
 
-export default function SettleOrderDialog({ open, order, onClose, onSettled }) {
+export default function SettleOrderDialog({ open, order, onClose, onSettled, initialTab = 0 }) {
   const [tab, setTab] = useState(0);
   const [discount, setDiscount] = useState('0');
   const [serviceCharge, setServiceCharge] = useState('0');
@@ -61,9 +61,9 @@ export default function SettleOrderDialog({ open, order, onClose, onSettled }) {
     setServiceCharge('0');
     setServiceChargePercent('');
     setPaymentMethod('cash');
-    setTab(0);
+    setTab(initialTab === 1 ? 1 : 0);
     setError('');
-  }, [open, order?.id, lines]);
+  }, [open, order?.id, lines, initialTab]);
 
   const toggleSplitLine = (lineId, bucket) => {
     if (bucket === 'A') {
@@ -231,7 +231,7 @@ export default function SettleOrderDialog({ open, order, onClose, onSettled }) {
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" disabled={saving} onClick={onSubmit}>
-          {saving ? 'Settling…' : 'Settle & create bill'}
+          {saving ? 'Working…' : tab === 1 ? 'Split & create bills' : 'Generate Bill'}
         </Button>
       </DialogActions>
     </Dialog>

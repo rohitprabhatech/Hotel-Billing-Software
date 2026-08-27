@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
@@ -24,19 +24,40 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import { useAuth } from '../../context/AuthContext';
 import { filterControlSx } from '../../layouts/shell';
 import { listItems } from '../../services/itemService';
 import { listStockMovements } from '../../services/stockMovementService';
 
-const SOURCES = ['', 'BILL', 'CANCEL', 'ADJUST', 'RECEIVE', 'ITEM_UPDATE'];
+/** Backend source codes with hotel-friendly labels. */
+const SOURCE_OPTIONS = [
+  { value: '', label: 'All types' },
+  { value: 'RECEIVE', label: 'Stock In' },
+  { value: 'PURCHASE', label: 'Purchase In' },
+  { value: 'BILL', label: 'Sale / Consumption' },
+  { value: 'RECIPE', label: 'Recipe Consumption' },
+  { value: 'WASTAGE', label: 'Wastage' },
+  { value: 'ADJUST', label: 'Adjustment' },
+  { value: 'CANCEL', label: 'Cancel / Reversal' },
+  { value: 'RETURN', label: 'Return' },
+  { value: 'EXCHANGE', label: 'Exchange' },
+  { value: 'ITEM_UPDATE', label: 'Item Update' },
+  { value: 'PRODUCTION', label: 'Production' },
+  { value: 'TRANSFER_IN', label: 'Transfer In' },
+  { value: 'TRANSFER_OUT', label: 'Transfer Out' },
+];
+
 const PAGE_SIZE = 50;
 
+const SOURCE_LABEL = Object.fromEntries(SOURCE_OPTIONS.filter((row) => row.value).map((row) => [row.value, row.label]));
+
 function sourceColor(source) {
-  if (source === 'BILL') return 'warning';
-  if (source === 'CANCEL') return 'info';
-  if (source === 'ADJUST') return 'success';
-  if (source === 'RECEIVE') return 'primary';
-  return 'default';
+  if (source === 'BILL' || source === 'RECIPE') return 'warning';
+  if (source === 'CANCEL' || source === 'RETURN') return 'info';
+  if (source === 'ADJUST' || source === 'ITEM_UPDATE') return 'default';
+  if (source === 'RECEIVE' || source === 'PURCHASE' || source === 'PRODUCTION') return 'success';
+  if (source === 'WASTAGE') return 'error';
+  return 'primary';
 }
 
 function formatDelta(value) {
@@ -46,6 +67,8 @@ function formatDelta(value) {
 }
 
 export default function StockMovementsPage() {
+  const { user } = useAuth();
+  const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
   const [searchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [items, setItems] = useState([]);
@@ -58,7 +81,22 @@ export default function StockMovementsPage() {
     source: searchParams.get('source') || '',
     from: searchParams.get('from') || '',
     to: searchParams.get('to') || '',
+    q: '',
   });
+
+  const hotelSources = useMemo(
+    () =>
+      SOURCE_OPTIONS.filter((row) =>
+        !row.value
+          ? true
+          : ['RECEIVE', 'BILL', 'RECIPE', 'WASTAGE', 'ADJUST', 'CANCEL', 'RETURN', 'ITEM_UPDATE'].includes(
+              row.value
+            )
+      ),
+    []
+  );
+
+  const sourceMenu = isHotel ? hotelSources : SOURCE_OPTIONS;
 
   const load = async (nextPage = page, nextFilters = filters) => {
     setError('');
@@ -73,7 +111,12 @@ export default function StockMovementsPage() {
       if (nextFilters.from) params.from = nextFilters.from;
       if (nextFilters.to) params.to = nextFilters.to;
       const response = await listStockMovements(params);
-      setRows(response.data || []);
+      let data = response.data || [];
+      const term = (nextFilters.q || '').trim().toLowerCase();
+      if (term) {
+        data = data.filter((row) => (row.item_name || '').toLowerCase().includes(term));
+      }
+      setRows(data);
       setMeta(response.meta || { page: nextPage, per_page: PAGE_SIZE, total: 0 });
       setPage(response.meta?.page || nextPage);
     } catch (err) {
@@ -94,13 +137,25 @@ export default function StockMovementsPage() {
   return (
     <PageShell>
       <Stack spacing={2}>
+        {isHotel ? (
+          <Alert severity="info">
+            Hotel stock movements: sales and recipe consumption post when a bill is settled (not when
+            editing an open table order). Wastage and adjustments are recorded separately for audit.
+          </Alert>
+        ) : null}
         <FilterBar
           actions={
-            <Button variant="contained" onClick={() => load(1)} disabled={loading}>
+            <Button variant="contained" onClick={() => load(1, filters)} disabled={loading}>
               Apply
             </Button>
           }
         >
+          <TextField
+            label="Search item"
+            value={filters.q}
+            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+            sx={filterControlSx}
+          />
           <FormControl sx={filterControlSx}>
             <InputLabel>Item</InputLabel>
             <Select
@@ -117,15 +172,15 @@ export default function StockMovementsPage() {
             </Select>
           </FormControl>
           <FormControl sx={filterControlSx}>
-            <InputLabel>Source</InputLabel>
+            <InputLabel>Movement type</InputLabel>
             <Select
-              label="Source"
+              label="Movement type"
               value={filters.source}
               onChange={(e) => setFilters((f) => ({ ...f, source: e.target.value }))}
             >
-              {SOURCES.map((src) => (
-                <MenuItem key={src || 'all'} value={src}>
-                  {src || 'All sources'}
+              {sourceMenu.map((src) => (
+                <MenuItem key={src.value || 'all'} value={src.value}>
+                  {src.label}
                 </MenuItem>
               ))}
             </Select>
@@ -153,14 +208,16 @@ export default function StockMovementsPage() {
         <TableCard>
           {loading ? (
             <LoadingBlock />
+          ) : !rows.length ? (
+            <EmptyState title="No stock movements" description="Try a different date or movement type." />
           ) : (
             <Table size="small" sx={{ minWidth: 900 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>When</TableCell>
                   <TableCell>Item</TableCell>
-                  <TableCell>Source</TableCell>
-                  <TableCell align="right">Delta</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell align="right">Qty</TableCell>
                   <TableCell align="right">After</TableCell>
                   <TableCell>Reason / Ref</TableCell>
                   <TableCell>By</TableCell>
@@ -178,7 +235,11 @@ export default function StockMovementsPage() {
                       <TruncateText value={row.item_name || row.item_id} maxWidth={180} />
                     </TableCell>
                     <TableCell>
-                      <Chip size="small" label={row.source} color={sourceColor(row.source)} />
+                      <Chip
+                        size="small"
+                        label={SOURCE_LABEL[row.source] || row.source}
+                        color={sourceColor(row.source)}
+                      />
                     </TableCell>
                     <TableCell align="right">{formatDelta(row.delta)}</TableCell>
                     <TableCell align="right">{Number(row.quantity_after)}</TableCell>
@@ -198,28 +259,21 @@ export default function StockMovementsPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <TruncateText value={row.created_by_name || '—'} maxWidth={120} />
+                      <TruncateText value={row.created_by_name || row.created_by || '—'} maxWidth={120} />
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
-          {!loading && !rows.length ? (
-            <EmptyState
-              title="No stock movements yet"
-              description="Movements appear when bills deduct stock, cancels restore it, or you adjust stock."
-            />
-          ) : null}
-          {!loading && rows.length ? (
-            <PaginationBar
-              page={meta.page}
-              perPage={meta.per_page}
-              total={meta.total}
-              onPageChange={(next) => load(next)}
-            />
-          ) : null}
         </TableCard>
+
+        <PaginationBar
+          page={meta.page || page}
+          perPage={meta.per_page || PAGE_SIZE}
+          total={meta.total || 0}
+          onPageChange={(next) => load(next, filters)}
+        />
       </Stack>
     </PageShell>
   );

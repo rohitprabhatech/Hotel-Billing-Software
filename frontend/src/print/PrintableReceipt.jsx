@@ -40,7 +40,7 @@ function showFssai(tenant = {}) {
   return FSSAI_RELEVANT_TYPES.has(type);
 }
 
-export default function PrintableReceipt({ bill, width = '80' }) {
+export default function PrintableReceipt({ bill, width = '80', billingSettings = null }) {
   if (!bill) return null;
 
   const tenant = bill.tenant || {};
@@ -49,9 +49,17 @@ export default function PrintableReceipt({ bill, width = '80' }) {
   const halfRate = gstRate != null ? (gstRate / 2).toFixed(2) : null;
   const cityLine = [tenant.city, tenant.pincode].filter(Boolean).join(' / ');
   const businessName = tenant.business_name || 'BUSINESS';
+  const settings = billingSettings || tenant.billing_settings || {};
+  const customStyle =
+    width === 'custom' && settings.width_mm
+      ? {
+          width: `${settings.width_mm}mm`,
+          minHeight: settings.height_mm ? `${settings.height_mm}mm` : undefined,
+        }
+      : undefined;
 
   return (
-    <div className={`receipt receipt--${width}`}>
+    <div className={`receipt receipt--${width}`} style={customStyle}>
       <div className="receipt__center receipt__business">{businessName}</div>
       {tenant.address ? <div className="receipt__center">{tenant.address}</div> : null}
       {cityLine ? <div className="receipt__center">{cityLine}</div> : null}

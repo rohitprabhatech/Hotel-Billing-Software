@@ -38,6 +38,33 @@ class KotRepository:
         )
 
     @staticmethod
+    def get_latest_by_order(tenant_id: str, order_id: str) -> Kot | None:
+        return (
+            db.session.query(Kot)
+            .options(joinedload(Kot.items))
+            .filter(Kot.tenant_id == tenant_id, Kot.order_id == order_id)
+            .order_by(Kot.created_at.desc())
+            .first()
+        )
+
+    @staticmethod
+    def sum_sent_qty_by_order_item(tenant_id: str, order_id: str) -> dict[str, float]:
+        """Total quantity already ticketed per order_item_id for an order."""
+        rows = (
+            db.session.query(KotItem.order_item_id, func.sum(KotItem.quantity))
+            .join(Kot, Kot.id == KotItem.kot_id)
+            .filter(
+                KotItem.tenant_id == tenant_id,
+                Kot.tenant_id == tenant_id,
+                Kot.order_id == order_id,
+                KotItem.order_item_id.isnot(None),
+            )
+            .group_by(KotItem.order_item_id)
+            .all()
+        )
+        return {order_item_id: float(total or 0) for order_item_id, total in rows}
+
+    @staticmethod
     def list_by_tenant(
         tenant_id: str,
         *,

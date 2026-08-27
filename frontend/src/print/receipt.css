@@ -19,6 +19,25 @@
   line-height: 1.3;
 }
 
+.receipt--a4 {
+  width: 210mm;
+  min-height: 297mm;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.receipt--a5 {
+  width: 148mm;
+  min-height: 210mm;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.receipt--custom {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .receipt__center {
   text-align: center;
 }

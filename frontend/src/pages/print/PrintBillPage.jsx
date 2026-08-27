@@ -1,12 +1,15 @@
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import BillPreview from '../../print/BillPreview';
 import '../../print/receipt.css';
 import { getBill, recordBillPrint } from '../../services/billService';
 
 export default function PrintBillPage() {
   const { billId } = useParams();
+  const { user } = useAuth();
+  const isOwner = user?.role === 'OWNER';
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [bill, setBill] = useState(null);
@@ -71,7 +74,13 @@ export default function PrintBillPage() {
         {error ? <Alert severity="error">{error}</Alert> : null}
         <Button onClick={() => navigate(-1)}>Back</Button>
       </Stack>
-      <BillPreview bill={bill} onPrint={handlePrint} printing={printing} />
+      <BillPreview
+        bill={bill}
+        onPrint={handlePrint}
+        printing={printing}
+        billingSettings={bill?.tenant?.billing_settings}
+        showSizeControls={isOwner && user?.tenant?.business_type !== 'hotel_restaurant'}
+      />
     </Box>
   );
 }

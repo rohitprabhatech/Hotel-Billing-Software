@@ -22,6 +22,7 @@ from app.services.audit_service import AuditService
 from app.services.bulk_pricing_service import BulkPricingService
 from app.services.price_list_service import PriceListService
 from app.services.notification_service import NotificationService
+from app.services.tenant_service import TenantService
 from app.utils.exceptions import InsufficientStockError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.money import calculate_bill_totals, money, qty
@@ -193,6 +194,18 @@ class BillService:
             if item is None or not item.is_active:
                 raise ValidationError(f"Item is inactive or not found: {item_id}")
             locked[item_id] = item
+
+        from app.services.module_service import ModuleService
+
+        tenant_for_sale = tenant_early or TenantRepository.get_by_id(ctx.tenant_id)
+        if any(row.get("variant_id") for row in cart_merged.values()) or any(
+            VariantService.item_tracks_variants(item) for item in locked.values()
+        ):
+            ModuleService.require_enabled(tenant_for_sale, "variants")
+        if serial_cart or any(
+            SerialService.item_tracks_serial(item) for item in locked.values()
+        ):
+            ModuleService.require_enabled(tenant_for_sale, "serial_imei")
 
         parent_sold: dict[str, Decimal] = {}
         for row in cart_merged.values():
@@ -657,6 +670,29 @@ class BillService:
         )
 
     @staticmethod
+    def list_bills_for_reference(*, reference: str, page=1, per_page=20):
+        """Bills matching an exact table/reference code (tenant-scoped)."""
+        ctx = require_request_context()
+        cleaned = (reference or "").strip()
+        if not cleaned:
+            raise ValidationError("Reference is required")
+        bills, total = BillRepository.list_by_tenant(
+            ctx.tenant_id,
+            reference=cleaned,
+            page=page,
+            per_page=per_page,
+        )
+        return (
+            [BillService.serialize(b, include_items=False) for b in bills],
+            {
+                "page": max(int(page or 1), 1),
+                "per_page": min(max(int(per_page or 20), 1), 50),
+                "total": total,
+                "reference": cleaned,
+            },
+        )
+
+    @staticmethod
     def cancel_bill(bill_id: str, reason: str):
         ctx = require_request_context()
         reason = (reason or "").strip()
@@ -1018,5 +1054,6 @@ class BillService:
                     "phone": tenant.phone,
                     "gst_number": tenant.gst_number,
                     "fssai_number": tenant.fssai_number,
+                    "billing_settings": TenantService._resolve_billing_dimensions(tenant),
                 }
         return data

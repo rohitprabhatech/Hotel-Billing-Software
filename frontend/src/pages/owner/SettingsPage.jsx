@@ -30,14 +30,18 @@ import {
 } from '../../services/authService';
 import {
   fetchBusinessTypes,
+  fetchBillingSettings,
   fetchMyTenant,
   fetchWhatsappConfig,
   saveWhatsappConfig,
   testWhatsappConfig,
   disconnectWhatsappConfig,
   simulateWhatsappDeliveryStatus,
+  updateBillingSettings,
   updateMyTenant,
 } from '../../services/tenantService';
+import BillPreview from '../../print/BillPreview';
+import '../../print/receipt.css';
 
 const emptyBusiness = {
   name: '',
@@ -86,11 +90,20 @@ export default function SettingsPage() {
     error_message: '',
   });
   const [waSimulating, setWaSimulating] = useState(false);
+  const [billingForm, setBillingForm] = useState({
+    paper_size: '80mm',
+    width_mm: 80,
+    height_mm: '',
+  });
+  const [savingBilling, setSavingBilling] = useState(false);
+  const [showBillPreview, setShowBillPreview] = useState(false);
+
+  const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchMyTenant(), fetchProfile(), fetchBusinessTypes(), fetchWhatsappConfig()])
-      .then(([tenantRes, profileRes, typesRes, waRes]) => {
+    Promise.all([fetchMyTenant(), fetchProfile(), fetchBusinessTypes(), fetchWhatsappConfig(), fetchBillingSettings()])
+      .then(([tenantRes, profileRes, typesRes, waRes, billingRes]) => {
         const t = tenantRes.data || {};
         setBusiness({
           name: t.name || '',
@@ -122,6 +135,12 @@ export default function SettingsPage() {
           waba_id: '',
           access_token: '',
         }));
+        const bs = billingRes.data || {};
+        setBillingForm({
+          paper_size: bs.paper_size || '80mm',
+          width_mm: bs.width_mm || 80,
+          height_mm: bs.height_mm ?? '',
+        });
       })
       .catch((err) => {
         setError(err.response?.data?.error?.message || 'Unable to load settings.');
@@ -165,6 +184,84 @@ export default function SettingsPage() {
     } finally {
       setSavingBusiness(false);
     }
+  };
+
+  const onSaveBilling = async (event) => {
+    event.preventDefault();
+    setSavingBilling(true);
+    setError('');
+    setSuccess('');
+    try {
+      const payload = {
+        paper_size: billingForm.paper_size,
+        width_mm: billingForm.paper_size === 'custom' ? Number(billingForm.width_mm) : undefined,
+        height_mm:
+          billingForm.paper_size === 'custom' && billingForm.height_mm !== ''
+            ? Number(billingForm.height_mm)
+            : null,
+      };
+      const response = await updateBillingSettings(payload);
+      setBillingForm({
+        paper_size: response.data?.paper_size || billingForm.paper_size,
+        width_mm: response.data?.width_mm || billingForm.width_mm,
+        height_mm: response.data?.height_mm ?? '',
+      });
+      setSuccess('Billing / invoice settings saved.');
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Failed to save billing settings');
+    } finally {
+      setSavingBilling(false);
+    }
+  };
+
+  const previewBill = {
+    bill_number: 'PREVIEW-001',
+    created_at: new Date().toISOString(),
+    table_number: 'T-01',
+    created_by_name: user?.name || 'Staff',
+    payment_method: 'cash',
+    subtotal: 450,
+    discount: 0,
+    taxable_amount: 450,
+    cgst_amount: 11.25,
+    sgst_amount: 11.25,
+    round_off: 0,
+    grand_total: 472.5,
+    status: 'FINALIZED',
+    items: [
+      {
+        id: '1',
+        item_name: 'Sample Dish',
+        quantity: 2,
+        unit_price: 150,
+        gst_percentage: 5,
+      },
+      {
+        id: '2',
+        item_name: 'Sample Beverage',
+        quantity: 1,
+        unit_price: 150,
+        gst_percentage: 5,
+      },
+    ],
+    tenant: {
+      business_name: business.business_name || 'Your Business',
+      business_type: business.business_type,
+      address: business.address,
+      city: business.city,
+      pincode: business.pincode,
+      phone: business.phone,
+      gst_number: business.gst_number,
+      fssai_number: business.fssai_number,
+      billing_settings: {
+        paper_size: billingForm.paper_size,
+        width_mm: billingForm.paper_size === 'custom' ? Number(billingForm.width_mm) : billingForm.width_mm,
+        height_mm:
+          billingForm.height_mm === '' || billingForm.height_mm == null
+            ? null
+            : Number(billingForm.height_mm),
+      },
+    },
   };
 
   const onSaveProfile = async (event) => {
@@ -368,6 +465,86 @@ export default function SettingsPage() {
           </Button>
         </Stack>
       </FormSection>
+
+      {isHotel ? (
+        <FormSection
+          title="Billing / Invoice Settings"
+          description="Configure the printed bill format for all billing users. Counter staff only see Print — not these controls."
+        >
+          <Stack component="form" spacing={2.5} onSubmit={onSaveBilling} maxWidth={640}>
+            <FormControl fullWidth>
+              <InputLabel id="paper-size-label">Paper / Bill Size</InputLabel>
+              <Select
+                labelId="paper-size-label"
+                label="Paper / Bill Size"
+                value={billingForm.paper_size}
+                onChange={(e) => {
+                  const paper = e.target.value;
+                  const presets = {
+                    '58mm': 58,
+                    '80mm': 80,
+                    A4: 210,
+                    A5: 148,
+                  };
+                  setBillingForm((prev) => ({
+                    ...prev,
+                    paper_size: paper,
+                    width_mm: presets[paper] || prev.width_mm,
+                    height_mm: paper === 'A4' ? 297 : paper === 'A5' ? 210 : '',
+                  }));
+                }}
+              >
+                <MenuItem value="58mm">58mm Thermal</MenuItem>
+                <MenuItem value="80mm">80mm Thermal</MenuItem>
+                <MenuItem value="A4">A4</MenuItem>
+                <MenuItem value="A5">A5</MenuItem>
+                <MenuItem value="custom">Custom</MenuItem>
+              </Select>
+            </FormControl>
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              }}
+            >
+              <TextField
+                label="Width (mm)"
+                type="number"
+                value={billingForm.width_mm}
+                onChange={(e) => setBillingForm((p) => ({ ...p, width_mm: e.target.value }))}
+                disabled={billingForm.paper_size !== 'custom'}
+                inputProps={{ min: 40, max: 300 }}
+                fullWidth
+              />
+              <TextField
+                label="Height (mm)"
+                type="number"
+                value={billingForm.height_mm}
+                onChange={(e) => setBillingForm((p) => ({ ...p, height_mm: e.target.value }))}
+                disabled={billingForm.paper_size !== 'custom'}
+                placeholder="Auto"
+                inputProps={{ min: 50, max: 500 }}
+                fullWidth
+                helperText="Leave blank for auto height on thermal rolls"
+              />
+            </Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <Button type="submit" variant="contained" disabled={savingBilling}>
+                {savingBilling ? 'Saving…' : 'Save Settings'}
+              </Button>
+              <Button type="button" variant="outlined" onClick={() => setShowBillPreview((v) => !v)}>
+                {showBillPreview ? 'Hide Preview' : 'Preview Bill'}
+              </Button>
+            </Stack>
+            {showBillPreview ? (
+              <Box sx={{ pt: 1 }}>
+                <BillPreview bill={previewBill} billingSettings={previewBill.tenant.billing_settings} />
+              </Box>
+            ) : null}
+          </Stack>
+        </FormSection>
+      ) : null}
 
       <FormSection
         title="WhatsApp Business Integration"

@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from sqlalchemy import Numeric, String
+from sqlalchemy import Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants.business_types import DEFAULT_BUSINESS_TYPE
@@ -29,6 +29,9 @@ class Tenant(db.Model, TimestampMixin):
     fssai_number: Mapped[str | None] = mapped_column(String(50))
     bill_number_prefix: Mapped[str | None] = mapped_column(String(20))
     default_gst_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    bill_paper_size: Mapped[str | None] = mapped_column(String(20))
+    bill_width_mm: Mapped[int | None] = mapped_column(Integer)
+    bill_height_mm: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
 
     users = relationship("User", back_populates="tenant", lazy="dynamic")

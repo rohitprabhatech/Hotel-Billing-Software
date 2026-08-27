@@ -47,3 +47,13 @@ export async function simulateWhatsappDeliveryStatus(payload) {
   );
   return data;
 }
+
+export async function fetchBillingSettings() {
+  const { data } = await apiClient.get('/tenants/me/billing-settings');
+  return data;
+}
+
+export async function updateBillingSettings(payload) {
+  const { data } = await apiClient.put('/tenants/me/billing-settings', payload);
+  return data;
+}

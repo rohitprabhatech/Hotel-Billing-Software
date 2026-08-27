@@ -1,27 +1,22 @@
-import { Box, Button, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material';
-import { useState } from 'react';
+import { Box, Button, Stack } from '@mui/material';
+import { useMemo } from 'react';
 import PrintableReceipt from './PrintableReceipt';
+import { receiptClassFromSettings } from '../utils/auditLabels';
 
-export default function BillPreview({ bill, onPrint, printing = false }) {
-  const [width, setWidth] = useState('80');
+export default function BillPreview({
+  bill,
+  onPrint,
+  printing = false,
+  billingSettings = null,
+  showSizeControls = false,
+}) {
+  const settings = billingSettings || bill?.tenant?.billing_settings || {};
+  const widthClass = useMemo(() => receiptClassFromSettings(settings), [settings]);
 
   if (!bill) return null;
 
   return (
     <Stack spacing={2} alignItems="center">
-      <ToggleButtonGroup
-        className="no-print"
-        exclusive
-        size="small"
-        value={width}
-        onChange={(_, value) => {
-          if (value) setWidth(value);
-        }}
-      >
-        <ToggleButton value="58">58mm</ToggleButton>
-        <ToggleButton value="80">80mm</ToggleButton>
-      </ToggleButtonGroup>
-
       <Box
         sx={{
           border: '1px solid',
@@ -32,17 +27,19 @@ export default function BillPreview({ bill, onPrint, printing = false }) {
           overflowX: 'auto',
         }}
       >
-        <PrintableReceipt bill={bill} width={width} />
+        <PrintableReceipt bill={bill} width={widthClass} billingSettings={settings} />
       </Box>
 
-      <Button
-        className="no-print"
-        variant="contained"
-        onClick={() => onPrint?.(width)}
-        disabled={printing}
-      >
-        Print Receipt
-      </Button>
+      {!showSizeControls ? (
+        <Button
+          className="no-print"
+          variant="contained"
+          onClick={() => onPrint?.(widthClass)}
+          disabled={printing}
+        >
+          Print Receipt
+        </Button>
+      ) : null}
     </Stack>
   );
 }

@@ -1,4 +1,5 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import {
   Alert,
@@ -34,6 +35,7 @@ import {
   setCategoryStatus,
   updateCategory,
 } from '../../services/categoryService';
+import { getApiErrorMessage } from '../../utils/apiError';
 import {
   buildHierarchyRows,
   collectDescendantIds,
@@ -61,6 +63,7 @@ export default function CategoriesPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const load = async () => {
     setError('');
@@ -160,7 +163,25 @@ export default function CategoriesPage() {
       );
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to update status');
+      setError(getApiErrorMessage(err, 'Failed to update status'));
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await setCategoryStatus(deleteTarget.id, false);
+      setSuccess(`Category “${deleteTarget.name}” deleted (deactivated).`);
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to delete category'));
+      setDeleteTarget(null);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -273,15 +294,29 @@ export default function CategoriesPage() {
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Tooltip title="Edit">
-                          <IconButton
-                            size="small"
-                            aria-label={`Edit ${category.name}`}
-                            onClick={() => openEdit(category)}
-                          >
-                            <EditOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <Stack direction="row" spacing={0.25} justifyContent="flex-end">
+                          <Tooltip title="Edit Category">
+                            <IconButton
+                              size="small"
+                              aria-label={`Edit ${category.name}`}
+                              onClick={() => openEdit(category)}
+                            >
+                              <EditOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          {category.is_active ? (
+                            <Tooltip title="Delete Category">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                aria-label={`Delete ${category.name}`}
+                                onClick={() => setDeleteTarget(category)}
+                              >
+                                <DeleteOutlineOutlinedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          ) : null}
+                        </Stack>
                       </TableCell>
                     </TableRow>
                   );
@@ -343,6 +378,29 @@ export default function CategoriesPage() {
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={onSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save Category'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !saving && setDeleteTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Delete Category?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete “{deleteTarget?.name}”? Categories with items cannot
+            be deleted until items are moved or removed.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={saving} onClick={() => setDeleteTarget(null)}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" disabled={saving} onClick={confirmDelete}>
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

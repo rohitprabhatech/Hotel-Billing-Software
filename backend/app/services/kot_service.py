@@ -73,8 +73,22 @@ class KotService:
         if not order.items:
             raise ValidationError("Order has no items to send to kitchen")
 
-        existing = KotRepository.get_active_by_order(ctx.tenant_id, order.id)
-        if existing is not None:
+        from decimal import Decimal
+
+        from app.utils.money import qty as parse_qty
+
+        sent_qty = KotRepository.sum_sent_qty_by_order_item(ctx.tenant_id, order.id)
+        pending_lines: list[tuple] = []
+        for line in order.items:
+            already = Decimal(str(sent_qty.get(line.id, 0)))
+            delta = parse_qty(line.quantity) - already
+            if delta > 0:
+                pending_lines.append((line, delta))
+
+        if not pending_lines:
+            existing = KotRepository.get_latest_by_order(ctx.tenant_id, order.id)
+            if existing is None:
+                raise ValidationError("Order has no items to send to kitchen")
             old = KotService.serialize(existing, include_items=True)
             existing.print_count = int(existing.print_count or 0) + 1
             existing.printed_at = utc_now_naive()
@@ -107,7 +121,7 @@ class KotService:
             printed_at=now,
             created_by=ctx.user_id,
         )
-        for line in order.items:
+        for line, delta in pending_lines:
             kot.items.append(
                 KotItem(
                     id=new_uuid(),
@@ -116,7 +130,7 @@ class KotService:
                     order_item_id=line.id,
                     item_id=line.item_id,
                     item_name=line.item_name,
-                    quantity=line.quantity,
+                    quantity=delta,
                 )
             )
         KotRepository.add(kot)

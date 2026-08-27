@@ -67,14 +67,19 @@ def test_status_transitions(client):
     assert cleared.status_code == 200, cleared.get_json()
 
 
-def test_billing_user_can_update_status_not_create(client):
+def test_billing_user_can_create_table_and_update_status(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     billing = login(client, "billing@hotela.com", "Billing@12345")
+
+    created = client.post(
+        "/api/v1/tables",
+        headers=billing,
+        json={"code": "Billing-T2", "section": "Floor", "capacity": 4},
+    )
+    assert created.status_code == 201, created.get_json()
+    assert created.get_json()["data"]["code"] == "Billing-T2"
+
     table = _create_table(client, owner, "Billing-T1")
-
-    denied = client.post("/api/v1/tables", headers=billing, json={"code": "Billing-T2"})
-    assert denied.status_code == 403, denied.get_json()
-
     allowed = client.post(
         f"/api/v1/tables/{table['id']}/status",
         headers=billing,
@@ -158,3 +163,55 @@ def test_table_status_change_is_audited(client):
         query_string={"action": "DINING_TABLE_STATUS_CHANGED", "per_page": 10},
     ).get_json()["data"]
     assert any(row["entity_id"] == table["id"] for row in logs)
+
+
+def test_table_open_order_summary_and_bill_history(client):
+    headers = login(client, "owner@hotela.com", "Owner@12345")
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+    table = _create_table(client, headers, "POS-TB01")
+    cat = client.post(
+        "/api/v1/categories", headers=headers, json={"name": "POS Cat"}
+    ).get_json()["data"]
+    item = client.post(
+        "/api/v1/items",
+        headers=headers,
+        json={
+            "name": "POS Dish",
+            "category_id": cat["id"],
+            "price": "100",
+            "gst_percentage": "5",
+            "stock_quantity": "40",
+        },
+    ).get_json()["data"]
+
+    order = client.post(
+        "/api/v1/orders",
+        headers=billing,
+        json={
+            "channel": "dine_in",
+            "dining_table_id": table["id"],
+            "items": [{"item_id": item["id"], "quantity": "2"}],
+        },
+    )
+    assert order.status_code == 201, order.get_json()
+
+    listing = client.get("/api/v1/tables", headers=billing)
+    assert listing.status_code == 200, listing.get_json()
+    row = next(t for t in listing.get_json()["data"] if t["id"] == table["id"])
+    assert row["status"] == "occupied"
+    assert row["open_order_id"] == order.get_json()["data"]["id"]
+    assert row["open_order_item_count"] == 1
+    assert float(row["open_order_grand_total"]) > 0
+
+    settled = client.post(
+        f"/api/v1/orders/{order.get_json()['data']['id']}/settle",
+        headers=billing,
+        json={"payment_method": "cash"},
+    )
+    assert settled.status_code == 201, settled.get_json()
+
+    history = client.get(f"/api/v1/tables/{table['id']}/bills", headers=billing)
+    assert history.status_code == 200, history.get_json()
+    bills = history.get_json()["data"]
+    assert len(bills) >= 1
+    assert bills[0]["table_number"] == "POS-TB01" or bills[0]["reference"] == "POS-TB01"

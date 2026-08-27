@@ -1,12 +1,35 @@
-"""Tenant-scoped audit log queries (read-only)."""
+"""Tenant-scoped audit log queries."""
 
 from datetime import datetime
 
-from sqlalchemy import func, or_
+from sqlalchemy import String, cast, func, or_
 
 from app.extensions import db
 from app.models.audit_log import AuditLog
 from app.models.bill import Bill
+
+
+# Frontend activity-type filter → entity types / actions
+ACTIVITY_CATEGORY_FILTERS: dict[str, dict] = {
+    "customer": {"entity_types": ["CUSTOMER"]},
+    "item": {"entity_types": ["ITEM"]},
+    "category": {"entity_types": ["CATEGORY"]},
+    "billing": {"entity_types": ["BILL"]},
+    "payment": {
+        "actions": [
+            "COLLECT_CREDIT_PAYMENT",
+            "CREDIT_SALE",
+            "CREDIT_PURCHASE",
+            "PAY_SUPPLIER_CREDIT",
+            "CREDIT_BILL_CANCEL",
+            "CREDIT_PURCHASE_CANCEL",
+            "TRAVEL_BOOKING_PAYMENT",
+        ]
+    },
+    "table": {"entity_types": ["DINING_TABLE", "ORDER", "KOT"]},
+    "user": {"entity_types": ["USER"]},
+    "inventory": {"entity_types": ["STOCK_MOVEMENT"]},
+}
 
 
 class AuditLogRepository:
@@ -14,9 +37,29 @@ class AuditLogRepository:
     def get_by_id_and_tenant(log_id: str, tenant_id: str) -> AuditLog | None:
         return (
             db.session.query(AuditLog)
-            .filter(AuditLog.id == log_id, AuditLog.tenant_id == tenant_id)
+            .filter(
+                AuditLog.id == log_id,
+                AuditLog.tenant_id == tenant_id,
+                AuditLog.is_deleted.is_(False),
+            )
             .first()
         )
+
+    @staticmethod
+    def soft_delete(log_id: str, tenant_id: str) -> bool:
+        row = (
+            db.session.query(AuditLog)
+            .filter(
+                AuditLog.id == log_id,
+                AuditLog.tenant_id == tenant_id,
+                AuditLog.is_deleted.is_(False),
+            )
+            .first()
+        )
+        if row is None:
+            return False
+        row.is_deleted = True
+        return True
 
     @staticmethod
     def list_by_tenant(
@@ -24,6 +67,7 @@ class AuditLogRepository:
         *,
         user_id: str | None = None,
         action: str | None = None,
+        actions: list[str] | None = None,
         entity_type: str | None = None,
         entity_types: list[str] | None = None,
         entity_id: str | None = None,
@@ -34,11 +78,16 @@ class AuditLogRepository:
         page: int = 1,
         per_page: int = 50,
     ) -> tuple[list[AuditLog], int]:
-        query = db.session.query(AuditLog).filter(AuditLog.tenant_id == tenant_id)
+        query = db.session.query(AuditLog).filter(
+            AuditLog.tenant_id == tenant_id,
+            AuditLog.is_deleted.is_(False),
+        )
 
         if user_id:
             query = query.filter(AuditLog.user_id == user_id)
-        if action:
+        if actions:
+            query = query.filter(AuditLog.action.in_(actions))
+        elif action:
             query = query.filter(AuditLog.action == action)
         if entity_types:
             query = query.filter(AuditLog.entity_type.in_(entity_types))
@@ -73,6 +122,8 @@ class AuditLogRepository:
                     AuditLog.action.ilike(like),
                     AuditLog.user_name.ilike(like),
                     AuditLog.entity_type.ilike(like),
+                    cast(AuditLog.new_data, String).ilike(like),
+                    cast(AuditLog.old_data, String).ilike(like),
                 )
             )
 
@@ -92,6 +143,7 @@ class AuditLogRepository:
         query = db.session.query(func.count(AuditLog.id)).filter(
             AuditLog.tenant_id == tenant_id,
             AuditLog.action == action,
+            AuditLog.is_deleted.is_(False),
             AuditLog.created_at >= start,
             AuditLog.created_at < end,
         )
@@ -110,6 +162,7 @@ class AuditLogRepository:
             .filter(
                 AuditLog.tenant_id == tenant_id,
                 AuditLog.action == "CANCEL_BILL",
+                AuditLog.is_deleted.is_(False),
                 AuditLog.created_at >= start,
                 AuditLog.created_at < end,
             )
@@ -127,6 +180,7 @@ class AuditLogRepository:
             .filter(
                 AuditLog.tenant_id == tenant_id,
                 AuditLog.action.in_(actions),
+                AuditLog.is_deleted.is_(False),
                 AuditLog.created_at >= start,
                 AuditLog.created_at < end,
             )

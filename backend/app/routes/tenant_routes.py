@@ -32,6 +32,18 @@ def update_my_tenant():
     return tenant_controller.update_my_tenant()
 
 
+@tenants_bp.get("/me/billing-settings")
+@roles_required(ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
+def get_billing_settings():
+    return tenant_controller.get_billing_settings()
+
+
+@tenants_bp.put("/me/billing-settings")
+@roles_required(ROLE_OWNER)
+def update_billing_settings():
+    return tenant_controller.update_billing_settings()
+
+
 @tenants_bp.get("/me/whatsapp")
 @roles_required(ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 def get_whatsapp_config():

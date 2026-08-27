@@ -10,6 +10,7 @@ from app.constants.tables import (
 from app.extensions import db
 from app.models.dining_table import DiningTable
 from app.repositories.dining_table_repository import DiningTableRepository
+from app.repositories.order_repository import OrderRepository
 from app.services.audit_service import AuditService
 from app.utils.exceptions import ConflictError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
@@ -30,7 +31,22 @@ class DiningTableService:
             include_merged_children=include_merged_children,
         )
         primaries = [row for row in rows if row.merged_into_id is None]
-        return [DiningTableService.serialize(row) for row in primaries]
+        open_orders = OrderRepository.map_open_orders_by_table_ids(
+            ctx.tenant_id, [row.id for row in primaries]
+        )
+        item_counts = OrderRepository.count_items_by_order_ids(
+            ctx.tenant_id, [order.id for order in open_orders.values()]
+        )
+        return [
+            DiningTableService.serialize(
+                row,
+                open_order=open_orders.get(row.id),
+                open_order_item_count=item_counts.get(open_orders[row.id].id, 0)
+                if row.id in open_orders
+                else 0,
+            )
+            for row in primaries
+        ]
 
     @staticmethod
     def get_table(table_id: str):
@@ -39,7 +55,29 @@ class DiningTableService:
         table = DiningTableRepository.get_by_id_and_tenant(table_id, ctx.tenant_id)
         if table is None or not table.is_active:
             raise NotFoundError("Table not found")
-        return DiningTableService.serialize(table)
+        open_order = OrderRepository.get_open_by_table(ctx.tenant_id, table.id)
+        item_count = 0
+        if open_order is not None:
+            item_count = OrderRepository.count_items_by_order_ids(
+                ctx.tenant_id, [open_order.id]
+            ).get(open_order.id, 0)
+        return DiningTableService.serialize(
+            table, open_order=open_order, open_order_item_count=item_count
+        )
+
+    @staticmethod
+    def list_table_bills(table_id: str, *, page: int = 1, per_page: int = 20):
+        """Completed bills whose reference/table_number matches this table code."""
+        require_permission(PERM_TABLES_READ)
+        ctx = require_request_context()
+        table = DiningTableRepository.get_by_id_and_tenant(table_id, ctx.tenant_id)
+        if table is None or not table.is_active:
+            raise NotFoundError("Table not found")
+        from app.services.bill_service import BillService
+
+        return BillService.list_bills_for_reference(
+            reference=table.code, page=page, per_page=per_page
+        )
 
     @staticmethod
     def create_table(*, code, section=None, capacity=None):
@@ -284,11 +322,11 @@ class DiningTableService:
         return capacity
 
     @staticmethod
-    def serialize(table: DiningTable):
+    def serialize(table: DiningTable, *, open_order=None, open_order_item_count: int = 0):
         children = []
         if table.merged_into_id is None:
             children = DiningTableRepository.list_merged_children(table.tenant_id, table.id)
-        return {
+        payload = {
             "id": table.id,
             "code": table.code,
             "section": table.section,
@@ -308,4 +346,14 @@ class DiningTableService:
             "is_active": table.is_active,
             "created_at": table.created_at.isoformat() if table.created_at else None,
             "updated_at": table.updated_at.isoformat() if table.updated_at else None,
+            "open_order_id": None,
+            "open_order_number": None,
+            "open_order_grand_total": None,
+            "open_order_item_count": 0,
         }
+        if open_order is not None:
+            payload["open_order_id"] = open_order.id
+            payload["open_order_number"] = open_order.order_number
+            payload["open_order_grand_total"] = float(open_order.grand_total or 0)
+            payload["open_order_item_count"] = int(open_order_item_count or 0)
+        return payload

@@ -36,6 +36,24 @@ class OrderRepository:
         )
 
     @staticmethod
+    def map_open_orders_by_table_ids(
+        tenant_id: str, table_ids: list[str]
+    ) -> dict[str, Order]:
+        if not table_ids:
+            return {}
+        rows = (
+            db.session.query(Order)
+            .options(noload(Order.items))
+            .filter(
+                Order.tenant_id == tenant_id,
+                Order.status == ORDER_STATUS_OPEN,
+                Order.dining_table_id.in_(table_ids),
+            )
+            .all()
+        )
+        return {row.dining_table_id: row for row in rows if row.dining_table_id}
+
+    @staticmethod
     def list_by_tenant(
         tenant_id: str,
         *,

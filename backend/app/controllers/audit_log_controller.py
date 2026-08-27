@@ -17,6 +17,7 @@ def list_logs():
         from_date=request.args.get("from"),
         to_date=request.args.get("to"),
         module=request.args.get("module"),
+        category=request.args.get("category"),
         page=int(request.args.get("page", 1)),
         per_page=int(request.args.get("per_page", 50)),
     )
@@ -33,3 +34,8 @@ def get_log(log_id: str):
 
 def alerts():
     return success_response(data=AuditLogService.alerts())
+
+
+def delete_log(log_id: str):
+    data = AuditLogService.delete_log(log_id)
+    return success_response(data=data)

@@ -176,6 +176,7 @@ def get_wholesale_transfer(transfer_id):
 
 @wholesale_bp.get("/reports/outstanding")
 @roles_required(ROLE_OWNER, ROLE_MANAGER)
+@module_required("customer_credit")
 @permission_required(PERM_REPORTS)
 def wholesale_outstanding_report():
     return report_controller.outstanding()

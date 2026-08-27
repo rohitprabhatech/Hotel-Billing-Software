@@ -1,4 +1,5 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
@@ -35,6 +36,7 @@ import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
 import { PageActions } from '../../context/PageActionsContext';
+import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { filterControlWideSx } from '../../layouts/shell';
 import {
@@ -69,6 +71,8 @@ function money(value) {
 }
 
 export default function CustomersPage() {
+  const { user } = useAuth();
+  const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
   const clothingEnabled = useModuleGate('variants');
   const mobileEnabled = useModuleGate('serial_imei');
   const [customers, setCustomers] = useState([]);
@@ -93,6 +97,8 @@ export default function CustomersPage() {
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState(PAYMENT_CASH);
   const [payNotes, setPayNotes] = useState('');
+  const [deleteCustomer, setDeleteCustomer] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async (nextPage = page, search = q, onlyOutstanding = outstandingOnly) => {
     setError('');
@@ -103,6 +109,9 @@ export default function CustomersPage() {
         page: nextPage,
         per_page: PAGE_SIZE,
       };
+      if (isHotel && !onlyOutstanding) {
+        params.is_active = true;
+      }
       const res = onlyOutstanding
         ? await listOutstandingCustomers(params)
         : await listCustomers(params);
@@ -184,6 +193,23 @@ export default function CustomersPage() {
       await load(page, q);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to update customer status');
+    }
+  };
+
+  const confirmDeleteCustomer = async () => {
+    if (!deleteCustomer) return;
+    setDeleting(true);
+    setError('');
+    setSuccess('');
+    try {
+      await deactivateCustomer(deleteCustomer.id);
+      setSuccess(`${deleteCustomer.name} has been removed from the active customer list.`);
+      setDeleteCustomer(null);
+      await load(page, q, outstandingOnly);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Failed to delete customer');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -339,19 +365,28 @@ export default function CustomersPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Switch
-                          size="small"
-                          checked={customer.is_active}
-                          onChange={() => toggleActive(customer)}
-                          inputProps={{ 'aria-label': `Toggle ${customer.name}` }}
-                        />
+                      {isHotel ? (
                         <Chip
                           size="small"
                           label={customer.is_active ? 'Active' : 'Inactive'}
                           variant="outlined"
+                          color={customer.is_active ? 'success' : 'default'}
                         />
-                      </Stack>
+                      ) : (
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Switch
+                            size="small"
+                            checked={customer.is_active}
+                            onChange={() => toggleActive(customer)}
+                            inputProps={{ 'aria-label': `Toggle ${customer.name}` }}
+                          />
+                          <Chip
+                            size="small"
+                            label={customer.is_active ? 'Active' : 'Inactive'}
+                            variant="outlined"
+                          />
+                        </Stack>
+                      )}
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
@@ -378,7 +413,7 @@ export default function CustomersPage() {
                             <ReceiptLongOutlinedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Edit">
+                        <Tooltip title="Edit Customer">
                           <IconButton
                             size="small"
                             aria-label={`Edit ${customer.name}`}
@@ -387,6 +422,18 @@ export default function CustomersPage() {
                             <EditOutlinedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        {isHotel && customer.is_active ? (
+                          <Tooltip title="Delete Customer">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              aria-label={`Delete ${customer.name}`}
+                              onClick={() => setDeleteCustomer(customer)}
+                            >
+                              <DeleteOutlineOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -586,6 +633,26 @@ export default function CustomersPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setLedgerCustomer(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteCustomer)} onClose={() => setDeleteCustomer(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Customer?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Are you sure you want to delete this customer?
+            </Typography>
+            <Typography variant="body2">
+              <strong>Customer:</strong> {deleteCustomer?.name}
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteCustomer(null)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={confirmDeleteCustomer} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
         </DialogActions>
       </Dialog>
 

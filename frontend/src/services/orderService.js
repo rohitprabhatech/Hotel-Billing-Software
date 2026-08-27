@@ -26,6 +26,11 @@ export async function addOrderItem(orderId, payload) {
   return data;
 }
 
+export async function updateOrderItem(orderId, lineId, payload) {
+  const { data } = await apiClient.patch(`/orders/${orderId}/items/${lineId}`, payload);
+  return data;
+}
+
 export async function removeOrderItem(orderId, lineId) {
   const { data } = await apiClient.delete(`/orders/${orderId}/items/${lineId}`);
   return data;

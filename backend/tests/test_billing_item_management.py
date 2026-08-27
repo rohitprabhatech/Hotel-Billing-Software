@@ -50,6 +50,83 @@ def test_billing_user_creates_item_with_audit(client):
     assert any(row["entity_id"] == item["id"] for row in owner_logs.get_json()["data"])
 
 
+def test_billing_user_creates_category_with_audit(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+
+    response = client.post(
+        "/api/v1/categories",
+        headers=billing,
+        json={"name": "Chinese Food", "description": "Chinese food items"},
+    )
+    assert response.status_code == 201, response.get_json()
+    category = response.get_json()["data"]
+    assert category["name"] == "Chinese Food"
+
+    actions = {
+        row.action
+        for row in db.session.query(AuditLog).filter(
+            AuditLog.entity_id == category["id"], AuditLog.entity_type == "CATEGORY"
+        )
+    }
+    assert "CREATE_CATEGORY" in actions
+
+    owner_logs = client.get(
+        "/api/v1/audit-logs",
+        headers=owner,
+        query_string={"entity_type": "CATEGORY", "action": "CREATE_CATEGORY"},
+    )
+    assert owner_logs.status_code == 200
+    assert any(row["entity_id"] == category["id"] for row in owner_logs.get_json()["data"])
+
+    updated = client.put(
+        f"/api/v1/categories/{category['id']}",
+        headers=billing,
+        json={"name": "Chinese Special", "description": "Updated"},
+    )
+    assert updated.status_code == 200, updated.get_json()
+    assert updated.get_json()["data"]["name"] == "Chinese Special"
+
+    duplicate = client.post(
+        "/api/v1/categories",
+        headers=billing,
+        json={"name": "Chinese Special"},
+    )
+    assert duplicate.status_code == 409, duplicate.get_json()
+
+    owner_b = login(client, "owner@hotelb.com", "Owner@12345")
+    foreign = client.get(f"/api/v1/categories/{category['id']}", headers=owner_b)
+    assert foreign.status_code == 404
+
+
+def test_billing_cannot_deactivate_category_with_items(client):
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+    cat = client.post(
+        "/api/v1/categories",
+        headers=billing,
+        json={"name": "Has Items Cat"},
+    ).get_json()["data"]
+    item = client.post(
+        "/api/v1/items",
+        headers=billing,
+        json={
+            "name": "Noodles",
+            "category_id": cat["id"],
+            "price": 150,
+            "gst_percentage": 5,
+        },
+    )
+    assert item.status_code == 201, item.get_json()
+
+    blocked = client.patch(
+        f"/api/v1/categories/{cat['id']}/status",
+        headers=billing,
+        json={"is_active": False},
+    )
+    assert blocked.status_code == 400, blocked.get_json()
+    assert "item" in blocked.get_json()["error"]["message"].lower()
+
+
 def test_billing_user_updates_and_deactivates_item(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     billing = login(client, "billing@hotela.com", "Billing@12345")
@@ -137,10 +214,7 @@ def test_billing_cannot_delete_or_access_foreign_audit(client):
     )
     assert log is not None
 
-    assert client.delete(f"/api/v1/audit-logs/{log.id}", headers=billing).status_code in {
-        404,
-        405,
-    }
+    assert client.delete(f"/api/v1/audit-logs/{log.id}", headers=billing).status_code == 403
     assert client.get("/api/v1/audit-logs", headers=billing).status_code == 403
     assert client.get(f"/api/v1/audit-logs/{log.id}", headers=owner_b).status_code == 404
 

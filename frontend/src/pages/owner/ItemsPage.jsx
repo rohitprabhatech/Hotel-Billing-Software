@@ -204,7 +204,11 @@ export default function ItemsPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      // Hotel/cafe dishes need is_menu for recipes + table menu catalog.
+      is_menu: Boolean(restaurantMenuEnabled),
+    });
     setOpen(true);
   };
 
@@ -1014,7 +1018,9 @@ export default function ItemsPage() {
                     checked={Boolean(form.is_menu)}
                     onChange={(e) => setForm((f) => ({ ...f, is_menu: e.target.checked }))}
                   />
-                  <Typography variant="body2">Show on restaurant menu</Typography>
+                  <Typography variant="body2">
+                    Menu dish (sold to customers) — turn OFF for raw ingredients used in Recipes
+                  </Typography>
                 </Stack>
                 <FormControl fullWidth>
                   <InputLabel id="item-veg-label">Diet type (optional)</InputLabel>

@@ -58,9 +58,34 @@ def test_owner_summary_includes_sales(client):
         assert key in current
 
 
+def test_owner_summary_hotel_periods_fill_day_series(client):
+    """Hotel dashboard periods return continuous day_wise points for the chart."""
+    owner, _, bill = _seed_sale(client)
+    expected_days = {
+        "today": 1,
+        "last_7_days": 7,
+        "last_30_days": 30,
+    }
+    for period, min_days in expected_days.items():
+        response = client.get(
+            "/api/v1/reports/summary",
+            headers=owner,
+            query_string={"period": period},
+        )
+        assert response.status_code == 200, response.get_json()
+        data = response.get_json()["data"]
+        assert data["period"] == period
+        assert data["current"]["total_sales"] >= bill["grand_total"]
+        assert len(data["day_wise"]) >= min_days
+        # Series is contiguous local dates (no gaps).
+        dates = [row["date"] for row in data["day_wise"]]
+        assert dates == sorted(dates)
+        assert len(dates) == len(set(dates))
+
+
 def test_owner_summary_week_and_month_periods(client):
     owner, _, bill = _seed_sale(client)
-    for period in ("this_week", "this_month"):
+    for period in ("this_week", "this_month", "this_year"):
         response = client.get(
             "/api/v1/reports/summary",
             headers=owner,
@@ -73,6 +98,19 @@ def test_owner_summary_week_and_month_periods(client):
         assert data["current"]["total_sales"] >= bill["grand_total"]
         assert data["current"]["bill_count"] >= 1
         assert "day_wise" in data
+        assert isinstance(data["day_wise"], list)
+        assert len(data["day_wise"]) >= 1
+
+    last_month = client.get(
+        "/api/v1/reports/summary",
+        headers=owner,
+        query_string={"period": "last_month"},
+    )
+    assert last_month.status_code == 200, last_month.get_json()
+    last_data = last_month.get_json()["data"]
+    assert last_data["period"] == "last_month"
+    assert isinstance(last_data["day_wise"], list)
+    assert len(last_data["day_wise"]) >= 28
 
 
 def test_weekly_sales_and_analytics_sections(client):

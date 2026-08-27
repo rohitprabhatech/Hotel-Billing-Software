@@ -332,6 +332,7 @@ const navItems = [
     label: 'Recipes',
     icon: <MenuBookOutlinedIcon />,
     module: 'recipe',
+    hideForBusinessTypes: ['hotel_restaurant'],
   },
   {
     to: PATHS.ownerProduction,

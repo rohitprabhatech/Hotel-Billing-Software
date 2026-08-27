@@ -2,6 +2,7 @@ import BakeryDiningOutlinedIcon from '@mui/icons-material/BakeryDiningOutlined';
 import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined';
 import HandymanOutlinedIcon from '@mui/icons-material/HandymanOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import KitchenOutlinedIcon from '@mui/icons-material/KitchenOutlined';
 import LocalMallOutlinedIcon from '@mui/icons-material/LocalMallOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import PhoneIphoneOutlinedIcon from '@mui/icons-material/PhoneIphoneOutlined';
@@ -36,8 +37,8 @@ const INDUSTRY_PANELS = {
         module: 'table_management',
       },
       { to: PATHS.ownerTables, label: 'Tables', icon: TableRestaurantOutlinedIcon, module: 'table_management' },
+      { to: PATHS.ownerKitchen, label: 'Kitchen', icon: KitchenOutlinedIcon, module: 'kitchen' },
       { to: PATHS.ownerMenu, label: 'Menu', icon: RestaurantMenuOutlinedIcon, module: 'restaurant_menu' },
-      { to: PATHS.ownerKitchen, label: 'Kitchen', icon: RestaurantMenuOutlinedIcon, module: 'kitchen' },
       { to: PATHS.ownerWastage, label: 'Wastage', icon: Inventory2OutlinedIcon, module: 'wastage' },
       { to: PATHS.billingStockMovements, label: 'Stock Movements', icon: Inventory2OutlinedIcon },
     ],
@@ -187,6 +188,8 @@ const DEFAULT_PANEL = {
 
 const OWNER_TO_BILLING = {
   [PATHS.ownerMenu]: PATHS.billingMenu,
+  [PATHS.ownerRecipes]: PATHS.billingRecipes,
+  [PATHS.ownerWastage]: PATHS.billingWastage,
   [PATHS.ownerTables]: PATHS.billingTables,
   [PATHS.ownerRestaurantBilling]: PATHS.billingRestaurantBilling,
   [PATHS.ownerOrders]: PATHS.billingOrders,

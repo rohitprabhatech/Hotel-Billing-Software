@@ -49,7 +49,7 @@ class KotRepository:
 
     @staticmethod
     def sum_sent_qty_by_order_item(tenant_id: str, order_id: str) -> dict[str, float]:
-        """Total quantity already ticketed per order_item_id for an order."""
+        """Total quantity already ticketed per order_item_id for an order (active KOTs only)."""
         rows = (
             db.session.query(KotItem.order_item_id, func.sum(KotItem.quantity))
             .join(Kot, Kot.id == KotItem.kot_id)
@@ -57,12 +57,31 @@ class KotRepository:
                 KotItem.tenant_id == tenant_id,
                 Kot.tenant_id == tenant_id,
                 Kot.order_id == order_id,
+                Kot.status.in_(ACTIVE_KOT_STATUSES),
                 KotItem.order_item_id.isnot(None),
             )
             .group_by(KotItem.order_item_id)
             .all()
         )
         return {order_item_id: float(total or 0) for order_item_id, total in rows}
+
+    @staticmethod
+    def sum_active_qty_for_order_item(
+        tenant_id: str, order_item_id: str, *, exclude_kot_id: str | None = None
+    ) -> float:
+        query = (
+            db.session.query(func.coalesce(func.sum(KotItem.quantity), 0))
+            .join(Kot, Kot.id == KotItem.kot_id)
+            .filter(
+                KotItem.tenant_id == tenant_id,
+                Kot.tenant_id == tenant_id,
+                KotItem.order_item_id == order_item_id,
+                Kot.status.in_(ACTIVE_KOT_STATUSES),
+            )
+        )
+        if exclude_kot_id:
+            query = query.filter(Kot.id != exclude_kot_id)
+        return float(query.scalar() or 0)
 
     @staticmethod
     def list_by_tenant(
@@ -98,15 +117,23 @@ class KotRepository:
         return rows, int(total)
 
     @staticmethod
-    def list_kitchen_queue(tenant_id: str) -> list[Kot]:
+    def list_kitchen_queue(tenant_id: str, *, lookback_hours: int = 48) -> list[Kot]:
+        """Active KOTs for the kitchen board (bounded lookback for response size)."""
+        from datetime import timedelta
+
+        from app.utils.tokens import utc_now_naive
+
+        since = utc_now_naive() - timedelta(hours=max(int(lookback_hours or 48), 6))
         return (
             db.session.query(Kot)
             .options(joinedload(Kot.items), joinedload(Kot.dining_table))
             .filter(
                 Kot.tenant_id == tenant_id,
                 Kot.status.in_(ACTIVE_KOT_STATUSES),
+                Kot.created_at >= since,
             )
             .order_by(Kot.created_at.asc())
+            .limit(200)
             .all()
         )
 

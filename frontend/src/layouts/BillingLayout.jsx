@@ -23,6 +23,7 @@ import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined';
 import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined';
 import {
   AppBar,
@@ -235,7 +236,7 @@ const billingNav = [
   { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
 ];
 
-/** Slim sidebar for hotel Billing Users — primary desk workflow only. */
+/** Slim sidebar for hotel Billing Users — desk workflow + operational modules. */
 const hotelBillingUserNav = [
   { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
   { type: 'section', label: 'Billing' },
@@ -263,6 +264,18 @@ const hotelBillingUserNav = [
     module: 'table_management',
   },
   {
+    to: PATHS.billingKitchen,
+    label: 'Kitchen',
+    icon: <KitchenOutlinedIcon />,
+    module: 'kitchen',
+  },
+  {
+    to: PATHS.billingOrders,
+    label: 'Open Orders',
+    icon: <ListAltOutlinedIcon />,
+    module: 'order_channels',
+  },
+  {
     to: PATHS.billingItems,
     label: 'Items',
     icon: <Inventory2OutlinedIcon />,
@@ -271,6 +284,28 @@ const hotelBillingUserNav = [
     to: PATHS.billingCategories,
     label: 'Categories',
     icon: <CategoryOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingMenu,
+    label: 'Menu Board',
+    icon: <RestaurantMenuOutlinedIcon />,
+    module: 'restaurant_menu',
+  },
+  {
+    to: PATHS.billingCustomers,
+    label: 'Customers',
+    icon: <ContactsOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingExpenses,
+    label: 'Expenses',
+    icon: <PaymentsOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingWastage,
+    label: 'Wastage',
+    icon: <DeleteSweepOutlinedIcon />,
+    module: 'wastage',
   },
   { type: 'section', label: 'Account' },
   { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
@@ -375,6 +410,18 @@ function pageMeta(pathname, businessType) {
     return {
       title: 'Expenses',
       subtitle: 'Track daily business expenses and category totals.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingRecipes)) {
+    return {
+      title: 'Recipes',
+      subtitle: 'Link menu dishes to ingredient quantities for stock deduction.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingWastage)) {
+    return {
+      title: 'Wastage',
+      subtitle: 'Record food or ingredient wastage and keep stock accurate.',
     };
   }
   if (pathname.startsWith(PATHS.billingTables)) {

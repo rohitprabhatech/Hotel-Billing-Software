@@ -434,6 +434,8 @@ CREATE INDEX ix_dining_tables_merged_into_id ON dining_tables (merged_into_id);
 
 CREATE INDEX ix_dining_tables_tenant_id ON dining_tables (tenant_id);
 
+CREATE INDEX ix_dining_tables_tenant_active_status ON dining_tables (tenant_id, is_active, status);
+
 -- email_verification_tokens
 
 
@@ -1944,6 +1946,8 @@ CREATE INDEX ix_kot_items_tenant_id ON kot_items (tenant_id);
 
 CREATE INDEX ix_kot_items_kot_id ON kot_items (kot_id);
 
+CREATE INDEX ix_kot_items_tenant_order_item ON kot_items (tenant_id, order_item_id);
+
 -- kots
 
 
@@ -1978,6 +1982,8 @@ CREATE INDEX ix_kots_order_id ON kots (order_id);
 CREATE INDEX ix_kots_dining_table_id ON kots (dining_table_id);
 
 CREATE INDEX ix_kots_tenant_id ON kots (tenant_id);
+
+CREATE INDEX ix_kots_tenant_status_created ON kots (tenant_id, status, created_at);
 
 -- order_item_addons
 
@@ -2078,6 +2084,8 @@ CREATE INDEX ix_orders_customer_id ON orders (customer_id);
 CREATE INDEX ix_orders_tenant_id ON orders (tenant_id);
 
 CREATE INDEX ix_orders_dining_table_id ON orders (dining_table_id);
+
+CREATE INDEX ix_orders_tenant_status_dining_table ON orders (tenant_id, status, dining_table_id);
 
 -- quotation_items
 

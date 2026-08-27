@@ -9,13 +9,13 @@ from app.utils.request_context import require_request_context
 
 def require_permission(permission: str) -> None:
     ctx = require_request_context()
-    if not has_permission(ctx.role, permission):
+    if not has_permission(ctx.role, permission, ctx.business_type):
         raise ForbiddenError("You do not have permission to perform this action")
 
 
 def require_any_permission(*permissions: str) -> None:
     ctx = require_request_context()
-    if not has_any_permission(ctx.role, *permissions):
+    if not has_any_permission(ctx.role, *permissions, business_type=ctx.business_type):
         raise ForbiddenError("You do not have permission to perform this action")
 
 

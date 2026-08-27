@@ -24,3 +24,13 @@ export async function updateKotStatus(kotId, status) {
   const { data } = await apiClient.patch(`/kots/${kotId}/status`, { status });
   return data;
 }
+
+export async function updateKot(kotId, payload) {
+  const { data } = await apiClient.patch(`/kots/${kotId}`, payload);
+  return data;
+}
+
+export async function deleteKot(kotId) {
+  const { data } = await apiClient.delete(`/kots/${kotId}`);
+  return data;
+}

@@ -89,6 +89,8 @@ def _bind_identity() -> str:
     if int(claim_tv or 0) != int(user.token_version or 0):
         raise UnauthorizedError("Session expired. Please sign in again.")
 
+    from app.constants.business_types import coerce_business_type
+
     set_request_context(
         RequestContext(
             user_id=user.id,
@@ -98,6 +100,9 @@ def _bind_identity() -> str:
             email=user.email,
             ip_address=ip,
             user_agent=ua,
+            business_type=coerce_business_type(user.tenant.business_type)
+            if user.tenant
+            else None,
         )
     )
     return "tenant"

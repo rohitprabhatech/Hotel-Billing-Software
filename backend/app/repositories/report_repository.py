@@ -254,8 +254,26 @@ class ReportRepository:
         ]
 
     @staticmethod
-    def day_wise(tenant_id: str, start, end, payment_method: str | None = None) -> list[dict]:
-        day_expr = func.date(Bill.created_at)
+    def day_wise(
+        tenant_id: str,
+        start,
+        end,
+        payment_method: str | None = None,
+        *,
+        tz_name: str = "Asia/Kolkata",
+    ) -> list[dict]:
+        """Aggregate finalized sales by local calendar day (tenant timezone)."""
+        bind = db.session.get_bind()
+        dialect = bind.dialect.name if bind is not None else "sqlite"
+        # Bills store UTC-naive timestamps; bucket by Asia/Kolkata (or offset) local date.
+        if dialect == "mysql":
+            offset = "+05:30" if tz_name == "Asia/Kolkata" else "+00:00"
+            day_expr = func.date(func.convert_tz(Bill.created_at, "+00:00", offset))
+        else:
+            # SQLite (tests): apply minute offset from UTC.
+            minutes = "330" if tz_name == "Asia/Kolkata" else "0"
+            day_expr = func.date(Bill.created_at, f"+{minutes} minutes")
+
         query = (
             db.session.query(
                 day_expr,

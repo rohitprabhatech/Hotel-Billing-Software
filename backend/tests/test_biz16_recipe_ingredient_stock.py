@@ -109,18 +109,40 @@ def test_settle_blocks_insufficient_ingredient_stock(client):
     assert denied.get_json()["error"]["code"] == "INSUFFICIENT_STOCK"
 
 
-def test_recipe_requires_menu_item(client):
+def test_hotel_recipe_promotes_dish_to_menu_item(client):
+    """Hotel dishes created without is_menu can still receive a recipe (auto-promoted)."""
     headers = login(client, "owner@hotela.com", "Owner@12345")
-    cat_id = _category(client, headers, "Non Menu Cat")
-    raw_item = _item(client, headers, cat_id, "Raw Only", is_menu=False)
+    cat_id = _category(client, headers, "Promo Cat")
+    dish = _item(client, headers, cat_id, "Raw Dish", is_menu=False, stock="10")
     ingredient = _item(client, headers, cat_id, "Salt", stock="50")
+
+    created = client.post(
+        "/api/v1/recipes",
+        headers=headers,
+        json={
+            "menu_item_id": dish["id"],
+            "ingredients": [{"ingredient_item_id": ingredient["id"], "quantity": "0.01"}],
+        },
+    )
+    assert created.status_code == 201, created.get_json()
+
+    item = client.get(f"/api/v1/items/{dish['id']}", headers=headers)
+    assert item.status_code == 200, item.get_json()
+    assert item.get_json()["data"]["is_menu"] is True
+
+
+def test_recipe_rejects_menu_item_as_ingredient(client):
+    headers = login(client, "owner@hotela.com", "Owner@12345")
+    cat_id = _category(client, headers, "Ing Guard Cat")
+    dish = _item(client, headers, cat_id, "Dish A", is_menu=True)
+    other_dish = _item(client, headers, cat_id, "Dish B", is_menu=True)
 
     denied = client.post(
         "/api/v1/recipes",
         headers=headers,
         json={
-            "menu_item_id": raw_item["id"],
-            "ingredients": [{"ingredient_item_id": ingredient["id"], "quantity": "0.01"}],
+            "menu_item_id": dish["id"],
+            "ingredients": [{"ingredient_item_id": other_dish["id"], "quantity": "1"}],
         },
     )
     assert denied.status_code == 400, denied.get_json()

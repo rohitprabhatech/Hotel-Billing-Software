@@ -164,3 +164,37 @@ def resolve_period(period: str, tz_name: str = "Asia/Kolkata", from_date=None, t
         )
 
     raise ValueError("Invalid period")
+
+
+def fill_day_wise_series(
+    rows: list[dict],
+    start_utc: datetime,
+    end_utc: datetime,
+    tz_name: str = "Asia/Kolkata",
+) -> list[dict]:
+    """Ensure every local calendar day in [start, end) appears (zeros for quiet days).
+
+    Caps the series at tomorrow local so full-month bounds do not invent future days.
+    """
+    tz = get_tz(tz_name)
+    start_day = start_utc.replace(tzinfo=timezone.utc).astimezone(tz).date()
+    end_day = end_utc.replace(tzinfo=timezone.utc).astimezone(tz).date()
+    today = local_now(tz_name).date()
+    if end_day > today + timedelta(days=1):
+        end_day = today + timedelta(days=1)
+
+    by_date = {str(row.get("date") or "")[:10]: row for row in rows or []}
+    filled: list[dict] = []
+    cursor = start_day
+    while cursor < end_day:
+        key = cursor.isoformat()
+        prev = by_date.get(key)
+        filled.append(
+            {
+                "date": key,
+                "total_sales": float(prev.get("total_sales") or 0) if prev else 0.0,
+                "bill_count": int(prev.get("bill_count") or 0) if prev else 0,
+            }
+        )
+        cursor += timedelta(days=1)
+    return filled

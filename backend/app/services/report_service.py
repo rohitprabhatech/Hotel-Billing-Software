@@ -26,7 +26,7 @@ from app.services.audit_service import AuditService
 from app.services.module_service import ModuleService
 from app.utils.exceptions import NotFoundError, ValidationError
 from app.utils.permission_access import require_permission
-from app.utils.periods import resolve_period
+from app.utils.periods import fill_day_wise_series, resolve_period
 from app.utils.request_context import require_request_context
 
 METRIC_LABELS = {
@@ -167,8 +167,17 @@ class ReportService:
             "category_wise": ReportRepository.category_wise(
                 tenant_id, start, end, payment_method=method
             ),
-            "day_wise": ReportRepository.day_wise(
-                tenant_id, start, end, payment_method=method
+            "day_wise": fill_day_wise_series(
+                ReportRepository.day_wise(
+                    tenant_id,
+                    start,
+                    end,
+                    payment_method=method,
+                    tz_name=ReportService._tz(),
+                ),
+                start,
+                end,
+                ReportService._tz(),
             ),
             "bills": ReportService._serialize_bills(bills),
             "bills_meta": {
@@ -199,6 +208,11 @@ class ReportService:
         from app.repositories.item_repository import ItemRepository
 
         inventory_health = ItemRepository.inventory_health_counts(ctx.tenant_id)
+        tz_name = ReportService._tz()
+        day_wise = ReportRepository.day_wise(
+            ctx.tenant_id, start, end, tz_name=tz_name
+        )
+        day_wise = fill_day_wise_series(day_wise, start, end, tz_name)
         return {
             "period": period,
             "label": label,
@@ -209,7 +223,7 @@ class ReportService:
             "top_items": top_items,
             "low_items": low_items,
             "category_wise": ReportRepository.category_wise(ctx.tenant_id, start, end),
-            "day_wise": ReportRepository.day_wise(ctx.tenant_id, start, end),
+            "day_wise": day_wise,
             "whatsapp_delivery": whatsapp_delivery,
             "email_delivery": email_delivery,
             "inventory_health": inventory_health,

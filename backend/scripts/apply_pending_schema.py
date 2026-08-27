@@ -42,6 +42,7 @@ SCRIPTS = [
     "apply_stock_movements.py",
     "apply_stock_receive.py",
     "apply_stock_movement_sources.py",
+    "apply_hotel_billing_columns.py",
     "apply_perf_indexes.py",
     "apply_master_admins.py",
     "apply_registration_requests.py",

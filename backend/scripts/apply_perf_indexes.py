@@ -98,6 +98,32 @@ def main() -> int:
             "tenant_id, status, received_at",
         )
 
+        # Hotel / cafe F&B hot paths (kitchen board + table open-order lookup)
+        _ensure_index(
+            conn,
+            "kots",
+            "ix_kots_tenant_status_created",
+            "tenant_id, status, created_at",
+        )
+        _ensure_index(
+            conn,
+            "orders",
+            "ix_orders_tenant_status_dining_table",
+            "tenant_id, status, dining_table_id",
+        )
+        _ensure_index(
+            conn,
+            "dining_tables",
+            "ix_dining_tables_tenant_active_status",
+            "tenant_id, is_active, status",
+        )
+        _ensure_index(
+            conn,
+            "kot_items",
+            "ix_kot_items_tenant_order_item",
+            "tenant_id, order_item_id",
+        )
+
     print("Performance indexes applied.")
     return 0
 

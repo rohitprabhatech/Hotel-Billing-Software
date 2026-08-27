@@ -442,7 +442,12 @@ class AuthService:
             "name": user.name,
             "email": user.email,
             "role": user.role_name,
-            "permissions": list_permissions_for_role(user.role_name),
+            "permissions": list_permissions_for_role(
+                user.role_name,
+                business_type=coerce_business_type(user.tenant.business_type)
+                if user.tenant
+                else None,
+            ),
             "is_active": user.is_active,
             "email_verified": bool(user.email_verified),
             "pending_email": user.pending_email,

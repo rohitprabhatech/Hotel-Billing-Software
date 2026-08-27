@@ -28,7 +28,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Bar,
@@ -133,11 +133,17 @@ function SalesChartTooltip({ active, payload }) {
   );
 }
 
-function PeriodSelect({ period, onChange, isHotel, sx }) {
+function PeriodSelect({ period, onChange, isHotel, sx, label = 'Period', id = 'owner-dash-period' }) {
+  const labelId = `${id}-label`;
   return (
     <FormControl size="small" sx={{ width: { xs: '100%', sm: 180 }, ...sx }}>
-      <InputLabel>Period</InputLabel>
-      <Select label="Period" value={period} onChange={(e) => onChange(e.target.value)}>
+      <InputLabel id={labelId}>{label}</InputLabel>
+      <Select
+        labelId={labelId}
+        label={label}
+        value={period}
+        onChange={(e) => onChange(e.target.value)}
+      >
         {isHotel ? (
           <>
             <MenuItem value="today">Today</MenuItem>
@@ -167,8 +173,9 @@ export default function OwnerDashboardPage() {
   const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
   const businessName = user?.tenant?.business_name || user?.tenant?.name || 'Your Business';
   const businessTypeLabel = user?.tenant?.business_type_label || null;
-  const [period, setPeriod] = useState('today');
-  const [defaultPeriodSet, setDefaultPeriodSet] = useState(false);
+  const [period, setPeriod] = useState(() =>
+    user?.tenant?.business_type === 'hotel_restaurant' ? 'last_7_days' : 'today',
+  );
   const [data, setData] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [stockAlerts, setStockAlerts] = useState([]);
@@ -178,24 +185,48 @@ export default function OwnerDashboardPage() {
   const [recentBills, setRecentBills] = useState([]);
   const [tables, setTables] = useState([]);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [salesError, setSalesError] = useState('');
+  const [salesLoading, setSalesLoading] = useState(true);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelReason, setCancelReason] = useState('Removed from owner dashboard');
   const [cancelSaving, setCancelSaving] = useState(false);
+  const salesRequestId = useRef(0);
 
+  // Align hotel default once tenant type is known (without fighting user changes).
+  const hotelDefaultApplied = useRef(user?.tenant?.business_type === 'hotel_restaurant');
   useEffect(() => {
-    if (!defaultPeriodSet && user?.tenant?.business_type) {
-      setPeriod(user.tenant.business_type === 'hotel_restaurant' ? 'last_7_days' : 'today');
-      setDefaultPeriodSet(true);
+    if (hotelDefaultApplied.current) return;
+    if (!user?.tenant?.business_type) return;
+    hotelDefaultApplied.current = true;
+    if (user.tenant.business_type === 'hotel_restaurant') {
+      setPeriod('last_7_days');
     }
-  }, [user?.tenant?.business_type, defaultPeriodSet]);
+  }, [user?.tenant?.business_type]);
 
-  const loadDashboard = useCallback(async () => {
+  const loadSalesSummary = useCallback(async (selectedPeriod) => {
+    const requestId = ++salesRequestId.current;
+    setSalesError('');
+    setSalesLoading(true);
+    try {
+      const summaryRes = await fetchReportSummary({ period: selectedPeriod });
+      if (requestId !== salesRequestId.current) return;
+      setData(summaryRes.data);
+    } catch (err) {
+      if (requestId !== salesRequestId.current) return;
+      setSalesError(
+        err.response?.data?.error?.message || 'Unable to load sales data. Please try again.',
+      );
+    } finally {
+      if (requestId === salesRequestId.current) {
+        setSalesLoading(false);
+      }
+    }
+  }, []);
+
+  const loadShell = useCallback(async () => {
     setError('');
-    setLoading(true);
     try {
       const tasks = [
-        fetchReportSummary({ period }),
         fetchAuditAlerts(),
         listAuditLogs({ entity_type: 'ITEM', per_page: 6 }),
         listBills({ per_page: 8 }),
@@ -205,16 +236,8 @@ export default function OwnerDashboardPage() {
         tasks.push(listTables().catch(() => ({ data: [] })));
       }
       const results = await Promise.all(tasks);
-      const [
-        summaryRes,
-        alertsRes,
-        itemRes,
-        billsRes,
-        notifRes,
-        tablesRes,
-      ] = results;
+      const [alertsRes, itemRes, billsRes, notifRes, tablesRes] = results;
 
-      setData(summaryRes.data);
       setAlerts((alertsRes.data?.alerts || []).filter((a) => a.severity !== 'info'));
       setItemActivity(itemRes.data || []);
       setRecentBills(billsRes.data || []);
@@ -227,14 +250,21 @@ export default function OwnerDashboardPage() {
       }
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to load dashboard.');
-    } finally {
-      setLoading(false);
     }
-  }, [period, isHotel]);
+  }, [isHotel]);
 
   useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+    loadShell();
+  }, [loadShell]);
+
+  useEffect(() => {
+    loadSalesSummary(period);
+  }, [period, loadSalesSummary]);
+
+  const onPeriodChange = (nextPeriod) => {
+    if (nextPeriod === period) return;
+    setPeriod(nextPeriod);
+  };
 
   const tableStats = useMemo(() => {
     let activeTables = 0;
@@ -253,6 +283,10 @@ export default function OwnerDashboardPage() {
   const current = data?.current || {};
   const previous = data?.previous || {};
   const periodLabel = data?.label || PERIOD_HINTS[period] || 'Period';
+  const hasSalesInPeriod =
+    Number(current.total_sales || 0) > 0 ||
+    Number(current.bill_count || 0) > 0 ||
+    (data?.day_wise || []).some((row) => Number(row.total_sales || 0) > 0);
 
   const salesChangeHint = useMemo(() => {
     if (!isHotel || !(previous.total_sales > 0)) return undefined;
@@ -266,7 +300,7 @@ export default function OwnerDashboardPage() {
 
   const chartData = useMemo(() => {
     const rows = data?.day_wise || [];
-    const useWeekday = rows.length <= 14;
+    const useWeekday = rows.length > 0 && rows.length <= 14;
     return rows.map((row) => ({
       ...row,
       label: formatDayLabel(row.date, useWeekday),
@@ -281,7 +315,7 @@ export default function OwnerDashboardPage() {
       await cancelBill(cancelTarget.id, cancelReason.trim() || 'Removed from owner dashboard');
       setCancelTarget(null);
       setCancelReason('Removed from owner dashboard');
-      await loadDashboard();
+      await Promise.all([loadShell(), loadSalesSummary(period)]);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to remove bill.');
     } finally {
@@ -358,11 +392,12 @@ export default function OwnerDashboardPage() {
               </Typography>
             </Box>
           </Stack>
-          <PeriodSelect period={period} onChange={setPeriod} isHotel={isHotel} />
+          <PeriodSelect period={period} onChange={onPeriodChange} isHotel={isHotel} id="owner-dash-period-header" />
         </CardContent>
       </Card>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+      {salesError ? <Alert severity="error">{salesError}</Alert> : null}
       <IndustryDashboardPanel />
       <RestaurantDashboardWidgets />
       <Alert severity="info">
@@ -448,7 +483,7 @@ export default function OwnerDashboardPage() {
               ? "Today's Overview"
               : `${data?.label || 'Period'} Overview`
         }
-        actions={loading ? <CircularProgress size={18} /> : null}
+        actions={salesLoading ? <CircularProgress size={18} /> : null}
       >
         {isHotel ? (
           <Box
@@ -648,7 +683,19 @@ export default function OwnerDashboardPage() {
         <>
           <Section
             title="Sales Analytics"
-            actions={<PeriodSelect period={period} onChange={setPeriod} isHotel={isHotel} sx={{ width: 180 }} />}
+            actions={
+              <Stack direction="row" spacing={1} alignItems="center">
+                {salesLoading ? <CircularProgress size={18} /> : null}
+                <PeriodSelect
+                  period={period}
+                  onChange={onPeriodChange}
+                  isHotel={isHotel}
+                  label="Sales Period"
+                  id="owner-dash-period-sales"
+                  sx={{ width: 180 }}
+                />
+              </Stack>
+            }
           >
             <Box
               sx={{
@@ -662,10 +709,27 @@ export default function OwnerDashboardPage() {
                   <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
                     Sales Trend
                   </Typography>
-                  <Box sx={{ width: '100%', height: 280 }}>
-                    {chartData.length ? (
+                  <Box sx={{ width: '100%', height: 280, position: 'relative' }}>
+                    {salesLoading ? (
+                      <Stack alignItems="center" justifyContent="center" sx={{ height: '100%' }} spacing={1}>
+                        <CircularProgress size={28} />
+                        <Typography variant="body2" color="text.secondary">
+                          Loading sales…
+                        </Typography>
+                      </Stack>
+                    ) : salesError ? (
+                      <EmptyState
+                        title="Unable to load sales data"
+                        description="Please try again."
+                      />
+                    ) : !hasSalesInPeriod ? (
+                      <EmptyState
+                        title="No sales data available for this period."
+                        description="Try another period or create a bill."
+                      />
+                    ) : (
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData}>
+                        <LineChart key={`line-${period}-${chartData.length}`} data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
                           <XAxis
                             dataKey="label"
@@ -685,11 +749,10 @@ export default function OwnerDashboardPage() {
                             strokeWidth={2}
                             dot={{ r: 3, fill: theme.palette.primary.main }}
                             name="Sales"
+                            isAnimationActive={false}
                           />
                         </LineChart>
                       </ResponsiveContainer>
-                    ) : (
-                      <EmptyState title="No sales data" description="Sales for this period will appear here." />
                     )}
                   </Box>
                 </CardContent>
@@ -700,10 +763,27 @@ export default function OwnerDashboardPage() {
                   <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
                     Sales by Day
                   </Typography>
-                  <Box sx={{ width: '100%', height: 280 }}>
-                    {chartData.length ? (
+                  <Box sx={{ width: '100%', height: 280, position: 'relative' }}>
+                    {salesLoading ? (
+                      <Stack alignItems="center" justifyContent="center" sx={{ height: '100%' }} spacing={1}>
+                        <CircularProgress size={28} />
+                        <Typography variant="body2" color="text.secondary">
+                          Loading sales…
+                        </Typography>
+                      </Stack>
+                    ) : salesError ? (
+                      <EmptyState
+                        title="Unable to load sales data"
+                        description="Please try again."
+                      />
+                    ) : !hasSalesInPeriod ? (
+                      <EmptyState
+                        title="No sales data available for this period."
+                        description="Try another period or create a bill."
+                      />
+                    ) : (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
+                        <BarChart key={`bar-${period}-${chartData.length}`} data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
                           <XAxis
                             dataKey="label"
@@ -721,11 +801,10 @@ export default function OwnerDashboardPage() {
                             fill={theme.palette.primary.main}
                             name="Sales"
                             radius={[4, 4, 0, 0]}
+                            isAnimationActive={false}
                           />
                         </BarChart>
                       </ResponsiveContainer>
-                    ) : (
-                      <EmptyState title="No sales data" description="Sales for this period will appear here." />
                     )}
                   </Box>
                 </CardContent>

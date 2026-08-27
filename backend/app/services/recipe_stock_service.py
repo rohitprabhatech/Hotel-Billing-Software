@@ -36,12 +36,17 @@ class RecipeStockService:
                 continue
             yield_qty = qty(recipe.yield_quantity)
             if yield_qty <= 0:
+                # Corrupt/legacy recipe — fall back to finished-goods deduction.
+                expanded[item_id] = expanded.get(item_id, Decimal("0")) + qty(sold_qty)
                 continue
             for line in recipe.ingredients:
                 needed = qty(qty(sold_qty) * qty(line.quantity) / yield_qty)
                 if needed <= 0:
                     continue
                 expanded[line.ingredient_item_id] = expanded.get(line.ingredient_item_id, Decimal("0")) + needed
+            # When a recipe has no ingredient lines, still deduct the sold dish stock.
+            if not recipe.ingredients:
+                expanded[item_id] = expanded.get(item_id, Decimal("0")) + qty(sold_qty)
         return expanded
 
     @staticmethod

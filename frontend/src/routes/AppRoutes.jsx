@@ -218,6 +218,8 @@ export default function AppRoutes() {
               }
             />
             <Route path="menu" element={<RequireModule module="restaurant_menu"><MenuPage /></RequireModule>} />
+            <Route path="recipes" element={<RequireModule module="recipe"><RecipesPage /></RequireModule>} />
+            <Route path="wastage" element={<RequireModule module="wastage"><WastagePage /></RequireModule>} />
             <Route path="orders" element={<RequireModule module="order_channels"><OrdersPage /></RequireModule>} />
             <Route path="orders/new" element={<RequireModule module="order_channels"><NewOrderPage /></RequireModule>} />
             <Route path="kitchen" element={<RequireModule module="kitchen"><KitchenPage /></RequireModule>} />

@@ -26,6 +26,9 @@ ACTIVITY_CATEGORY_FILTERS: dict[str, dict] = {
             "TRAVEL_BOOKING_PAYMENT",
         ]
     },
+    "expense": {"entity_types": ["EXPENSE"]},
+    "recipe": {"entity_types": ["RECIPE"]},
+    "wastage": {"entity_types": ["WASTAGE"]},
     "table": {"entity_types": ["DINING_TABLE", "ORDER", "KOT"]},
     "user": {"entity_types": ["USER"]},
     "inventory": {"entity_types": ["STOCK_MOVEMENT"]},

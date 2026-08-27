@@ -149,6 +149,18 @@ _BILLING_USER_PERMISSIONS: frozenset[str] = frozenset(
     }
 )
 
+# Hotel desk staff need operational expenses / recipes / wastage — other industries stay restricted.
+_HOTEL_BILLING_USER_EXTRA: frozenset[str] = frozenset(
+    {
+        PERM_EXPENSES_READ,
+        PERM_EXPENSES_WRITE,
+        PERM_RECIPES_READ,
+        PERM_RECIPES_WRITE,
+        PERM_WASTAGE_READ,
+        PERM_WASTAGE_WRITE,
+    }
+)
+
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     ROLE_OWNER: ALL_PERMISSIONS,
     ROLE_MANAGER: _MANAGER_PERMISSIONS,
@@ -183,20 +195,34 @@ TENANT_STAFF_ROLES: frozenset[str] = frozenset(
 )
 
 
-def permissions_for_role(role: str | None) -> frozenset[str]:
+def permissions_for_role(
+    role: str | None, business_type: str | None = None
+) -> frozenset[str]:
     if not role:
         return frozenset()
-    return ROLE_PERMISSIONS.get(str(role).upper(), frozenset())
+    perms = ROLE_PERMISSIONS.get(str(role).upper(), frozenset())
+    if (
+        str(role).upper() == ROLE_BILLING_USER
+        and business_type == "hotel_restaurant"
+    ):
+        return frozenset(perms | _HOTEL_BILLING_USER_EXTRA)
+    return perms
 
 
-def has_permission(role: str | None, permission: str) -> bool:
-    return permission in permissions_for_role(role)
+def has_permission(
+    role: str | None, permission: str, business_type: str | None = None
+) -> bool:
+    return permission in permissions_for_role(role, business_type)
 
 
-def has_any_permission(role: str | None, *permissions: str) -> bool:
-    role_perms = permissions_for_role(role)
+def has_any_permission(
+    role: str | None, *permissions: str, business_type: str | None = None
+) -> bool:
+    role_perms = permissions_for_role(role, business_type)
     return any(p in role_perms for p in permissions)
 
 
-def list_permissions_for_role(role: str | None) -> list[str]:
-    return sorted(permissions_for_role(role))
+def list_permissions_for_role(
+    role: str | None, business_type: str | None = None
+) -> list[str]:
+    return sorted(permissions_for_role(role, business_type))

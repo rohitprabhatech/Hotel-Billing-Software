@@ -213,7 +213,7 @@ def test_gate_permission_matrix_common_modules(client):
 
     assert client.get("/api/v1/expenses", headers=owner).status_code == 200
     assert client.get("/api/v1/expenses", headers=manager).status_code == 200
-    assert client.get("/api/v1/expenses", headers=billing).status_code == 403
+    assert client.get("/api/v1/expenses", headers=billing).status_code == 200
 
     assert client.get("/api/v1/suppliers", headers=billing).status_code == 200
     assert client.get("/api/v1/customers", headers=billing).status_code == 200

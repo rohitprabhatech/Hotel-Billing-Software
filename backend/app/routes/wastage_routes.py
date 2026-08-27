@@ -5,13 +5,14 @@ from flask import Blueprint
 from app.constants.permissions import PERM_WASTAGE_READ, PERM_WASTAGE_WRITE
 from app.controllers import wastage_controller
 from app.middleware.auth import roles_required
-from app.models.role import ROLE_MANAGER, ROLE_OWNER
+from app.models.role import ROLE_BILLING_USER, ROLE_MANAGER, ROLE_OWNER
 from app.utils.module_access import module_required
 from app.utils.permission_access import permission_required
 
 wastage_bp = Blueprint("wastage", __name__, url_prefix="/wastage")
 
-_OPS = (ROLE_OWNER, ROLE_MANAGER)
+# BILLING_USER allowed at role layer; hotel-only extra perms enforce industry scope.
+_OPS = (ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 
 
 @wastage_bp.get("")

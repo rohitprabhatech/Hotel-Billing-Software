@@ -5,12 +5,13 @@ from flask import Blueprint
 from app.constants.permissions import PERM_EXPENSES_READ, PERM_EXPENSES_WRITE
 from app.controllers import expense_controller
 from app.middleware.auth import roles_required
-from app.models.role import ROLE_MANAGER, ROLE_OWNER
+from app.models.role import ROLE_BILLING_USER, ROLE_MANAGER, ROLE_OWNER
 from app.utils.permission_access import permission_required
 
 expenses_bp = Blueprint("expenses", __name__, url_prefix="/expenses")
 
-_OPS = (ROLE_OWNER, ROLE_MANAGER)
+# BILLING_USER allowed at role layer; hotel-only extra perms enforce industry scope.
+_OPS = (ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 
 
 @expenses_bp.get("")

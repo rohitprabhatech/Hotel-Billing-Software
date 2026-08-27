@@ -64,10 +64,19 @@ class RecipeService:
         if not menu_item.is_menu:
             from app.repositories.tenant_repository import TenantRepository
             from app.services.module_service import ModuleService
+            from app.constants.business_types import coerce_business_type
 
             tenant = TenantRepository.get_by_id(ctx.tenant_id)
             # Bakery production reuses recipes for finished goods that are not F&B menu rows.
-            if not (tenant and ModuleService.is_enabled_for_tenant(tenant, "production")):
+            if tenant and ModuleService.is_enabled_for_tenant(tenant, "production"):
+                pass
+            elif tenant and coerce_business_type(tenant.business_type) in {
+                "hotel_restaurant",
+                "cafe_tea",
+            }:
+                # Hotel/cafe dishes are often created without is_menu — promote when linking a recipe.
+                menu_item.is_menu = True
+            else:
                 raise ValidationError("Recipes can only be linked to menu items")
 
         existing = RecipeRepository.get_by_menu_item(ctx.tenant_id, menu_item.id)

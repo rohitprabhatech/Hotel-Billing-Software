@@ -3,6 +3,7 @@
 KOT_STATUS_QUEUED = "queued"
 KOT_STATUS_PREPARING = "preparing"
 KOT_STATUS_READY = "ready"
+KOT_STATUS_CANCELLED = "cancelled"
 
 ALLOWED_KOT_STATUSES: frozenset[str] = frozenset(
     {
@@ -12,10 +13,20 @@ ALLOWED_KOT_STATUSES: frozenset[str] = frozenset(
     }
 )
 
+# Active kitchen board tickets (cancelled / voided KOTs are excluded).
+ACTIVE_KOT_STATUSES: frozenset[str] = frozenset(
+    {KOT_STATUS_QUEUED, KOT_STATUS_PREPARING, KOT_STATUS_READY}
+)
+
+EDITABLE_KOT_STATUSES: frozenset[str] = frozenset(
+    {KOT_STATUS_QUEUED, KOT_STATUS_PREPARING}
+)
+
 KOT_STATUS_LABELS: dict[str, str] = {
     KOT_STATUS_QUEUED: "Queued",
     KOT_STATUS_PREPARING: "Preparing",
     KOT_STATUS_READY: "Ready",
+    KOT_STATUS_CANCELLED: "Cancelled",
 }
 
 KOT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -23,10 +34,6 @@ KOT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     KOT_STATUS_PREPARING: frozenset({KOT_STATUS_READY}),
     KOT_STATUS_READY: frozenset(),
 }
-
-ACTIVE_KOT_STATUSES: frozenset[str] = frozenset(
-    {KOT_STATUS_QUEUED, KOT_STATUS_PREPARING, KOT_STATUS_READY}
-)
 
 
 def assert_valid_kot_status(status: str) -> str:

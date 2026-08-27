@@ -14,6 +14,7 @@ class RequestContext:
     email: str
     ip_address: str | None = None
     user_agent: str | None = None
+    business_type: str | None = None
 
 
 @dataclass

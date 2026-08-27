@@ -83,6 +83,8 @@ export const PATHS = {
   billingExpenses: '/billing/expenses',
   billingTables: '/billing/tables',
   billingMenu: '/billing/menu',
+  billingRecipes: '/billing/recipes',
+  billingWastage: '/billing/wastage',
   billingOrders: '/billing/orders',
   billingOrdersNew: '/billing/orders/new',
   billingRestaurantBilling: '/billing/restaurant-billing',

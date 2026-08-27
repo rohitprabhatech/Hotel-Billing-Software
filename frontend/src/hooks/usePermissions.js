@@ -31,6 +31,8 @@ export function usePermissions() {
       canFireKot: hasPermission(user, 'kot.write'),
       canViewKitchen: hasPermission(user, 'kot.read'),
       canUpdateKotStatus: hasPermission(user, 'kot.status'),
+      canManageKots:
+        (user?.role === 'OWNER' || user?.role === 'MANAGER') && hasPermission(user, 'kot.write'),
       canManageUsers: hasPermission(user, 'users.manage'),
       canAudit: hasPermission(user, 'audit'),
     }),

@@ -111,14 +111,19 @@ def test_manager_can_manage_expenses(client):
     assert listing.status_code == 200, listing.get_json()
 
 
-def test_billing_user_denied_expenses(client):
-    billing = login(client, "billing@hotela.com", "Billing@12345")
-    denied = client.get("/api/v1/expenses", headers=billing)
-    assert denied.status_code == 403, denied.get_json()
+def test_hotel_billing_user_can_manage_expenses(client):
+    """Hotel billing users may record expenses; other industries stay denied."""
+    hotel_billing = login(client, "billing@hotela.com", "Billing@12345")
+    listing = client.get("/api/v1/expenses", headers=hotel_billing)
+    assert listing.status_code == 200, listing.get_json()
 
-    write_denied = client.post(
+    created = client.post(
         "/api/v1/expenses",
-        headers=billing,
-        json={"amount": "100", "expense_date": "2026-08-01"},
+        headers=hotel_billing,
+        json={"amount": "100", "expense_date": "2026-08-01", "category": "Utilities"},
     )
-    assert write_denied.status_code == 403, write_denied.get_json()
+    assert created.status_code == 201, created.get_json()
+
+    cafe_billing = login(client, "billing@hotelb.com", "Billing@12345")
+    denied = client.get("/api/v1/expenses", headers=cafe_billing)
+    assert denied.status_code == 403, denied.get_json()

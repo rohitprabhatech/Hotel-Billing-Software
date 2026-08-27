@@ -75,8 +75,6 @@ export default function OrdersPage() {
   const [firingKot, setFiringKot] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
 
-  const printKotPath = (kotId) => `/print/kots/${kotId}?auto=1`;
-
   const load = useCallback(
     async (page = 1) => {
       if (!moduleEnabled) return;
@@ -130,7 +128,11 @@ export default function OrdersPage() {
     try {
       const response = await fireKot(orderId);
       const kot = response.data;
-      window.open(printKotPath(kot.id), '_blank', 'noopener,noreferrer');
+      navigate(`/print/kots/${kot.id}`, {
+        state: {
+          from: role === 'OWNER' || role === 'MANAGER' ? PATHS.ownerOrders : PATHS.billingOrders,
+        },
+      });
       setDetail((current) => (current?.id === orderId ? { ...current, last_kot_id: kot.id } : current));
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to fire KOT.');

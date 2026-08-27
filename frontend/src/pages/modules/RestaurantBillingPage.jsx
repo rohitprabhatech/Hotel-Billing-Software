@@ -143,12 +143,16 @@ export default function RestaurantBillingPage() {
     if (!moduleEnabled) return;
     try {
       const [itemsRes, catsRes] = await Promise.all([
-        listItems({ is_active: true, per_page: 200, is_menu: true }).catch(() =>
-          listItems({ is_active: true, per_page: 200 })
-        ),
+        listItems({ is_active: true, per_page: 200, is_menu: true }),
         listCategories(),
       ]);
-      setCatalog(itemsRes.data || []);
+      let items = itemsRes.data || [];
+      // Older hotel catalogs may not have is_menu set — fall back to all active items.
+      if (!items.length) {
+        const allRes = await listItems({ is_active: true, per_page: 200 });
+        items = allRes.data || [];
+      }
+      setCatalog(items);
       setCategories(catsRes.data || []);
     } catch (err) {
       setError(getApiErrorMessage(err, 'Failed to load menu'));
@@ -159,6 +163,24 @@ export default function RestaurantBillingPage() {
     loadTables();
     loadCatalog();
   }, [loadTables, loadCatalog]);
+
+  const scheduleKot = useCallback(
+    (orderId) => {
+      if (!kotEnabled || !orderId) return;
+      if (kotTimer.current) window.clearTimeout(kotTimer.current);
+      kotTimer.current = window.setTimeout(() => {
+        fireKot(orderId).catch(() => {});
+      }, 500);
+    },
+    [kotEnabled],
+  );
+
+  useEffect(
+    () => () => {
+      if (kotTimer.current) window.clearTimeout(kotTimer.current);
+    },
+    [],
+  );
 
   const selectedTable = useMemo(
     () => tables.find((row) => row.id === selectedTableId) || null,
@@ -207,24 +229,6 @@ export default function RestaurantBillingPage() {
   const orderSubtotal = useMemo(
     () => orderLines.reduce((sum, line) => sum + Number(line.line_total || 0), 0),
     [orderLines]
-  );
-
-  const scheduleKot = useCallback(
-    (orderId) => {
-      if (!kotEnabled || !orderId) return;
-      if (kotTimer.current) window.clearTimeout(kotTimer.current);
-      kotTimer.current = window.setTimeout(() => {
-        fireKot(orderId).catch(() => {});
-      }, 500);
-    },
-    [kotEnabled]
-  );
-
-  useEffect(
-    () => () => {
-      if (kotTimer.current) window.clearTimeout(kotTimer.current);
-    },
-    []
   );
 
   const refreshOrder = async (orderId) => {
@@ -283,7 +287,6 @@ export default function RestaurantBillingPage() {
         const updated = await addOrderItem(order.id, { item_id: item.id, quantity: '1' });
         setOrder(updated.data);
         scheduleKot(order.id);
-        await loadTables();
         setSuccess(`Added ${item.name}`);
       }
     } catch (err) {
@@ -305,7 +308,6 @@ export default function RestaurantBillingPage() {
       const updated = await updateOrderItem(order.id, line.id, { quantity: String(nextQty) });
       setOrder(updated.data);
       if (nextQty > Number(line.quantity)) scheduleKot(order.id);
-      await loadTables();
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not update quantity'));
     } finally {
@@ -321,7 +323,6 @@ export default function RestaurantBillingPage() {
       const updated = await removeOrderItem(order.id, removeTarget.line.id);
       setOrder(updated.data);
       setRemoveTarget(null);
-      await loadTables();
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not remove item'));
     } finally {

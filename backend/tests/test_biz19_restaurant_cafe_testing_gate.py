@@ -229,10 +229,14 @@ def test_gate_fb_permission_matrix(client):
     assert client.get("/api/v1/reports/fb", headers=billing).status_code == 403
 
     assert client.get("/api/v1/wastage", headers=manager).status_code == 200
-    assert client.get("/api/v1/wastage", headers=billing).status_code == 403
+    assert client.get("/api/v1/wastage", headers=billing).status_code == 200
 
     assert client.get("/api/v1/recipes", headers=manager).status_code == 200
-    assert client.get("/api/v1/recipes", headers=billing).status_code == 403
+    assert client.get("/api/v1/recipes", headers=billing).status_code == 200
+
+    cafe_billing = login(client, "billing@hotelb.com", "Billing@12345")
+    assert client.get("/api/v1/wastage", headers=cafe_billing).status_code == 403
+    assert client.get("/api/v1/recipes", headers=cafe_billing).status_code == 403
 
     assert client.get("/api/v1/menu/addons", headers=owner).status_code == 403
     cafe_owner = login(client, "owner@hotelb.com", "Owner@12345")

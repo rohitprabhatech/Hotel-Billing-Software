@@ -12,6 +12,7 @@ from app.utils.permission_access import permission_required
 kots_bp = Blueprint("kots", __name__, url_prefix="/kots")
 
 _STAFF = (ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
+_OPS = (ROLE_OWNER, ROLE_MANAGER)
 
 
 @kots_bp.get("")
@@ -44,3 +45,19 @@ def get_kot(kot_id):
 @permission_required(PERM_KOT_STATUS)
 def update_kot_status(kot_id):
     return kot_controller.update_kot_status(kot_id)
+
+
+@kots_bp.patch("/<kot_id>")
+@roles_required(*_OPS)
+@module_required("kitchen")
+@permission_required(PERM_KOT_WRITE)
+def update_kot(kot_id):
+    return kot_controller.update_kot(kot_id)
+
+
+@kots_bp.delete("/<kot_id>")
+@roles_required(*_OPS)
+@module_required("kitchen")
+@permission_required(PERM_KOT_WRITE)
+def delete_kot(kot_id):
+    return kot_controller.delete_kot(kot_id)

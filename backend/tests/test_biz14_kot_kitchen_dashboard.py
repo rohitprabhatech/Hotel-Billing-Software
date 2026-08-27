@@ -176,3 +176,60 @@ def test_kot_create_audit_log(client):
         query_string={"action": "CREATE_KOT", "per_page": 10},
     ).get_json()["data"]
     assert any(row["entity_id"] == kot["id"] for row in logs)
+
+
+def test_owner_can_update_and_delete_kot(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+    cat_id = _category(client, owner, "Edit KOT Cat")
+    item = _item(client, owner, cat_id, "Edit KOT Item")
+    order = _open_order(client, owner, item["id"])
+    kot = client.post(f"/api/v1/orders/{order['id']}/kot", headers=owner).get_json()["data"]
+    line_id = kot["items"][0]["id"]
+
+    denied = client.patch(
+        f"/api/v1/kots/{kot['id']}",
+        headers=billing,
+        json={"notes": "Less spicy", "items": [{"id": line_id, "quantity": "3"}]},
+    )
+    assert denied.status_code == 403, denied.get_json()
+
+    updated = client.patch(
+        f"/api/v1/kots/{kot['id']}",
+        headers=owner,
+        json={
+            "notes": "Less spicy",
+            "status": "preparing",
+            "items": [{"id": line_id, "quantity": "3"}],
+        },
+    )
+    assert updated.status_code == 200, updated.get_json()
+    body = updated.get_json()["data"]
+    assert body["id"] == kot["id"]
+    assert body["notes"] == "Less spicy"
+    assert body["status"] == "preparing"
+    assert body["items"][0]["quantity"] == 3.0
+
+    logs = client.get(
+        "/api/v1/audit-logs",
+        headers=owner,
+        query_string={"action": "UPDATE_KOT", "per_page": 10},
+    ).get_json()["data"]
+    assert any(row["entity_id"] == kot["id"] for row in logs)
+
+    deleted = client.delete(f"/api/v1/kots/{kot['id']}", headers=owner)
+    assert deleted.status_code == 200, deleted.get_json()
+    assert deleted.get_json()["data"]["status"] == "cancelled"
+
+    queue = client.get("/api/v1/kots/kitchen/queue", headers=owner).get_json()["data"]
+    assert kot["id"] not in [row["id"] for row in queue]
+
+    delete_logs = client.get(
+        "/api/v1/audit-logs",
+        headers=owner,
+        query_string={"action": "DELETE_KOT", "per_page": 10},
+    ).get_json()["data"]
+    assert any(row["entity_id"] == kot["id"] for row in delete_logs)
+
+    billing_delete = client.delete(f"/api/v1/kots/{kot['id']}", headers=billing)
+    assert billing_delete.status_code == 403, billing_delete.get_json()

@@ -2,18 +2,21 @@
 
 from app.constants.kots import (
     ACTIVE_KOT_STATUSES,
+    EDITABLE_KOT_STATUSES,
+    KOT_STATUS_CANCELLED,
     KOT_STATUS_QUEUED,
     KOT_STATUS_READY,
     can_transition_kot_status,
 )
-from app.constants.orders import ORDER_STATUS_OPEN
+from app.constants.orders import ORDER_STATUS_BILLED, ORDER_STATUS_OPEN
 from app.constants.permissions import PERM_KOT_READ, PERM_KOT_STATUS, PERM_KOT_WRITE
 from app.extensions import db
 from app.models.kot import Kot, KotItem
+from app.models.role import ROLE_MANAGER, ROLE_OWNER
 from app.repositories.kot_repository import KotRepository
 from app.repositories.order_repository import OrderRepository
 from app.services.audit_service import AuditService
-from app.utils.exceptions import NotFoundError, ValidationError
+from app.utils.exceptions import ForbiddenError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.permission_access import require_permission
 from app.utils.request_context import require_request_context
@@ -86,8 +89,12 @@ class KotService:
                 pending_lines.append((line, delta))
 
         if not pending_lines:
-            existing = KotRepository.get_latest_by_order(ctx.tenant_id, order.id)
+            existing = KotRepository.get_active_by_order(ctx.tenant_id, order.id)
             if existing is None:
+                existing = KotRepository.get_latest_by_order(ctx.tenant_id, order.id)
+            if existing is None:
+                raise ValidationError("Order has no items to send to kitchen")
+            if existing.status == KOT_STATUS_CANCELLED:
                 raise ValidationError("Order has no items to send to kitchen")
             old = KotService.serialize(existing, include_items=True)
             existing.print_count = int(existing.print_count or 0) + 1
@@ -181,6 +188,143 @@ class KotService:
                 table_code=kot.dining_table_code,
                 user_id=ctx.user_id,
             )
+        db.session.commit()
+        return new_data
+
+    @staticmethod
+    def _require_ops_role():
+        ctx = require_request_context()
+        if ctx.role not in (ROLE_OWNER, ROLE_MANAGER):
+            raise ForbiddenError("Only Owner or Manager can edit or delete KOTs")
+        return ctx
+
+    @staticmethod
+    def update_kot(kot_id: str, *, notes=None, status=None, items=None):
+        """Update an active KOT (notes / status / line quantities). Does not create a new KOT."""
+        require_permission(PERM_KOT_WRITE)
+        ctx = KotService._require_ops_role()
+        kot = KotRepository.get_by_id_and_tenant(kot_id, ctx.tenant_id)
+        if kot is None:
+            raise NotFoundError("KOT not found")
+        if kot.status not in EDITABLE_KOT_STATUSES:
+            raise ValidationError("Only queued or preparing KOTs can be edited")
+
+        order = OrderRepository.get_by_id_and_tenant(kot.order_id, ctx.tenant_id)
+        if order is None:
+            raise NotFoundError("Order not found")
+        if order.status == ORDER_STATUS_BILLED:
+            raise ValidationError("Cannot edit a KOT linked to a billed order")
+        if order.status != ORDER_STATUS_OPEN:
+            raise ValidationError("Cannot edit a KOT unless the related order is open")
+
+        from decimal import Decimal
+
+        from app.utils.money import qty as parse_qty
+
+        old = KotService.serialize(kot, include_items=True)
+
+        if notes is not None:
+            cleaned = str(notes).strip()
+            kot.notes = cleaned or None
+
+        if status is not None:
+            new_status = str(status).strip().lower()
+            if not can_transition_kot_status(kot.status, new_status):
+                raise ValidationError(
+                    f"Cannot change KOT status from {kot.status} to {new_status}"
+                )
+            kot.status = new_status
+
+        if items is not None:
+            by_id = {line.id: line for line in kot.items}
+            if not items:
+                raise ValidationError("KOT must keep at least one item")
+            seen = set()
+            for row in items:
+                line_id = row.get("id")
+                if line_id in seen:
+                    raise ValidationError("Duplicate KOT item in update payload")
+                seen.add(line_id)
+                line = by_id.get(line_id)
+                if line is None:
+                    raise ValidationError("KOT item not found on this ticket")
+                new_qty = parse_qty(row.get("quantity"))
+                if new_qty <= 0:
+                    raise ValidationError("KOT item quantity must be greater than zero")
+                line.quantity = new_qty
+
+                # Keep open order line in sync with active KOT coverage for this item.
+                order_item = next(
+                    (oi for oi in (order.items or []) if oi.id == line.order_item_id),
+                    None,
+                )
+                if order_item is not None:
+                    other = Decimal(
+                        str(
+                            KotRepository.sum_active_qty_for_order_item(
+                                ctx.tenant_id,
+                                line.order_item_id,
+                                exclude_kot_id=kot.id,
+                            )
+                        )
+                    )
+                    order_item.quantity = other + new_qty
+
+        new_data = KotService.serialize(kot, include_items=True)
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="UPDATE_KOT",
+            entity_type="KOT",
+            entity_id=kot.id,
+            old_data=old,
+            new_data=new_data,
+        )
+        if status is not None and kot.status == KOT_STATUS_READY:
+            from app.services.notification_service import NotificationService
+
+            NotificationService.notify_kot_ready(
+                tenant_id=ctx.tenant_id,
+                kot_id=kot.id,
+                kot_number=kot.kot_number,
+                order_number=kot.order_number or "",
+                table_code=kot.dining_table_code,
+                user_id=ctx.user_id,
+            )
+        db.session.commit()
+        return new_data
+
+    @staticmethod
+    def delete_kot(kot_id: str):
+        """Void/cancel a KOT (soft). Does not delete order, bill, or touch inventory."""
+        require_permission(PERM_KOT_WRITE)
+        ctx = KotService._require_ops_role()
+        kot = KotRepository.get_by_id_and_tenant(kot_id, ctx.tenant_id)
+        if kot is None:
+            raise NotFoundError("KOT not found")
+        if kot.status == KOT_STATUS_CANCELLED:
+            raise ValidationError("KOT is already deleted")
+        if kot.status not in EDITABLE_KOT_STATUSES:
+            raise ValidationError(
+                "Ready KOTs cannot be deleted. Mark them served via table billing instead."
+            )
+
+        order = OrderRepository.get_by_id_and_tenant(kot.order_id, ctx.tenant_id)
+        if order is not None and order.status == ORDER_STATUS_BILLED:
+            raise ValidationError(
+                "Cannot delete a KOT linked to a billed order. Historical billing stays intact."
+            )
+
+        old = KotService.serialize(kot, include_items=True)
+        kot.status = KOT_STATUS_CANCELLED
+        new_data = KotService.serialize(kot, include_items=True)
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="DELETE_KOT",
+            entity_type="KOT",
+            entity_id=kot.id,
+            old_data=old,
+            new_data=new_data,
+        )
         db.session.commit()
         return new_data
 

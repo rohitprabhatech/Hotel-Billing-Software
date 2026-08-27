@@ -2,7 +2,7 @@
 
 from flask import request
 
-from app.schemas.kot_schemas import update_kot_status_schema
+from app.schemas.kot_schemas import update_kot_schema, update_kot_status_schema
 from app.services.kot_service import KotService
 from app.utils.responses import success_response
 
@@ -32,6 +32,22 @@ def get_kot(kot_id: str):
 def update_kot_status(kot_id: str):
     payload = update_kot_status_schema.load(request.get_json() or {})
     data = KotService.update_status(kot_id, status=payload["status"])
+    return success_response(data=data)
+
+
+def update_kot(kot_id: str):
+    payload = update_kot_schema.load(request.get_json() or {})
+    data = KotService.update_kot(
+        kot_id,
+        notes=payload.get("notes"),
+        status=payload.get("status"),
+        items=payload.get("items"),
+    )
+    return success_response(data=data)
+
+
+def delete_kot(kot_id: str):
+    data = KotService.delete_kot(kot_id)
     return success_response(data=data)
 
 

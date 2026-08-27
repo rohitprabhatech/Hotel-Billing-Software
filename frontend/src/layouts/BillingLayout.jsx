@@ -4,6 +4,9 @@ import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutl
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
 import KitchenOutlinedIcon from '@mui/icons-material/KitchenOutlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
+import ExtensionOutlinedIcon from '@mui/icons-material/ExtensionOutlined';
+import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined';
+import LunchDiningOutlinedIcon from '@mui/icons-material/LunchDiningOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
@@ -71,7 +74,7 @@ const drawerWidth = DRAWER_WIDTH;
 const billingNav = [
   { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
 
-  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant'] },
+  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
   {
     to: PATHS.billingRestaurantBilling,
     label: 'Table Bill',
@@ -81,31 +84,39 @@ const billingNav = [
     emphasize: true,
   },
   {
+    to: PATHS.billingCafe,
+    label: 'Cafe POS',
+    icon: <LocalCafeOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+    emphasize: true,
+  },
+  {
     to: PATHS.billingNew,
     label: 'Quick Bill',
     icon: <BoltOutlinedIcon />,
-    businessTypes: ['hotel_restaurant'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.billingNew,
     label: 'New Bill',
     icon: <ReceiptLongOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.billingBills,
     label: "Today's Bills",
     icon: <ReceiptLongOutlinedIcon />,
-    businessTypes: ['hotel_restaurant'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.billingBills,
     label: 'Bills',
     icon: <ReceiptLongOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
 
-  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant'] },
+  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
   {
     to: PATHS.billingTables,
     label: 'Tables',
@@ -135,7 +146,7 @@ const billingNav = [
     businessTypes: ['cafe_tea'],
   },
 
-  { type: 'section', label: 'Menu', businessTypes: ['hotel_restaurant'] },
+  { type: 'section', label: 'Menu', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
   {
     to: PATHS.billingMenu,
     label: 'Menu Board',
@@ -151,31 +162,59 @@ const billingNav = [
     businessTypes: ['cafe_tea'],
   },
   {
+    to: PATHS.billingAddons,
+    label: 'Add-ons',
+    icon: <ExtensionOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+  },
+  {
+    to: PATHS.billingCombos,
+    label: 'Combos',
+    icon: <LunchDiningOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+  },
+  {
+    to: PATHS.billingCoupons,
+    label: 'Coupons',
+    icon: <LocalOfferOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+  },
+  {
     to: PATHS.billingItems,
     label: 'Items',
     icon: <Inventory2OutlinedIcon />,
-    businessTypes: ['hotel_restaurant'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+  },
+  {
+    to: PATHS.billingIngredients,
+    label: 'Ingredients',
+    icon: <KitchenOutlinedIcon />,
+    module: 'recipe',
+    businessTypes: ['cafe_tea'],
   },
   {
     to: PATHS.billingCategories,
     label: 'Categories',
     icon: <CategoryOutlinedIcon />,
-    businessTypes: ['hotel_restaurant'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.billingItems,
     label: 'Items',
     icon: <Inventory2OutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.billingCategories,
     label: 'Categories',
     icon: <CategoryOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
 
-  { type: 'section', label: 'Customers', businessTypes: ['hotel_restaurant'] },
+  { type: 'section', label: 'Customers', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
   { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
   {
     to: PATHS.billingCredit,
@@ -187,16 +226,9 @@ const billingNav = [
     to: PATHS.billingSuppliers,
     label: 'Suppliers',
     icon: <LocalShippingOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
 
-  {
-    to: PATHS.billingCafe,
-    label: 'Cafe POS',
-    icon: <LocalCafeOutlinedIcon />,
-    module: 'addons_combos',
-    businessTypes: ['cafe_tea'],
-  },
   {
     to: PATHS.billingGrocery,
     label: 'Grocery POS',
@@ -316,6 +348,92 @@ const hotelBillingUserNav = [
   },
 ];
 
+/** Slim sidebar for cafe Billing Users — Cafe POS first, no Hotel table desk. */
+const cafeBillingUserNav = [
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Billing' },
+  {
+    to: PATHS.billingCafe,
+    label: 'Cafe POS',
+    icon: <LocalCafeOutlinedIcon />,
+    module: 'addons_combos',
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingNew,
+    label: 'Quick Bill',
+    icon: <BoltOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingBills,
+    label: "Today's Bills",
+    icon: <ReceiptLongOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingTables,
+    label: 'Tables',
+    icon: <TableRestaurantOutlinedIcon />,
+    module: 'table_management',
+  },
+  {
+    to: PATHS.billingKitchen,
+    label: 'Kitchen',
+    icon: <KitchenOutlinedIcon />,
+    module: 'kitchen',
+  },
+  {
+    to: PATHS.billingOrders,
+    label: 'Orders',
+    icon: <ListAltOutlinedIcon />,
+    module: 'order_channels',
+  },
+  {
+    to: PATHS.billingMenu,
+    label: 'Menu',
+    icon: <RestaurantMenuOutlinedIcon />,
+    module: 'restaurant_menu',
+  },
+  {
+    to: PATHS.billingItems,
+    label: 'Items',
+    icon: <Inventory2OutlinedIcon />,
+  },
+  {
+    to: PATHS.billingCategories,
+    label: 'Categories',
+    icon: <CategoryOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingCustomers,
+    label: 'Customers',
+    icon: <ContactsOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  {
+    to: PATHS.billingExpenses,
+    label: 'Expenses',
+    icon: <PaymentsOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingWastage,
+    label: 'Wastage',
+    icon: <DeleteSweepOutlinedIcon />,
+    module: 'wastage',
+  },
+  { type: 'section', label: 'Account' },
+  { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  {
+    to: PATHS.billingChangePassword,
+    label: 'Settings',
+    icon: <LockOutlinedIcon />,
+  },
+];
+
 /** Drop section headers that have no visible link items before the next section. */
 function pruneEmptySections(items) {
   const result = [];
@@ -342,6 +460,12 @@ function pageMeta(pathname, businessType) {
       return {
         title: 'Hotel Billing',
         subtitle: 'Select table → add items → pay → print.',
+      };
+    }
+    if (businessType === 'cafe_tea') {
+      return {
+        title: 'Cafe Billing',
+        subtitle: 'Cafe POS → add-ons & combos → pay → print.',
       };
     }
     return {
@@ -418,6 +542,12 @@ function pageMeta(pathname, businessType) {
       subtitle: 'Link menu dishes to ingredient quantities for stock deduction.',
     };
   }
+  if (pathname.startsWith(PATHS.billingIngredients)) {
+    return {
+      title: 'Ingredients',
+      subtitle: 'Raw ingredient stock for Cafe recipes and linked add-ons.',
+    };
+  }
   if (pathname.startsWith(PATHS.billingWastage)) {
     return {
       title: 'Wastage',
@@ -443,6 +573,24 @@ function pageMeta(pathname, businessType) {
     return {
       title: 'Kitchen',
       subtitle: 'Live kitchen tickets — queued, preparing, ready.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingAddons)) {
+    return {
+      title: 'Add-ons',
+      subtitle: 'Option groups for cafe menu items — milk, size, toppings, and more.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingCombos)) {
+    return {
+      title: 'Combos',
+      subtitle: 'Fixed-price bundles of menu items for Cafe POS.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingCoupons)) {
+    return {
+      title: 'Coupons',
+      subtitle: 'Promo codes for Cafe POS — percent or flat discounts.',
     };
   }
   if (pathname.startsWith(PATHS.billingCafe)) {
@@ -571,31 +719,38 @@ export default function BillingLayout() {
   const navItems = useMemo(() => {
     const businessType = user?.tenant?.business_type;
     const isHotel = businessType === 'hotel_restaurant';
+    const isCafe = businessType === 'cafe_tea';
     const isBillingUser = role === 'BILLING_USER';
     let items;
 
-    // Hotel Billing User: keep sidebar short and desk-focused.
-    if (isHotel && isBillingUser) {
-      items = [...hotelBillingUserNav];
-      if (canReports) {
-        const accountIdx = items.findIndex(
-          (row) => row.type === 'section' && row.label === 'Account'
-        );
-        const reportsBlock = [
-          { type: 'section', label: 'Reports' },
-          {
-            to: PATHS.billingReports,
-            label: 'Reports',
-            icon: <AssessmentOutlinedIcon />,
-          },
-        ];
-        if (accountIdx >= 0) {
-          items = [...items.slice(0, accountIdx), ...reportsBlock, ...items.slice(accountIdx)];
-        } else {
-          items = [...items, ...reportsBlock];
-        }
+    const withOptionalReports = (baseItems) => {
+      let next = [...baseItems];
+      if (!canReports) return next;
+      const accountIdx = next.findIndex(
+        (row) => row.type === 'section' && row.label === 'Account',
+      );
+      const reportsBlock = [
+        { type: 'section', label: 'Reports' },
+        {
+          to: PATHS.billingReports,
+          label: 'Reports',
+          icon: <AssessmentOutlinedIcon />,
+        },
+      ];
+      if (accountIdx >= 0) {
+        next = [...next.slice(0, accountIdx), ...reportsBlock, ...next.slice(accountIdx)];
+      } else {
+        next = [...next, ...reportsBlock];
       }
-      return pruneEmptySections(filterByModule(items, businessType));
+      return next;
+    };
+
+    // Hotel / Cafe Billing User: keep sidebar short and desk-focused.
+    if (isHotel && isBillingUser) {
+      return pruneEmptySections(filterByModule(withOptionalReports(hotelBillingUserNav), businessType));
+    }
+    if (isCafe && isBillingUser) {
+      return pruneEmptySections(filterByModule(withOptionalReports(cafeBillingUserNav), businessType));
     }
 
     if (!isOwner) {
@@ -636,7 +791,7 @@ export default function BillingLayout() {
           to: PATHS.billingPurchases,
           label: 'Purchases',
           icon: <ShoppingCartOutlinedIcon />,
-          hideForBusinessTypes: ['hotel_restaurant'],
+          hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
         });
       }
       if (canViewExpenses) {
@@ -655,7 +810,7 @@ export default function BillingLayout() {
       const block = [
         {
           type: 'section',
-          label: isHotel ? 'Reports' : 'More',
+          label: isHotel || isCafe ? 'Reports' : 'More',
         },
         ...extras,
       ];
@@ -702,11 +857,13 @@ export default function BillingLayout() {
           <Typography variant="caption" color="text.secondary">
             {user?.tenant?.business_type === 'hotel_restaurant'
               ? 'Hotel Billing'
-              : isOwner
-                ? 'Owner · Billing'
-                : isManager
-                  ? 'Manager · Billing'
-                  : 'Billing'}
+              : user?.tenant?.business_type === 'cafe_tea'
+                ? 'Cafe Billing'
+                : isOwner
+                  ? 'Owner · Billing'
+                  : isManager
+                    ? 'Manager · Billing'
+                    : 'Billing'}
           </Typography>
         </Box>
       </Toolbar>

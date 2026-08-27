@@ -4,6 +4,7 @@ from app.models.audit_log import AuditLog
 from app.models.auth_token import EmailVerificationToken, PasswordResetToken
 from app.models.bill import Bill, BillItem, BillNumberCounter
 from app.models.cafe_offer import Combo, ComboItem, ItemAddon, ItemAddonGroup, OrderItemAddon
+from app.models.coupon import Coupon, CouponRedemption
 from app.models.bill_delivery import BillDelivery
 from app.models.category import Category
 from app.models.customer import Customer
@@ -72,6 +73,8 @@ __all__ = [
     "Bill",
     "Combo",
     "ComboItem",
+    "Coupon",
+    "CouponRedemption",
     "BillDelivery",
     "BillItem",
     "BillNumberCounter",

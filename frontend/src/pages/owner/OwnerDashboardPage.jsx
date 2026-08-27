@@ -53,6 +53,7 @@ import { PATHS } from '../../routes/paths';
 import { fetchAuditAlerts, listAuditLogs } from '../../services/auditService';
 import { cancelBill, listBills } from '../../services/billService';
 import { listNotifications } from '../../services/notificationService';
+import { fetchCafeDashboard } from '../../services/cafeService';
 import { fetchReportSummary } from '../../services/reportService';
 import { listTables } from '../../services/tableService';
 import { paymentMethodLabel } from '../../utils/paymentMethod';
@@ -133,7 +134,7 @@ function SalesChartTooltip({ active, payload }) {
   );
 }
 
-function PeriodSelect({ period, onChange, isHotel, sx, label = 'Period', id = 'owner-dash-period' }) {
+function PeriodSelect({ period, onChange, richPeriods, sx, label = 'Period', id = 'owner-dash-period' }) {
   const labelId = `${id}-label`;
   return (
     <FormControl size="small" sx={{ width: { xs: '100%', sm: 180 }, ...sx }}>
@@ -144,7 +145,7 @@ function PeriodSelect({ period, onChange, isHotel, sx, label = 'Period', id = 'o
         value={period}
         onChange={(e) => onChange(e.target.value)}
       >
-        {isHotel ? (
+        {richPeriods ? (
           <>
             <MenuItem value="today">Today</MenuItem>
             <MenuItem value="last_7_days">Last 7 Days</MenuItem>
@@ -171,12 +172,18 @@ export default function OwnerDashboardPage() {
   const theme = useTheme();
   const { user } = useAuth();
   const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
+  const isCafe = user?.tenant?.business_type === 'cafe_tea';
+  const richPeriods = isHotel || isCafe;
   const businessName = user?.tenant?.business_name || user?.tenant?.name || 'Your Business';
   const businessTypeLabel = user?.tenant?.business_type_label || null;
   const [period, setPeriod] = useState(() =>
-    user?.tenant?.business_type === 'hotel_restaurant' ? 'last_7_days' : 'today',
+    user?.tenant?.business_type === 'hotel_restaurant' ||
+    user?.tenant?.business_type === 'cafe_tea'
+      ? 'last_7_days'
+      : 'today',
   );
   const [data, setData] = useState(null);
+  const [cafeDash, setCafeDash] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [stockAlerts, setStockAlerts] = useState([]);
   const [waFailedAlerts, setWaFailedAlerts] = useState([]);
@@ -192,13 +199,19 @@ export default function OwnerDashboardPage() {
   const [cancelSaving, setCancelSaving] = useState(false);
   const salesRequestId = useRef(0);
 
-  // Align hotel default once tenant type is known (without fighting user changes).
-  const hotelDefaultApplied = useRef(user?.tenant?.business_type === 'hotel_restaurant');
+  // Align hotel/cafe default once tenant type is known (without fighting user changes).
+  const richDefaultApplied = useRef(
+    user?.tenant?.business_type === 'hotel_restaurant' ||
+      user?.tenant?.business_type === 'cafe_tea',
+  );
   useEffect(() => {
-    if (hotelDefaultApplied.current) return;
+    if (richDefaultApplied.current) return;
     if (!user?.tenant?.business_type) return;
-    hotelDefaultApplied.current = true;
-    if (user.tenant.business_type === 'hotel_restaurant') {
+    richDefaultApplied.current = true;
+    if (
+      user.tenant.business_type === 'hotel_restaurant' ||
+      user.tenant.business_type === 'cafe_tea'
+    ) {
       setPeriod('last_7_days');
     }
   }, [user?.tenant?.business_type]);
@@ -208,9 +221,16 @@ export default function OwnerDashboardPage() {
     setSalesError('');
     setSalesLoading(true);
     try {
-      const summaryRes = await fetchReportSummary({ period: selectedPeriod });
+      const tasks = [fetchReportSummary({ period: selectedPeriod })];
+      if (isCafe) {
+        tasks.push(fetchCafeDashboard({ period: selectedPeriod }).catch(() => null));
+      }
+      const [summaryRes, cafeRes] = await Promise.all(tasks);
       if (requestId !== salesRequestId.current) return;
       setData(summaryRes.data);
+      if (isCafe) {
+        setCafeDash(cafeRes?.data || null);
+      }
     } catch (err) {
       if (requestId !== salesRequestId.current) return;
       setSalesError(
@@ -221,7 +241,7 @@ export default function OwnerDashboardPage() {
         setSalesLoading(false);
       }
     }
-  }, []);
+  }, [isCafe]);
 
   const loadShell = useCallback(async () => {
     setError('');
@@ -289,14 +309,22 @@ export default function OwnerDashboardPage() {
     (data?.day_wise || []).some((row) => Number(row.total_sales || 0) > 0);
 
   const salesChangeHint = useMemo(() => {
-    if (!isHotel || !(previous.total_sales > 0)) return undefined;
+    if (!(isHotel || isCafe) || !(previous.total_sales > 0)) return undefined;
     const change =
       ((Number(current.total_sales || 0) - Number(previous.total_sales || 0)) /
         Number(previous.total_sales)) *
       100;
     const arrow = change >= 0 ? '↑' : '↓';
     return `${arrow} ${Math.abs(change).toFixed(1)}% vs ${data?.previous_label || 'previous'}`;
-  }, [isHotel, current.total_sales, previous.total_sales, data?.previous_label]);
+  }, [isHotel, isCafe, current.total_sales, previous.total_sales, data?.previous_label]);
+
+  const popularItems = isCafe
+    ? cafeDash?.popular_items || data?.top_items || []
+    : data?.top_items || [];
+  const popularCombos = cafeDash?.popular_combos || [];
+  const lowIngredients = cafeDash?.low_ingredients || [];
+  const lowIngredientOut = lowIngredients.filter((row) => row.status === 'out').length;
+  const lowIngredientLow = lowIngredients.filter((row) => row.status === 'low').length;
 
   const chartData = useMemo(() => {
     const rows = data?.day_wise || [];
@@ -392,7 +420,12 @@ export default function OwnerDashboardPage() {
               </Typography>
             </Box>
           </Stack>
-          <PeriodSelect period={period} onChange={onPeriodChange} isHotel={isHotel} id="owner-dash-period-header" />
+          <PeriodSelect
+            period={period}
+            onChange={onPeriodChange}
+            richPeriods={richPeriods}
+            id="owner-dash-period-header"
+          />
         </CardContent>
       </Card>
 
@@ -428,6 +461,22 @@ export default function OwnerDashboardPage() {
             if (low) parts.push(`${low} low stock`);
             return `${parts.join(', ')}. Check the notification bell for details.`;
           })()}
+        </Alert>
+      ) : null}
+      {isCafe && lowIngredients.length > 0 ? (
+        <Alert
+          severity={lowIngredientOut > 0 ? 'error' : 'warning'}
+          action={
+            <Button color="inherit" size="small" component={RouterLink} to={PATHS.ownerRecipes}>
+              Recipes
+            </Button>
+          }
+        >
+          <strong>Ingredient stock:</strong> {lowIngredientOut ? `${lowIngredientOut} out` : null}
+          {lowIngredientOut && lowIngredientLow ? ' · ' : null}
+          {lowIngredientLow ? `${lowIngredientLow} low` : null}
+          {!lowIngredientOut && !lowIngredientLow ? `${lowIngredients.length} need attention` : null}.
+          Restock ingredients used by recipes.
         </Alert>
       ) : null}
       {waFailedAlerts.length > 0 ? (
@@ -477,7 +526,7 @@ export default function OwnerDashboardPage() {
 
       <Section
         title={
-          isHotel
+          isHotel || isCafe
             ? `${periodLabel} Overview`
             : period === 'today'
               ? "Today's Overview"
@@ -519,6 +568,53 @@ export default function OwnerDashboardPage() {
             />
             <KpiCard title="Active Tables" value={tableStats.activeTables} hint="Occupied + bill pending" />
             <KpiCard title="Pending Bills" value={tableStats.pendingBills} hint="Tables awaiting settlement" />
+          </Box>
+        ) : isCafe ? (
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 2.5,
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(5, 1fr)' },
+            }}
+          >
+            <KpiCard
+              title={`Sales (${periodLabel})`}
+              value={money(current.total_sales)}
+              hint={
+                salesChangeHint ||
+                (period !== 'today'
+                  ? `Totals for selected period (${periodLabel})`
+                  : data?.previous_label
+                    ? `${data.previous_label}: ${money(previous.total_sales)}`
+                    : undefined)
+              }
+            />
+            <KpiCard
+              title="Bills"
+              value={current.bill_count ?? '—'}
+              hint={data?.previous_label ? `${data.previous_label}: ${previous.bill_count ?? '—'}` : undefined}
+            />
+            <KpiCard
+              title="Average Bill"
+              value={money(current.average_bill)}
+              hint={
+                data?.previous_label ? `${data.previous_label}: ${money(previous.average_bill)}` : undefined
+              }
+            />
+            <KpiCard
+              title="Popular Items"
+              value={popularItems.length || '—'}
+              hint="Top sellers in this period"
+            />
+            <KpiCard
+              title="Low Ingredients"
+              value={lowIngredients.length || 0}
+              hint={
+                lowIngredients.length
+                  ? `${lowIngredientOut} out · ${lowIngredientLow} low`
+                  : 'Recipe ingredients OK'
+              }
+            />
           </Box>
         ) : (
           <Box
@@ -679,7 +775,7 @@ export default function OwnerDashboardPage() {
         </Section>
       ) : null}
 
-      {isHotel ? (
+      {isHotel || isCafe ? (
         <>
           <Section
             title="Sales Analytics"
@@ -689,7 +785,7 @@ export default function OwnerDashboardPage() {
                 <PeriodSelect
                   period={period}
                   onChange={onPeriodChange}
-                  isHotel={isHotel}
+                  richPeriods={richPeriods}
                   label="Sales Period"
                   id="owner-dash-period-sales"
                   sx={{ width: 180 }}
@@ -812,7 +908,7 @@ export default function OwnerDashboardPage() {
             </Box>
           </Section>
 
-          <Section title="Top Selling Items">
+          <Section title={isCafe ? 'Popular Items' : 'Top Selling Items'}>
             <TableCard>
               <Table size="small" sx={{ minWidth: 480 }}>
                 <TableHead>
@@ -823,7 +919,7 @@ export default function OwnerDashboardPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(data?.top_items || []).map((row) => (
+                  {popularItems.map((row) => (
                     <TableRow key={row.item_name || row.item_id} hover>
                       <TableCell>
                         <TruncateText value={row.item_name || 'Item'} maxWidth={280} />
@@ -834,14 +930,100 @@ export default function OwnerDashboardPage() {
                   ))}
                 </TableBody>
               </Table>
-              {!data?.top_items?.length ? (
+              {!popularItems.length ? (
                 <EmptyState
-                  title="No top items"
+                  title={isCafe ? 'No popular items yet' : 'No top items'}
                   description="Item sales for this period will appear here."
                 />
               ) : null}
             </TableCard>
           </Section>
+
+          {isCafe ? (
+            <Section title="Popular Combos">
+              <TableCard>
+                <Table size="small" sx={{ minWidth: 480 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Combo</TableCell>
+                      <TableCell align="right">Orders</TableCell>
+                      <TableCell align="right">Revenue</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {popularCombos.map((row) => (
+                      <TableRow key={row.combo_id || row.name} hover>
+                        <TableCell>
+                          <TruncateText value={row.name || 'Combo'} maxWidth={280} />
+                        </TableCell>
+                        <TableCell align="right">{row.orders ?? '—'}</TableCell>
+                        <TableCell align="right">{money(row.revenue)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {!popularCombos.length ? (
+                  <EmptyState
+                    title="No combo sales yet"
+                    description="Combos sold through Cafe POS in this period will appear here. Configure them under Combos."
+                  />
+                ) : null}
+              </TableCard>
+            </Section>
+          ) : null}
+
+          {isCafe ? (
+            <Section
+              title="Low Ingredients"
+              actions={
+                <Button component={RouterLink} to={PATHS.ownerItems} size="small">
+                  Items
+                </Button>
+              }
+            >
+              <TableCard>
+                <Table size="small" sx={{ minWidth: 480 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Ingredient</TableCell>
+                      <TableCell align="right">Stock</TableCell>
+                      <TableCell align="right">Min</TableCell>
+                      <TableCell>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {lowIngredients.map((row) => (
+                      <TableRow key={row.item_id} hover>
+                        <TableCell>
+                          <TruncateText value={row.name} maxWidth={240} />
+                        </TableCell>
+                        <TableCell align="right">
+                          {row.stock_quantity}
+                          {row.uom ? ` ${row.uom}` : ''}
+                        </TableCell>
+                        <TableCell align="right">
+                          {row.minimum_stock_level != null ? row.minimum_stock_level : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            color={row.status === 'out' ? 'error' : 'warning'}
+                            label={row.status === 'out' ? 'Out' : 'Low'}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {!lowIngredients.length ? (
+                  <EmptyState
+                    title="Ingredients look healthy"
+                    description="Recipe ingredients at or below minimum stock will appear here."
+                  />
+                ) : null}
+              </TableCard>
+            </Section>
+          ) : null}
         </>
       ) : (
         <Section title="Sales Overview">

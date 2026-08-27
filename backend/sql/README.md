@@ -1,22 +1,22 @@
 # SQL & Schema Apply Guide
 
 **Product:** Business Billing · Prabha Technology Pvt. Ltd.  
-**Canonical greenfield schema:** `02_schema.sql` (**94** application tables; aligned with SQLAlchemy models)  
+**Canonical greenfield schema:** `02_schema.sql` (**96** application tables; aligned with SQLAlchemy models)  
 **Upgrade path (existing / hosted DBs):** Alembic (`flask db upgrade`) — **do not** re-run `02_schema.sql` on live data.
 
-**Alembic head (current):** `20260826_biz66_perf_indexes`  
-(industry modules through BIZ-68; see `docs/03-database/11-alembic-revision-order.md`)
+**Alembic head (current):** `20260827_cafe_coupons`  
+(includes hotel billing settings audit, stock movement sources, cafe coupons; see `docs/03-database/11-alembic-revision-order.md`)
 
 **Regenerate greenfield SQL (local only):**  
 `python scripts/regenerate_02_schema.py` — overwrites `02_schema.sql` from models. Never apply the output to production.
 
 ---
 
-## Application tables (94)
+## Application tables (96)
 
 ### Core / SaaS foundation
 
-`tenants`, `roles`, `users`, `password_reset_tokens`, `email_verification_tokens`, `categories`, `items`, `bill_number_counters`, `bills`, `bill_items`, `notifications`, `tenant_whatsapp_configs`, `bill_deliveries`, `audit_logs`, `stock_movements`
+`tenants`, `roles`, `users`, `password_reset_tokens`, `email_verification_tokens`, `categories`, `items`, `bill_number_counters`, `bills`, `bill_items`, `notifications`, `tenant_whatsapp_configs`, `bill_deliveries`, `audit_logs`, `stock_movements`, `coupons`, `coupon_redemptions`
 
 ### Phase 8 SaaS / Master control plane
 
@@ -29,7 +29,7 @@
 | CRM / procurement | `customers`, `suppliers`, `purchases`, `purchase_items`, `purchase_number_counters`, `expenses`, `party_ledger_entries` |
 | Grocery | `item_price_tiers`, `item_batches` |
 | Clothing | `item_variants`, `item_images`, `sales_returns`, `sales_return_items`, `sales_return_counters` |
-| F&B | `dining_tables`, `orders`, `order_items`, `order_item_addons`, `order_number_counters`, `kots`, `kot_items`, `kot_number_counters`, `recipes`, `recipe_ingredients`, `item_addon_groups`, `item_addons`, `combos`, `combo_items`, `wastage_entries` |
+| F&B | `dining_tables`, `orders`, `order_items`, `order_item_addons`, `order_number_counters`, `kots`, `kot_items`, `kot_number_counters`, `recipes`, `recipe_ingredients`, `item_addon_groups`, `item_addons`, `combos`, `combo_items`, `wastage_entries`, `coupons`, `coupon_redemptions` |
 | Mobile / Electronics | `serial_units`, `repair_orders`, `repair_number_counters`, `installation_orders`, `installation_number_counters`, `item_accessories` |
 | Hardware / warehouse | `warehouses`, `warehouse_stocks`, `stock_transfers`, `stock_transfer_items`, `stock_transfer_number_counters` |
 | Bakery | `production_runs`, `production_run_items`, `production_run_number_counters`, `custom_product_orders`, `custom_order_payments`, `custom_order_number_counters` |
@@ -47,7 +47,7 @@
 
 Optional: `python sql/apply_schema.py` if your ops flow uses that helper.
 
-Then stamp Alembic so `alembic_version` matches head (`20260826_biz66_perf_indexes`), or run `flask db upgrade` on an empty DB that already has `alembic_version` seeded.
+Then stamp Alembic so `alembic_version` matches head (`20260827_cafe_coupons`), or run `flask db upgrade` on an empty DB that already has `alembic_version` seeded.
 
 ---
 

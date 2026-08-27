@@ -5,6 +5,11 @@ export async function fetchPosCatalog() {
   return data;
 }
 
+export async function fetchCafeDashboard(params = {}) {
+  const { data } = await apiClient.get('/cafe/dashboard', { params });
+  return data;
+}
+
 export async function listCombos(params = {}) {
   const { data } = await apiClient.get('/combos', { params });
   return data;

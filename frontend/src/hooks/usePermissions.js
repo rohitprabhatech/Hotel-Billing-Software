@@ -28,6 +28,8 @@ export function usePermissions() {
       canBilling: hasPermission(user, 'billing'),
       canManageRecipes: hasPermission(user, 'recipes.write'),
       canViewRecipes: hasPermission(user, 'recipes.read'),
+      canViewAddons: hasPermission(user, 'addons.read'),
+      canManageAddons: hasPermission(user, 'addons.write'),
       canFireKot: hasPermission(user, 'kot.write'),
       canViewKitchen: hasPermission(user, 'kot.read'),
       canUpdateKotStatus: hasPermission(user, 'kot.status'),

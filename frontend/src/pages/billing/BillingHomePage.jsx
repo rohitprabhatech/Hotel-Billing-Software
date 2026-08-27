@@ -1,5 +1,6 @@
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutlined';
@@ -301,6 +302,239 @@ function HotelBillingHome({
   );
 }
 
+/** Cafe desk home — Cafe POS first (add-ons / combos), not Hotel table billing. */
+function CafeBillingHome({
+  businessName,
+  loading,
+  error,
+  summary,
+  lowStockCount,
+  recent,
+  navigate,
+  billCount,
+}) {
+  return (
+    <>
+      <PageActions>
+        <Stack direction="row" spacing={1}>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingCafe}
+            variant="contained"
+            startIcon={<LocalCafeOutlinedIcon />}
+          >
+            Cafe POS
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingNew}
+            variant="outlined"
+            startIcon={<PointOfSaleOutlinedIcon />}
+          >
+            Quick Bill
+          </Button>
+        </Stack>
+      </PageActions>
+
+      <PageShell spacing={2.5}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+            {businessName}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Cafe POS — add-ons, combos, take payment, print or WhatsApp.
+          </Typography>
+        </Box>
+
+        {error ? <Alert severity="error">{error}</Alert> : null}
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          }}
+        >
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(PATHS.billingCafe)}
+            sx={{
+              textAlign: 'left',
+              border: '2px solid',
+              borderColor: 'primary.main',
+              borderRadius: 2,
+              p: { xs: 2.5, sm: 3 },
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              font: 'inherit',
+              color: 'inherit',
+              minHeight: 120,
+              '&:hover': { bgcolor: 'action.hover' },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <LocalCafeOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                CAFE POS
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Fast takeaway — menu, add-ons, combos, pay, print.
+            </Typography>
+          </Box>
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(PATHS.billingNew)}
+            sx={{
+              textAlign: 'left',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2,
+              p: { xs: 2.5, sm: 3 },
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              font: 'inherit',
+              color: 'inherit',
+              minHeight: 120,
+              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <PointOfSaleOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                QUICK BILL
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Standard item bill without cafe add-ons.
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            gridTemplateColumns: {
+              xs: '1fr 1fr',
+              md: 'repeat(3, 1fr)',
+            },
+          }}
+        >
+          <KpiCard
+            title="Today's Sales"
+            value={loading ? '—' : money(summary.total_sales)}
+            icon={<LocalCafeOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Bills Today"
+            value={loading ? '—' : billCount ?? summary.bill_count ?? 0}
+            icon={<ReceiptLongOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Low Stock"
+            value={loading ? '—' : lowStockCount}
+            icon={<Inventory2OutlinedIcon fontSize="small" />}
+          />
+        </Box>
+
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingCafe}
+            variant="contained"
+            size="small"
+            startIcon={<LocalCafeOutlinedIcon />}
+          >
+            Cafe POS
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingBills}
+            variant="outlined"
+            size="small"
+            startIcon={<ReceiptLongOutlinedIcon />}
+          >
+            Today&apos;s Bills
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingCustomers}
+            variant="outlined"
+            size="small"
+          >
+            Customers
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingItems}
+            variant="outlined"
+            size="small"
+            startIcon={<Inventory2OutlinedIcon />}
+          >
+            Items
+          </Button>
+        </Stack>
+
+        <Section
+          title="Today's Bills"
+          description="Latest cafe bills from this desk."
+          actions={
+            <Button component={RouterLink} to={PATHS.billingBills} size="small">
+              View all
+            </Button>
+          }
+        >
+          <TableCard>
+            {loading ? (
+              <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
+                <CircularProgress size={28} />
+              </Box>
+            ) : (
+              <Table size="small" sx={{ minWidth: 360 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Bill</TableCell>
+                    <TableCell>Payment</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recent.map((bill) => (
+                    <TableRow key={bill.id} hover>
+                      <TableCell sx={{ fontWeight: 600 }}>#{bill.bill_number}</TableCell>
+                      <TableCell>
+                        {bill.payment_method_label || paymentMethodLabel(bill.payment_method)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 650 }}>
+                        {moneyExact(bill.grand_total)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!recent.length ? (
+                    <TableRow>
+                      <TableCell colSpan={3} sx={{ p: 0, border: 0 }}>
+                        <EmptyState
+                          title="No bills yet today"
+                          description="Start with Cafe POS for takeaway with add-ons and combos."
+                          actionLabel="Cafe POS"
+                          onAction={() => navigate(PATHS.billingCafe)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            )}
+          </TableCard>
+        </Section>
+      </PageShell>
+    </>
+  );
+}
+
 export default function BillingHomePage() {
   const { role, user } = useAuth();
   const navigate = useNavigate();
@@ -308,7 +542,9 @@ export default function BillingHomePage() {
   const businessTypeLabel = user?.tenant?.business_type_label || null;
   const businessType = user?.tenant?.business_type || '';
   const isHotel = businessType === 'hotel_restaurant';
+  const isCafe = businessType === 'cafe_tea';
   const tablesEnabled = useModuleGate('table_management');
+  const cafePosEnabled = useModuleGate('addons_combos');
   const [summary, setSummary] = useState({ total_sales: 0, bill_count: 0 });
   const [recent, setRecent] = useState([]);
   const [tables, setTables] = useState([]);
@@ -326,10 +562,14 @@ export default function BillingHomePage() {
       listBills({ whatsapp_status: 'FAILED', per_page: 1 }),
       listBills({ email_status: 'FAILED', per_page: 1 }),
     ];
-    if (isHotel && tablesEnabled) {
-      tasks.push(listTables().catch(() => ({ data: [] })));
+    if ((isHotel && tablesEnabled) || isCafe) {
+      if (isHotel && tablesEnabled) {
+        tasks.push(listTables().catch(() => ({ data: [] })));
+      } else {
+        tasks.push(Promise.resolve(null));
+      }
       tasks.push(
-        listItems({ is_active: true, per_page: 200 }).catch(() => ({ data: [] }))
+        listItems({ is_active: true, per_page: 200 }).catch(() => ({ data: [] })),
       );
     }
     Promise.all(tasks)
@@ -352,7 +592,7 @@ export default function BillingHomePage() {
         setError(err.response?.data?.error?.message || 'Failed to load billing dashboard');
       })
       .finally(() => setLoading(false));
-  }, [isHotel, tablesEnabled]);
+  }, [isHotel, isCafe, tablesEnabled]);
 
   const tableStats = useMemo(() => {
     const stats = {
@@ -379,6 +619,21 @@ export default function BillingHomePage() {
         lowStockCount={lowStockCount}
         recent={recent}
         navigate={navigate}
+      />
+    );
+  }
+
+  if (isCafe && cafePosEnabled) {
+    return (
+      <CafeBillingHome
+        businessName={businessName}
+        loading={loading}
+        error={error}
+        summary={summary}
+        lowStockCount={lowStockCount}
+        recent={recent}
+        navigate={navigate}
+        billCount={summary.bill_count}
       />
     );
   }

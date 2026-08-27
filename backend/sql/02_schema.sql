@@ -2,8 +2,8 @@
 -- Business Billing Software — MySQL Schema (Multi-Tenant)
 -- Database : hotel_billing  (legacy DB name; product is multi-business)
 -- Charset  : utf8mb4 / utf8mb4_unicode_ci
--- Tables   : 94 application tables (aligned with SQLAlchemy models / Alembic)
--- Alembic head: 20260826_biz66_perf_indexes (industry modules through BIZ-68)
+-- Tables   : 96 application tables (aligned with SQLAlchemy models / Alembic)
+-- Alembic head: 20260827_cafe_coupons
 --
 -- GREENFIELD / EMPTY DB ONLY. DROP + recreate. Never run on production data.
 -- Upgrades: flask db upgrade  (preferred for existing / hosted DBs).
@@ -40,6 +40,7 @@ DROP TABLE IF EXISTS delivery_challans;
 DROP TABLE IF EXISTS delivery_challan_items;
 DROP TABLE IF EXISTS custom_product_orders;
 DROP TABLE IF EXISTS custom_order_payments;
+DROP TABLE IF EXISTS coupon_redemptions;
 DROP TABLE IF EXISTS bills;
 DROP TABLE IF EXISTS bill_items;
 DROP TABLE IF EXISTS bill_deliveries;
@@ -97,6 +98,7 @@ DROP TABLE IF EXISTS delivery_number_counters;
 DROP TABLE IF EXISTS delivery_challan_number_counters;
 DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS custom_order_number_counters;
+DROP TABLE IF EXISTS coupons;
 DROP TABLE IF EXISTS combos;
 DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS bill_number_counters;
@@ -170,8 +172,8 @@ CREATE TABLE roles (
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 	PRIMARY KEY (id),
-	UNIQUE (name),
-	CONSTRAINT chk_roles_name CHECK (name IN ('OWNER', 'BILLING_USER', 'MANAGER'))
+	CONSTRAINT chk_roles_name CHECK (name IN ('OWNER', 'BILLING_USER', 'MANAGER')),
+	UNIQUE (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- subscription_plans
@@ -212,6 +214,9 @@ CREATE TABLE tenants (
 	fssai_number VARCHAR(50),
 	bill_number_prefix VARCHAR(20),
 	default_gst_percent DECIMAL(5, 2),
+	bill_paper_size VARCHAR(20),
+	bill_width_mm INTEGER,
+	bill_height_mm INTEGER,
 	status VARCHAR(20) NOT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -292,6 +297,7 @@ CREATE TABLE audit_logs (
 	new_data JSON,
 	ip_address VARCHAR(45),
 	user_agent VARCHAR(255),
+	is_deleted TINYINT(1) NOT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 	PRIMARY KEY (id),
 	FOREIGN KEY(tenant_id) REFERENCES tenants (id) ON DELETE RESTRICT,
@@ -353,6 +359,35 @@ CREATE TABLE combos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX ix_combos_tenant_id ON combos (tenant_id);
+
+-- coupons
+
+
+CREATE TABLE coupons (
+	id VARCHAR(36) NOT NULL,
+	tenant_id VARCHAR(36) NOT NULL,
+	code VARCHAR(40) NOT NULL,
+	name VARCHAR(120) NOT NULL,
+	description TEXT,
+	discount_type VARCHAR(16) NOT NULL,
+	discount_value DECIMAL(12, 2) NOT NULL,
+	min_order_amount DECIMAL(12, 2),
+	max_discount_amount DECIMAL(12, 2),
+	starts_on DATE,
+	ends_on DATE,
+	usage_limit INTEGER,
+	usage_count INTEGER NOT NULL,
+	is_active TINYINT(1) NOT NULL,
+	created_by VARCHAR(36) NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+	PRIMARY KEY (id),
+	CONSTRAINT uq_coupons_tenant_code UNIQUE (tenant_id, code),
+	FOREIGN KEY(tenant_id) REFERENCES tenants (id) ON DELETE RESTRICT,
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX ix_coupons_tenant_id ON coupons (tenant_id);
 
 -- custom_order_number_counters
 
@@ -434,8 +469,6 @@ CREATE INDEX ix_dining_tables_merged_into_id ON dining_tables (merged_into_id);
 
 CREATE INDEX ix_dining_tables_tenant_id ON dining_tables (tenant_id);
 
-CREATE INDEX ix_dining_tables_tenant_active_status ON dining_tables (tenant_id, is_active, status);
-
 -- email_verification_tokens
 
 
@@ -453,9 +486,9 @@ CREATE TABLE email_verification_tokens (
 	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE UNIQUE INDEX ix_email_verification_tokens_token_hash ON email_verification_tokens (token_hash);
-
 CREATE INDEX ix_email_verification_tokens_user_id ON email_verification_tokens (user_id);
+
+CREATE UNIQUE INDEX ix_email_verification_tokens_token_hash ON email_verification_tokens (token_hash);
 
 -- expenses
 
@@ -534,17 +567,17 @@ CREATE TABLE items (
 	CONSTRAINT uq_items_tenant_sku UNIQUE (tenant_id, sku),
 	CONSTRAINT uq_items_tenant_barcode UNIQUE (tenant_id, barcode),
 	CONSTRAINT uq_items_tenant_isbn UNIQUE (tenant_id, isbn),
+	CONSTRAINT chk_items_stock CHECK (stock_quantity IS NULL OR stock_quantity >= 0),
 	FOREIGN KEY(tenant_id) REFERENCES tenants (id) ON DELETE RESTRICT,
 	FOREIGN KEY(category_id) REFERENCES categories (id) ON DELETE RESTRICT,
-	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL,
-	CONSTRAINT chk_items_stock CHECK (stock_quantity IS NULL OR stock_quantity >= 0)
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX ix_items_tenant_active_name ON items (tenant_id, is_active, name);
 
 CREATE INDEX ix_items_created_by ON items (created_by);
 
 CREATE INDEX ix_items_author ON items (author);
-
-CREATE INDEX ix_items_tenant_active_name ON items (tenant_id, is_active, name);
 
 CREATE INDEX ix_items_tenant_id ON items (tenant_id);
 
@@ -582,9 +615,9 @@ CREATE TABLE notifications (
 	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_notifications_user_id ON notifications (user_id);
-
 CREATE INDEX ix_notifications_tenant_id ON notifications (tenant_id);
+
+CREATE INDEX ix_notifications_user_id ON notifications (user_id);
 
 -- order_number_counters
 
@@ -666,13 +699,13 @@ CREATE TABLE platform_audit_logs (
 	FOREIGN KEY(tenant_id) REFERENCES tenants (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_platform_audit_logs_action ON platform_audit_logs (action);
+
 CREATE INDEX ix_platform_audit_logs_created_at ON platform_audit_logs (created_at);
 
 CREATE INDEX ix_platform_audit_logs_actor_id ON platform_audit_logs (actor_id);
 
 CREATE INDEX ix_platform_audit_logs_tenant_id ON platform_audit_logs (tenant_id);
-
-CREATE INDEX ix_platform_audit_logs_action ON platform_audit_logs (action);
 
 -- price_lists
 
@@ -853,11 +886,11 @@ CREATE TABLE stock_movements (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_stock_movements_tenant_item_created ON stock_movements (tenant_id, item_id, created_at);
+
 CREATE INDEX ix_stock_movements_tenant_id ON stock_movements (tenant_id);
 
 CREATE INDEX ix_stock_movements_item_id ON stock_movements (item_id);
-
-CREATE INDEX ix_stock_movements_tenant_item_created ON stock_movements (tenant_id, item_id, created_at);
 
 -- stock_transfer_number_counters
 
@@ -922,9 +955,9 @@ CREATE TABLE subscriptions (
 	FOREIGN KEY(plan_id) REFERENCES subscription_plans (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_subscriptions_tenant_id ON subscriptions (tenant_id);
-
 CREATE INDEX ix_subscriptions_plan_id ON subscriptions (plan_id);
+
+CREATE INDEX ix_subscriptions_tenant_id ON subscriptions (tenant_id);
 
 -- suppliers
 
@@ -999,9 +1032,9 @@ CREATE TABLE tour_packages (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_tour_packages_tenant_id ON tour_packages (tenant_id);
-
 CREATE INDEX ix_tour_packages_item_id ON tour_packages (item_id);
+
+CREATE INDEX ix_tour_packages_tenant_id ON tour_packages (tenant_id);
 
 -- travel_agents
 
@@ -1044,13 +1077,13 @@ CREATE TABLE warehouse_stocks (
 	FOREIGN KEY(item_id) REFERENCES items (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_warehouse_stocks_tenant_item ON warehouse_stocks (tenant_id, item_id);
-
 CREATE INDEX ix_warehouse_stocks_warehouse_id ON warehouse_stocks (warehouse_id);
 
 CREATE INDEX ix_warehouse_stocks_item_id ON warehouse_stocks (item_id);
 
 CREATE INDEX ix_warehouse_stocks_tenant_id ON warehouse_stocks (tenant_id);
+
+CREATE INDEX ix_warehouse_stocks_tenant_item ON warehouse_stocks (tenant_id, item_id);
 
 -- wastage_entries
 
@@ -1075,13 +1108,13 @@ CREATE TABLE wastage_entries (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_wastage_entries_stock_movement_id ON wastage_entries (stock_movement_id);
+
 CREATE INDEX ix_wastage_entries_tenant_id ON wastage_entries (tenant_id);
 
 CREATE INDEX ix_wastage_entries_item_id ON wastage_entries (item_id);
 
 CREATE INDEX ix_wastage_entries_wastage_date ON wastage_entries (wastage_date);
-
-CREATE INDEX ix_wastage_entries_stock_movement_id ON wastage_entries (stock_movement_id);
 
 -- combo_items
 
@@ -1101,11 +1134,11 @@ CREATE TABLE combo_items (
 	FOREIGN KEY(item_id) REFERENCES items (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_combo_items_item_id ON combo_items (item_id);
+
 CREATE INDEX ix_combo_items_combo_id ON combo_items (combo_id);
 
 CREATE INDEX ix_combo_items_tenant_id ON combo_items (tenant_id);
-
-CREATE INDEX ix_combo_items_item_id ON combo_items (item_id);
 
 -- customer_price_lists
 
@@ -1151,9 +1184,9 @@ CREATE TABLE item_accessories (
 
 CREATE INDEX ix_item_accessories_accessory_item_id ON item_accessories (accessory_item_id);
 
-CREATE INDEX ix_item_accessories_item_id ON item_accessories (item_id);
-
 CREATE INDEX ix_item_accessories_tenant_id ON item_accessories (tenant_id);
+
+CREATE INDEX ix_item_accessories_item_id ON item_accessories (item_id);
 
 -- item_addon_groups
 
@@ -1198,11 +1231,11 @@ CREATE TABLE item_addons (
 	FOREIGN KEY(linked_item_id) REFERENCES items (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_item_addons_linked_item_id ON item_addons (linked_item_id);
+CREATE INDEX ix_item_addons_group_id ON item_addons (group_id);
 
 CREATE INDEX ix_item_addons_tenant_id ON item_addons (tenant_id);
 
-CREATE INDEX ix_item_addons_group_id ON item_addons (group_id);
+CREATE INDEX ix_item_addons_linked_item_id ON item_addons (linked_item_id);
 
 -- item_batches
 
@@ -1223,11 +1256,11 @@ CREATE TABLE item_batches (
 	FOREIGN KEY(item_id) REFERENCES items (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_item_batches_tenant_id ON item_batches (tenant_id);
-
 CREATE INDEX ix_item_batches_expiry_date ON item_batches (expiry_date);
 
 CREATE INDEX ix_item_batches_item_id ON item_batches (item_id);
+
+CREATE INDEX ix_item_batches_tenant_id ON item_batches (tenant_id);
 
 -- item_price_tiers
 
@@ -1332,15 +1365,15 @@ CREATE TABLE production_runs (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_production_runs_tenant_id ON production_runs (tenant_id);
+
+CREATE INDEX ix_production_runs_finished_stock_movement_id ON production_runs (finished_stock_movement_id);
+
 CREATE INDEX ix_production_runs_run_date ON production_runs (run_date);
 
 CREATE INDEX ix_production_runs_recipe_id ON production_runs (recipe_id);
 
 CREATE INDEX ix_production_runs_finished_item_id ON production_runs (finished_item_id);
-
-CREATE INDEX ix_production_runs_tenant_id ON production_runs (tenant_id);
-
-CREATE INDEX ix_production_runs_finished_stock_movement_id ON production_runs (finished_stock_movement_id);
 
 -- purchases
 
@@ -1418,9 +1451,9 @@ CREATE TABLE stock_transfer_items (
 	FOREIGN KEY(item_id) REFERENCES items (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_stock_transfer_items_tenant_id ON stock_transfer_items (tenant_id);
-
 CREATE INDEX ix_stock_transfer_items_transfer_id ON stock_transfer_items (transfer_id);
+
+CREATE INDEX ix_stock_transfer_items_tenant_id ON stock_transfer_items (tenant_id);
 
 -- subscription_notices
 
@@ -1439,9 +1472,9 @@ CREATE TABLE subscription_notices (
 	FOREIGN KEY(tenant_id) REFERENCES tenants (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_subscription_notices_tenant_id ON subscription_notices (tenant_id);
-
 CREATE INDEX ix_subscription_notices_subscription_id ON subscription_notices (subscription_id);
+
+CREATE INDEX ix_subscription_notices_tenant_id ON subscription_notices (tenant_id);
 
 -- item_images
 
@@ -1464,11 +1497,11 @@ CREATE TABLE item_images (
 	FOREIGN KEY(variant_id) REFERENCES item_variants (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_item_images_variant_id ON item_images (variant_id);
+
 CREATE INDEX ix_item_images_tenant_id ON item_images (tenant_id);
 
 CREATE INDEX ix_item_images_item_id ON item_images (item_id);
-
-CREATE INDEX ix_item_images_variant_id ON item_images (variant_id);
 
 -- production_run_items
 
@@ -1518,11 +1551,11 @@ CREATE TABLE purchase_items (
 	FOREIGN KEY(item_id) REFERENCES items (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_purchase_items_purchase_id ON purchase_items (purchase_id);
+
 CREATE INDEX ix_purchase_items_item_id ON purchase_items (item_id);
 
 CREATE INDEX ix_purchase_items_tenant_id ON purchase_items (tenant_id);
-
-CREATE INDEX ix_purchase_items_purchase_id ON purchase_items (purchase_id);
 
 -- purchase_orders
 
@@ -1608,11 +1641,11 @@ CREATE TABLE bill_deliveries (
 	FOREIGN KEY(attempted_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_bill_deliveries_bill_id ON bill_deliveries (bill_id);
+CREATE INDEX ix_bill_deliveries_tenant_id ON bill_deliveries (tenant_id);
 
 CREATE INDEX ix_bill_deliveries_provider_message_id ON bill_deliveries (provider_message_id);
 
-CREATE INDEX ix_bill_deliveries_tenant_id ON bill_deliveries (tenant_id);
+CREATE INDEX ix_bill_deliveries_bill_id ON bill_deliveries (bill_id);
 
 -- bill_items
 
@@ -1643,9 +1676,9 @@ CREATE TABLE bill_items (
 	FOREIGN KEY(variant_id) REFERENCES item_variants (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_bill_items_tenant_id ON bill_items (tenant_id);
-
 CREATE INDEX ix_bill_items_serial_unit_id ON bill_items (serial_unit_id);
+
+CREATE INDEX ix_bill_items_tenant_id ON bill_items (tenant_id);
 
 CREATE INDEX ix_bill_items_variant_id ON bill_items (variant_id);
 
@@ -1684,6 +1717,9 @@ CREATE TABLE bills (
 	transport_charge DECIMAL(12, 2) NOT NULL,
 	warehouse_id VARCHAR(36),
 	split_group_id VARCHAR(36),
+	coupon_id VARCHAR(36),
+	coupon_code VARCHAR(40),
+	coupon_discount DECIMAL(12, 2) NOT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 	PRIMARY KEY (id),
@@ -1694,20 +1730,51 @@ CREATE TABLE bills (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE RESTRICT,
 	FOREIGN KEY(cancelled_by) REFERENCES users (id) ON DELETE RESTRICT,
 	FOREIGN KEY(order_id) REFERENCES orders (id) ON DELETE SET NULL,
-	FOREIGN KEY(warehouse_id) REFERENCES warehouses (id) ON DELETE SET NULL
+	FOREIGN KEY(warehouse_id) REFERENCES warehouses (id) ON DELETE SET NULL,
+	FOREIGN KEY(coupon_id) REFERENCES coupons (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE INDEX ix_bills_tenant_created_at ON bills (tenant_id, created_at);
-
-CREATE INDEX ix_bills_customer_id ON bills (customer_id);
-
-CREATE INDEX ix_bills_order_id ON bills (order_id);
 
 CREATE INDEX ix_bills_warehouse_id ON bills (warehouse_id);
 
-CREATE INDEX ix_bills_tenant_id ON bills (tenant_id);
+CREATE INDEX ix_bills_order_id ON bills (order_id);
 
 CREATE INDEX ix_bills_split_group_id ON bills (split_group_id);
+
+CREATE INDEX ix_bills_customer_id ON bills (customer_id);
+
+CREATE INDEX ix_bills_tenant_created_at ON bills (tenant_id, created_at);
+
+CREATE INDEX ix_bills_tenant_id ON bills (tenant_id);
+
+CREATE INDEX ix_bills_coupon_id ON bills (coupon_id);
+
+-- coupon_redemptions
+
+
+CREATE TABLE coupon_redemptions (
+	id VARCHAR(36) NOT NULL,
+	tenant_id VARCHAR(36) NOT NULL,
+	coupon_id VARCHAR(36) NOT NULL,
+	bill_id VARCHAR(36),
+	order_id VARCHAR(36),
+	discount_applied DECIMAL(12, 2) NOT NULL,
+	redeemed_by VARCHAR(36) NOT NULL,
+	created_at DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(tenant_id) REFERENCES tenants (id) ON DELETE RESTRICT,
+	FOREIGN KEY(coupon_id) REFERENCES coupons (id) ON DELETE RESTRICT,
+	FOREIGN KEY(bill_id) REFERENCES bills (id) ON DELETE SET NULL,
+	FOREIGN KEY(order_id) REFERENCES orders (id) ON DELETE SET NULL,
+	FOREIGN KEY(redeemed_by) REFERENCES users (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX ix_coupon_redemptions_bill_id ON coupon_redemptions (bill_id);
+
+CREATE INDEX ix_coupon_redemptions_coupon_id ON coupon_redemptions (coupon_id);
+
+CREATE INDEX ix_coupon_redemptions_order_id ON coupon_redemptions (order_id);
+
+CREATE INDEX ix_coupon_redemptions_tenant_id ON coupon_redemptions (tenant_id);
 
 -- custom_order_payments
 
@@ -1764,13 +1831,13 @@ CREATE TABLE custom_product_orders (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_custom_product_orders_bill_id ON custom_product_orders (bill_id);
-
-CREATE INDEX ix_custom_product_orders_customer_id ON custom_product_orders (customer_id);
-
 CREATE INDEX ix_custom_product_orders_tenant_id ON custom_product_orders (tenant_id);
 
 CREATE INDEX ix_custom_product_orders_delivery_at ON custom_product_orders (delivery_at);
+
+CREATE INDEX ix_custom_product_orders_bill_id ON custom_product_orders (bill_id);
+
+CREATE INDEX ix_custom_product_orders_customer_id ON custom_product_orders (customer_id);
 
 -- delivery_challan_items
 
@@ -1865,11 +1932,11 @@ CREATE TABLE delivery_jobs (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_delivery_jobs_tenant_id ON delivery_jobs (tenant_id);
-
 CREATE INDEX ix_delivery_jobs_custom_order_id ON delivery_jobs (custom_order_id);
 
 CREATE INDEX ix_delivery_jobs_scheduled_at ON delivery_jobs (scheduled_at);
+
+CREATE INDEX ix_delivery_jobs_tenant_id ON delivery_jobs (tenant_id);
 
 CREATE INDEX ix_delivery_jobs_bill_id ON delivery_jobs (bill_id);
 
@@ -1907,10 +1974,6 @@ CREATE TABLE installation_orders (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_installation_orders_bill_id ON installation_orders (bill_id);
-
-CREATE INDEX ix_installation_orders_tenant_id ON installation_orders (tenant_id);
-
 CREATE INDEX ix_installation_orders_item_id ON installation_orders (item_id);
 
 CREATE INDEX ix_installation_orders_custom_order_id ON installation_orders (custom_order_id);
@@ -1918,6 +1981,10 @@ CREATE INDEX ix_installation_orders_custom_order_id ON installation_orders (cust
 CREATE INDEX ix_installation_orders_serial_unit_id ON installation_orders (serial_unit_id);
 
 CREATE INDEX ix_installation_orders_scheduled_at ON installation_orders (scheduled_at);
+
+CREATE INDEX ix_installation_orders_bill_id ON installation_orders (bill_id);
+
+CREATE INDEX ix_installation_orders_tenant_id ON installation_orders (tenant_id);
 
 -- kot_items
 
@@ -1945,8 +2012,6 @@ CREATE INDEX ix_kot_items_order_item_id ON kot_items (order_item_id);
 CREATE INDEX ix_kot_items_tenant_id ON kot_items (tenant_id);
 
 CREATE INDEX ix_kot_items_kot_id ON kot_items (kot_id);
-
-CREATE INDEX ix_kot_items_tenant_order_item ON kot_items (tenant_id, order_item_id);
 
 -- kots
 
@@ -1983,8 +2048,6 @@ CREATE INDEX ix_kots_dining_table_id ON kots (dining_table_id);
 
 CREATE INDEX ix_kots_tenant_id ON kots (tenant_id);
 
-CREATE INDEX ix_kots_tenant_status_created ON kots (tenant_id, status, created_at);
-
 -- order_item_addons
 
 
@@ -2002,11 +2065,11 @@ CREATE TABLE order_item_addons (
 	FOREIGN KEY(addon_id) REFERENCES item_addons (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_order_item_addons_addon_id ON order_item_addons (addon_id);
+
 CREATE INDEX ix_order_item_addons_tenant_id ON order_item_addons (tenant_id);
 
 CREATE INDEX ix_order_item_addons_order_item_id ON order_item_addons (order_item_id);
-
-CREATE INDEX ix_order_item_addons_addon_id ON order_item_addons (addon_id);
 
 -- order_items
 
@@ -2030,13 +2093,13 @@ CREATE TABLE order_items (
 	FOREIGN KEY(combo_id) REFERENCES combos (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_order_items_combo_id ON order_items (combo_id);
+
 CREATE INDEX ix_order_items_item_id ON order_items (item_id);
 
 CREATE INDEX ix_order_items_tenant_id ON order_items (tenant_id);
 
 CREATE INDEX ix_order_items_order_id ON order_items (order_id);
-
-CREATE INDEX ix_order_items_combo_id ON order_items (combo_id);
 
 -- orders
 
@@ -2079,13 +2142,11 @@ CREATE TABLE orders (
 
 CREATE INDEX ix_orders_bill_id ON orders (bill_id);
 
+CREATE INDEX ix_orders_dining_table_id ON orders (dining_table_id);
+
 CREATE INDEX ix_orders_customer_id ON orders (customer_id);
 
 CREATE INDEX ix_orders_tenant_id ON orders (tenant_id);
-
-CREATE INDEX ix_orders_dining_table_id ON orders (dining_table_id);
-
-CREATE INDEX ix_orders_tenant_status_dining_table ON orders (tenant_id, status, dining_table_id);
 
 -- quotation_items
 
@@ -2112,9 +2173,9 @@ CREATE TABLE quotation_items (
 	FOREIGN KEY(item_id) REFERENCES items (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_quotation_items_quotation_id ON quotation_items (quotation_id);
-
 CREATE INDEX ix_quotation_items_tenant_id ON quotation_items (tenant_id);
+
+CREATE INDEX ix_quotation_items_quotation_id ON quotation_items (quotation_id);
 
 -- quotations
 
@@ -2149,11 +2210,11 @@ CREATE TABLE quotations (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_quotations_bill_id ON quotations (bill_id);
+
 CREATE INDEX ix_quotations_customer_id ON quotations (customer_id);
 
 CREATE INDEX ix_quotations_tenant_id ON quotations (tenant_id);
-
-CREATE INDEX ix_quotations_bill_id ON quotations (bill_id);
 
 -- repair_orders
 
@@ -2255,11 +2316,11 @@ CREATE TABLE sales_orders (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_sales_orders_tenant_id ON sales_orders (tenant_id);
-
 CREATE INDEX ix_sales_orders_bill_id ON sales_orders (bill_id);
 
 CREATE INDEX ix_sales_orders_customer_id ON sales_orders (customer_id);
+
+CREATE INDEX ix_sales_orders_tenant_id ON sales_orders (tenant_id);
 
 -- sales_return_items
 
@@ -2349,13 +2410,13 @@ CREATE TABLE serial_units (
 	FOREIGN KEY(sold_bill_item_id) REFERENCES bill_items (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_serial_units_tenant_status_received ON serial_units (tenant_id, status, received_at);
-
 CREATE INDEX ix_serial_units_sold_bill_id ON serial_units (sold_bill_id);
 
 CREATE INDEX ix_serial_units_tenant_id ON serial_units (tenant_id);
 
 CREATE INDEX ix_serial_units_item_id ON serial_units (item_id);
+
+CREATE INDEX ix_serial_units_tenant_status_received ON serial_units (tenant_id, status, received_at);
 
 -- travel_booking_documents
 
@@ -2379,9 +2440,9 @@ CREATE TABLE travel_booking_documents (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX ix_travel_booking_documents_booking_id ON travel_booking_documents (booking_id);
-
 CREATE INDEX ix_travel_booking_documents_tenant_id ON travel_booking_documents (tenant_id);
+
+CREATE INDEX ix_travel_booking_documents_booking_id ON travel_booking_documents (booking_id);
 
 -- travel_booking_payments
 
@@ -2441,6 +2502,10 @@ CREATE TABLE travel_bookings (
 	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE INDEX ix_travel_bookings_customer_id ON travel_bookings (customer_id);
+
+CREATE INDEX ix_travel_bookings_travel_start_at ON travel_bookings (travel_start_at);
+
 CREATE INDEX ix_travel_bookings_bill_id ON travel_bookings (bill_id);
 
 CREATE INDEX ix_travel_bookings_package_id ON travel_bookings (package_id);
@@ -2448,10 +2513,6 @@ CREATE INDEX ix_travel_bookings_package_id ON travel_bookings (package_id);
 CREATE INDEX ix_travel_bookings_tenant_id ON travel_bookings (tenant_id);
 
 CREATE INDEX ix_travel_bookings_agent_id ON travel_bookings (agent_id);
-
-CREATE INDEX ix_travel_bookings_customer_id ON travel_bookings (customer_id);
-
-CREATE INDEX ix_travel_bookings_travel_start_at ON travel_bookings (travel_start_at);
 
 -- travel_commission_entries
 

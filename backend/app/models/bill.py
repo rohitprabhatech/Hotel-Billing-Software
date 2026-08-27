@@ -103,6 +103,13 @@ class Bill(db.Model, TimestampMixin):
         String(36), ForeignKey("warehouses.id", ondelete="SET NULL"), nullable=True, index=True
     )
     split_group_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    coupon_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("coupons.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    coupon_code: Mapped[str | None] = mapped_column(String(40))
+    coupon_discount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, default=Decimal("0.00")
+    )
 
     # selectin (not joined): list endpoints must not pull every line item.
     items = relationship("BillItem", back_populates="bill", lazy="selectin")

@@ -1,7 +1,7 @@
-# Alembic Revision Order (BIZ-67)
+# Alembic Revision Order
 
-**Head:** `20260826_biz66_perf_indexes`  
-**Count:** 56 (single linear chain)
+**Head:** `20260827_cafe_coupons`  
+**Count:** 59 (single linear chain)
 
 Regenerate:
 
@@ -68,5 +68,8 @@ cd backend
 | 54 | `20260826_biz58_travel_itinerary_documents` | `20260826_biz58_travel_itinerary_documents.py` |
 | 55 | `20260826_biz59_travel_agent_commission` | `20260826_biz59_travel_agent_commission.py` |
 | 56 | `20260826_biz66_perf_indexes` | `20260826_biz66_perf_indexes.py` |
+| 57 | `20260827_hotel_billing_settings_audit_delete` | `20260827_hotel_billing_settings_audit_delete.py` |
+| 58 | `20260827_stock_movement_sources` | `20260827_stock_movement_sources.py` |
+| 59 | `20260827_cafe_coupons` | `20260827_cafe_coupons.py` |
 
 Ops runbook: [`10-industry-modules-ops-runbook.md`](./10-industry-modules-ops-runbook.md)

@@ -3,6 +3,7 @@
 from flask import request
 
 from app.schemas.cafe_offer_schemas import create_addon_group_schema, create_combo_schema
+from app.services.cafe_dashboard_service import CafeDashboardService
 from app.services.cafe_offer_service import AddonService, CafeMenuService, ComboService
 from app.utils.responses import success_response
 
@@ -54,3 +55,8 @@ def delete_combo(combo_id: str):
 
 def quick_pos_catalog():
     return success_response(data=CafeMenuService.quick_pos_catalog())
+
+
+def cafe_dashboard():
+    period = (request.args.get("period") or "last_7_days").strip() or "last_7_days"
+    return success_response(data=CafeDashboardService.dashboard(period=period))

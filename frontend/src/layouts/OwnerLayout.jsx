@@ -25,6 +25,9 @@ import BakeryDiningOutlinedIcon from '@mui/icons-material/BakeryDiningOutlined';
 import CakeOutlinedIcon from '@mui/icons-material/CakeOutlined';
 import WeekendOutlinedIcon from '@mui/icons-material/WeekendOutlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
+import ExtensionOutlinedIcon from '@mui/icons-material/ExtensionOutlined';
+import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined';
+import LunchDiningOutlinedIcon from '@mui/icons-material/LunchDiningOutlined';
 import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
@@ -101,7 +104,7 @@ function pruneEmptySections(items) {
 
 const navItems = [
   { to: PATHS.ownerDashboard, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
-  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant'] },
+  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
   {
     to: PATHS.ownerRestaurantBilling,
     label: 'Table Billing',
@@ -111,30 +114,38 @@ const navItems = [
     emphasize: true,
   },
   {
+    to: PATHS.ownerCafe,
+    label: 'Cafe POS',
+    icon: <LocalCafeOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+    emphasize: true,
+  },
+  {
     to: PATHS.billingHome,
     label: 'Billing Desk',
     icon: <PointOfSaleOutlinedIcon />,
-    businessTypes: ['hotel_restaurant'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.billingHome,
     label: 'Billing',
     icon: <PointOfSaleOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.ownerBills,
     label: "Today's Bills",
     icon: <ReceiptLongOutlinedIcon />,
-    businessTypes: ['hotel_restaurant'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.ownerBills,
     label: 'Bills',
     icon: <ReceiptLongOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
-  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant'] },
+  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
   {
     to: PATHS.ownerTables,
     label: 'Tables',
@@ -163,7 +174,7 @@ const navItems = [
     module: 'order_channels',
     businessTypes: ['cafe_tea'],
   },
-  { type: 'section', label: 'Menu', businessTypes: ['hotel_restaurant'] },
+  { type: 'section', label: 'Menu', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
   {
     to: PATHS.ownerMenu,
     label: 'Menu Board',
@@ -178,6 +189,27 @@ const navItems = [
     module: 'restaurant_menu',
     businessTypes: ['cafe_tea'],
   },
+  {
+    to: PATHS.ownerAddons,
+    label: 'Add-ons',
+    icon: <ExtensionOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+  },
+  {
+    to: PATHS.ownerCombos,
+    label: 'Combos',
+    icon: <LunchDiningOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+  },
+  {
+    to: PATHS.ownerCoupons,
+    label: 'Coupons',
+    icon: <LocalOfferOutlinedIcon />,
+    module: 'addons_combos',
+    businessTypes: ['cafe_tea'],
+  },
   { to: PATHS.ownerItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
   { to: PATHS.ownerCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
   { to: PATHS.ownerItemActivity, label: 'Item Activity', icon: <HistoryOutlinedIcon /> },
@@ -187,22 +219,15 @@ const navItems = [
     to: PATHS.ownerSuppliers,
     label: 'Suppliers',
     icon: <LocalShippingOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   {
     to: PATHS.ownerPurchases,
     label: 'Purchases',
     icon: <ShoppingCartOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
   { to: PATHS.ownerExpenses, label: 'Expenses', icon: <PaymentsOutlinedIcon /> },
-  {
-    to: PATHS.ownerCafe,
-    label: 'Cafe POS',
-    icon: <LocalCafeOutlinedIcon />,
-    module: 'addons_combos',
-    businessTypes: ['cafe_tea'],
-  },
   {
     to: PATHS.ownerGrocery,
     label: 'Grocery POS',
@@ -335,6 +360,13 @@ const navItems = [
     hideForBusinessTypes: ['hotel_restaurant'],
   },
   {
+    to: PATHS.ownerIngredients,
+    label: 'Ingredients',
+    icon: <KitchenOutlinedIcon />,
+    module: 'recipe',
+    businessTypes: ['cafe_tea'],
+  },
+  {
     to: PATHS.ownerProduction,
     label: 'Production',
     icon: <BakeryDiningOutlinedIcon />,
@@ -456,6 +488,18 @@ const titles = {
     title: 'Cafe POS',
     subtitle: 'Quick takeaway billing with add-ons and combos.',
   },
+  [PATHS.ownerAddons]: {
+    title: 'Add-ons',
+    subtitle: 'Option groups for cafe menu items — milk, size, toppings, and more.',
+  },
+  [PATHS.ownerCombos]: {
+    title: 'Combos',
+    subtitle: 'Fixed-price bundles of menu items for Cafe POS.',
+  },
+  [PATHS.ownerCoupons]: {
+    title: 'Coupons',
+    subtitle: 'Promo codes for Cafe POS — percent or flat discounts.',
+  },
   [PATHS.ownerGrocery]: {
     title: 'Grocery POS',
     subtitle: 'Scan-first billing with barcode lookup, weight quantities, and udhari.',
@@ -535,6 +579,10 @@ const titles = {
   [PATHS.ownerRecipes]: {
     title: 'Recipes',
     subtitle: 'Bill of materials — menu items mapped to ingredient stock.',
+  },
+  [PATHS.ownerIngredients]: {
+    title: 'Ingredients',
+    subtitle: 'Raw ingredient stock levels for Cafe recipes and linked add-ons.',
   },
   [PATHS.ownerProduction]: {
     title: 'Production',

@@ -2,7 +2,7 @@
 
 **Audience:** Ops / Master Admin operators  
 **Product:** Business Billing  
-**Current Alembic head:** `20260826_biz66_perf_indexes`
+**Current Alembic head:** `20260827_cafe_coupons`
 
 This runbook is the **approved** path to enable industry schema on staging/production. It does not authorize new migrations by itself.
 
@@ -80,7 +80,7 @@ Copy this into the change ticket:
 | 3 | Note current `SELECT version_num FROM alembic_version` | Ops | ☐ |
 | 4 | `flask --app run:app db upgrade` (venv active, correct `DATABASE_URL`) | Ops | ☐ |
 | 5 | Re-inspect → `staging-post.json`; diff table count | Ops | ☐ |
-| 6 | Confirm head = `20260826_biz66_perf_indexes` | Ops | ☐ |
+| 6 | Confirm head = `20260827_cafe_coupons` | Ops | ☐ |
 | 7 | Pilot tenant: switch business type → smoke POS/board for that industry | QA | ☐ |
 | 8 | Confirm billing still works (create bill, stock movement) | QA | ☐ |
 | 9 | Confirm audit row for tenant type change | QA | ☐ |

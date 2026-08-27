@@ -41,6 +41,7 @@ class SettleOrderSchema(Schema):
     customer_phone_country_code = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=8))
     customer_phone = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=20))
     customer_email = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=255))
+    coupon_code = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=40))
     splits = fields.List(fields.Nested(OrderSettleSplitSchema), load_default=None, allow_none=True)
 
 

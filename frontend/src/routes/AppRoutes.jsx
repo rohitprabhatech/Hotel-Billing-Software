@@ -57,6 +57,10 @@ const NewOrderPage = lazy(() => import('../pages/modules/NewOrderPage'));
 const TablesPage = lazy(() => import('../pages/modules/TablesPage'));
 const KitchenPage = lazy(() => import('../pages/modules/KitchenPage'));
 const RecipesPage = lazy(() => import('../pages/owner/RecipesPage'));
+const IngredientStockPage = lazy(() => import('../pages/owner/IngredientStockPage'));
+const AddonsPage = lazy(() => import('../pages/owner/AddonsPage'));
+const CombosPage = lazy(() => import('../pages/owner/CombosPage'));
+const CouponsPage = lazy(() => import('../pages/owner/CouponsPage'));
 const CafePosPage = lazy(() => import('../pages/modules/CafePosPage'));
 const WastagePage = lazy(() => import('../pages/owner/WastagePage'));
 const ProductionPage = lazy(() => import('../pages/owner/ProductionPage'));
@@ -156,6 +160,9 @@ export default function AppRoutes() {
             <Route path="orders/new" element={<RequireModule module="order_channels"><NewOrderPage /></RequireModule>} />
             <Route path="kitchen" element={<RequireModule module="kitchen"><KitchenPage /></RequireModule>} />
             <Route path="cafe" element={<RequireModule module="addons_combos"><CafePosPage /></RequireModule>} />
+            <Route path="addons" element={<RequireModule module="addons_combos"><AddonsPage /></RequireModule>} />
+            <Route path="combos" element={<RequireModule module="addons_combos"><CombosPage /></RequireModule>} />
+            <Route path="coupons" element={<RequireModule module="addons_combos"><CouponsPage /></RequireModule>} />
             <Route path="grocery" element={<RequireModule module="barcode_pos"><GroceryPosPage /></RequireModule>} />
             <Route path="stationery" element={<RequireModule module="barcode_pos"><StationeryPosPage /></RequireModule>} />
             <Route path="hardware" element={<RequireModule module="uom_measurement"><HardwarePosPage /></RequireModule>} />
@@ -164,6 +171,7 @@ export default function AppRoutes() {
             <Route path="credit" element={<RequireModule module="customer_credit"><GroceryCreditPage /></RequireModule>} />
             <Route path="outstanding" element={<RequireModule module="customer_credit"><OutstandingReportPage /></RequireModule>} />
             <Route path="recipes" element={<RequireModule module="recipe"><RecipesPage /></RequireModule>} />
+            <Route path="ingredients" element={<RequireModule module="recipe"><IngredientStockPage /></RequireModule>} />
             <Route path="production" element={<RequireModule module="production"><ProductionPage /></RequireModule>} />
             <Route path="cake-orders" element={<RequireModule module="custom_orders"><CakeOrdersPage /></RequireModule>} />
             <Route path="furniture-orders" element={<RequireModule module="custom_orders"><FurnitureOrdersPage /></RequireModule>} />
@@ -219,11 +227,15 @@ export default function AppRoutes() {
             />
             <Route path="menu" element={<RequireModule module="restaurant_menu"><MenuPage /></RequireModule>} />
             <Route path="recipes" element={<RequireModule module="recipe"><RecipesPage /></RequireModule>} />
+            <Route path="ingredients" element={<RequireModule module="recipe"><IngredientStockPage /></RequireModule>} />
             <Route path="wastage" element={<RequireModule module="wastage"><WastagePage /></RequireModule>} />
             <Route path="orders" element={<RequireModule module="order_channels"><OrdersPage /></RequireModule>} />
             <Route path="orders/new" element={<RequireModule module="order_channels"><NewOrderPage /></RequireModule>} />
             <Route path="kitchen" element={<RequireModule module="kitchen"><KitchenPage /></RequireModule>} />
             <Route path="cafe" element={<RequireModule module="addons_combos"><CafePosPage /></RequireModule>} />
+            <Route path="addons" element={<RequireModule module="addons_combos"><AddonsPage /></RequireModule>} />
+            <Route path="combos" element={<RequireModule module="addons_combos"><CombosPage /></RequireModule>} />
+            <Route path="coupons" element={<RequireModule module="addons_combos"><CouponsPage /></RequireModule>} />
             <Route path="grocery" element={<RequireModule module="barcode_pos"><GroceryPosPage /></RequireModule>} />
             <Route path="stationery" element={<RequireModule module="barcode_pos"><StationeryPosPage /></RequireModule>} />
             <Route path="hardware" element={<RequireModule module="uom_measurement"><HardwarePosPage /></RequireModule>} />

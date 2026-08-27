@@ -17,7 +17,7 @@ Always index `(tenant_id, …)` on hot tables. Unique per tenant: email, SKU, bi
 | `ix_bills_tenant_created_at` | bills | `(tenant_id, created_at)` | Recent bills |
 | `ix_bills_tenant_status_created_at` | bills | `(tenant_id, status, created_at)` | Report filters |
 
-Alembic: `20260826_biz66_perf_indexes` (head after BIZ-59). Ops catch-up: `backend/scripts/apply_perf_indexes.py`.
+Alembic: `20260827_cafe_coupons` (head; includes `20260826_biz66_perf_indexes`). Ops catch-up: `backend/scripts/apply_perf_indexes.py`.
 
 ### Notes
 

@@ -92,10 +92,25 @@ def _with_engine(ddl: str) -> str:
     return ddl + "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
 
 
+def _alembic_head() -> str:
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        cfg = Config()
+        cfg.set_main_option("script_location", str(BACKEND_ROOT / "migrations"))
+        script = ScriptDirectory.from_config(cfg)
+        heads = list(script.get_heads())
+        return heads[0] if len(heads) == 1 else ",".join(heads) or "unknown"
+    except Exception:  # noqa: BLE001
+        return "unknown"
+
+
 def main() -> None:
     _ensure_greenfield_checks()
     app = create_app("testing")
     out_path = Path(__file__).resolve().parents[1] / "sql" / "02_schema.sql"
+    alembic_head = _alembic_head()
 
     with app.app_context():
         dialect = mysql.dialect()
@@ -109,7 +124,7 @@ def main() -> None:
             "-- Database : hotel_billing  (legacy DB name; product is multi-business)",
             "-- Charset  : utf8mb4 / utf8mb4_unicode_ci",
             f"-- Tables   : {len(create_order)} application tables (aligned with SQLAlchemy models / Alembic)",
-            "-- Alembic head: 20260826_biz66_perf_indexes (industry modules through BIZ-68)",
+            f"-- Alembic head: {alembic_head}",
             "--",
             "-- GREENFIELD / EMPTY DB ONLY. DROP + recreate. Never run on production data.",
             "-- Upgrades: flask db upgrade  (preferred for existing / hosted DBs).",

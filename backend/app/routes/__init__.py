@@ -24,6 +24,7 @@ from app.routes.menu_routes import menu_bp
 from app.routes.mobile_routes import mobile_bp
 from app.routes.combo_routes import combos_bp
 from app.routes.cafe_routes import cafe_bp
+from app.routes.coupon_routes import coupons_bp
 from app.routes.kot_routes import kots_bp
 from app.routes.order_routes import orders_bp
 from app.routes.table_routes import tables_bp
@@ -85,6 +86,7 @@ def register_blueprints(app):
     api_v1.register_blueprint(menu_bp)
     api_v1.register_blueprint(combos_bp)
     api_v1.register_blueprint(cafe_bp)
+    api_v1.register_blueprint(coupons_bp)
     api_v1.register_blueprint(wastage_bp)
     api_v1.register_blueprint(productions_bp)
     api_v1.register_blueprint(bakery_bp)

@@ -724,6 +724,19 @@ class BillService:
             if not getattr(line, "variant_id", None) and not getattr(line, "serial_unit_id", None)
         ]
         restore_merged = RecipeStockService.expand_from_lines(ctx.tenant_id, plain_lines)
+        # Sprint 6: restore cafe add-on linked stock when this bill came from an order.
+        if getattr(bill, "order_id", None):
+            from app.repositories.order_repository import OrderRepository
+
+            order = OrderRepository.get_by_id_and_tenant(bill.order_id, ctx.tenant_id)
+            if order is not None and order.items:
+                addon_sold = RecipeStockService.merge_addon_linked_qty({}, order.items)
+                if addon_sold:
+                    addon_restore = RecipeStockService.expand_for_deduction(
+                        ctx.tenant_id, addon_sold
+                    )
+                    for item_id, amount in addon_restore.items():
+                        restore_merged[item_id] = restore_merged.get(item_id, Decimal("0")) + amount
         restore_ids = sorted(
             set(restore_merged.keys())
             | {line.item_id for line in variant_lines if line.item_id}
@@ -992,6 +1005,9 @@ class BillService:
             "customer_id": bill.customer_id,
             "subtotal": float(bill.subtotal),
             "discount": float(bill.discount),
+            "coupon_id": getattr(bill, "coupon_id", None),
+            "coupon_code": getattr(bill, "coupon_code", None),
+            "coupon_discount": float(getattr(bill, "coupon_discount", 0) or 0),
             "taxable_amount": float(bill.taxable_amount),
             "cgst_amount": float(bill.cgst_amount),
             "sgst_amount": float(bill.sgst_amount),

@@ -20,6 +20,7 @@ def settle_order(order_id: str):
         customer_phone_country_code=payload.get("customer_phone_country_code"),
         customer_phone=payload.get("customer_phone"),
         customer_email=payload.get("customer_email"),
+        coupon_code=payload.get("coupon_code"),
         splits=payload.get("splits"),
     )
     return success_response(data=data, status_code=201)

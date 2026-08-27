@@ -43,6 +43,7 @@ class OrderSettlementService:
         customer_phone_country_code: str | None = None,
         customer_phone: str | None = None,
         customer_email: str | None = None,
+        coupon_code: str | None = None,
         splits: list[dict] | None = None,
     ):
         require_permission(PERM_BILLING)
@@ -82,13 +83,18 @@ class OrderSettlementService:
         order_subtotal = money(
             sum(money(line.unit_price * line.quantity) for line in order.items)
         )
-        total_discount = money(discount or 0)
+        manual_discount = money(discount or 0)
+        from app.services.coupon_service import CouponService
+
+        coupon, coupon_discount = CouponService.resolve_for_settle(
+            code=coupon_code, subtotal=order_subtotal
+        )
+        total_discount = money(manual_discount + coupon_discount)
 
         ZERO = money(0)
         allocated_discount = ZERO
         allocated_service = ZERO
         split_payloads = []
-        merged_stock: dict[str, Decimal] = {}
 
         for index, spec in enumerate(split_specs):
             lines = [line for line in order.items if line.id in spec["order_item_ids"]]
@@ -118,11 +124,6 @@ class OrderSettlementService:
             except ValueError as exc:
                 raise ValidationError(str(exc)) from exc
 
-            for line in lines:
-                merged_stock[line.item_id] = merged_stock.get(line.item_id, Decimal("0")) + qty(
-                    line.quantity
-                )
-
             customer_fields = OrderSettlementService._resolve_customer_fields(
                 customer_id=spec.get("customer_id"),
                 customer_name=spec.get("customer_name"),
@@ -140,14 +141,19 @@ class OrderSettlementService:
 
         from app.services.recipe_stock_service import RecipeStockService
 
-        merged_stock = RecipeStockService.expand_for_deduction(ctx.tenant_id, merged_stock)
+        # Cafe add-on linked inventory (Sprint 6); hotel orders have no add-ons.
+        settle_line_ids = {oid for spec in split_specs for oid in spec["order_item_ids"]}
+        settle_items = [line for line in order.items if line.id in settle_line_ids]
+        merged_stock = RecipeStockService.expand_for_order_settle(ctx.tenant_id, settle_items)
         locked = OrderSettlementService._lock_and_validate_stock(ctx.tenant_id, merged_stock)
 
         split_group_id = new_uuid() if len(split_payloads) > 1 else None
         reference = order.dining_table.code if order.dining_table else order.order_number
         created_bills = []
 
-        for payload in split_payloads:
+        for index, payload in enumerate(split_payloads):
+            # Attach coupon metadata to the primary (first) bill only.
+            apply_coupon = coupon is not None and index == 0
             bill = OrderSettlementService._create_bill_from_payload(
                 ctx=ctx,
                 order=order,
@@ -158,8 +164,18 @@ class OrderSettlementService:
                 split_group_id=split_group_id,
                 locked=locked,
                 skip_stock=True,
+                coupon=coupon if apply_coupon else None,
+                coupon_discount=coupon_discount if apply_coupon else money(0),
             )
             created_bills.append(bill)
+            if apply_coupon:
+                CouponService.redeem(
+                    coupon=coupon,
+                    bill_id=bill.id,
+                    order_id=order.id,
+                    discount_applied=coupon_discount,
+                    user_id=ctx.user_id,
+                )
 
         OrderSettlementService._deduct_merged_stock(
             locked=locked,
@@ -387,7 +403,20 @@ class OrderSettlementService:
             )
 
     @staticmethod
-    def _create_bill_from_payload(*, ctx, order, calculated, payment_method, customer_fields, reference, split_group_id, locked, skip_stock=False):
+    def _create_bill_from_payload(
+        *,
+        ctx,
+        order,
+        calculated,
+        payment_method,
+        customer_fields,
+        reference,
+        split_group_id,
+        locked,
+        skip_stock=False,
+        coupon=None,
+        coupon_discount=0,
+    ):
         if payment_method == PAYMENT_CREDIT and not customer_fields.get("customer_id"):
             raise ValidationError("Customer is required for credit (udhari) bills")
 
@@ -436,6 +465,9 @@ class OrderSettlementService:
             printed_count=0,
             order_id=order.id,
             split_group_id=split_group_id,
+            coupon_id=coupon.id if coupon is not None else None,
+            coupon_code=coupon.code if coupon is not None else None,
+            coupon_discount=money(coupon_discount or 0),
         )
         BillRepository.add_bill(bill)
 

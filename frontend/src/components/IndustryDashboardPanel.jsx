@@ -45,10 +45,12 @@ const INDUSTRY_PANELS = {
   },
   cafe_tea: {
     title: 'Cafe / tea shop',
-    blurb: 'Fast cafe POS with recipes and wastage tracking.',
+    blurb: 'Fast Cafe POS with add-ons, combos, recipes, and wastage.',
     accent: '#2F6B80',
     actions: [
       { to: PATHS.ownerCafe, label: 'Cafe POS', icon: PointOfSaleOutlinedIcon, module: 'addons_combos' },
+      { to: PATHS.ownerAddons, label: 'Add-ons', icon: RestaurantMenuOutlinedIcon, module: 'addons_combos' },
+      { to: PATHS.ownerCombos, label: 'Combos', icon: LocalMallOutlinedIcon, module: 'addons_combos' },
       { to: PATHS.ownerRecipes, label: 'Recipes', icon: MenuBookOutlinedIcon, module: 'recipe' },
       { to: PATHS.ownerWastage, label: 'Wastage', icon: Inventory2OutlinedIcon, module: 'wastage' },
     ],
@@ -195,6 +197,8 @@ const OWNER_TO_BILLING = {
   [PATHS.ownerOrders]: PATHS.billingOrders,
   [PATHS.ownerKitchen]: PATHS.billingKitchen,
   [PATHS.ownerCafe]: PATHS.billingCafe,
+  [PATHS.ownerAddons]: PATHS.billingAddons,
+  [PATHS.ownerCombos]: PATHS.billingCombos,
   [PATHS.ownerGrocery]: PATHS.billingGrocery,
   [PATHS.ownerStationery]: PATHS.billingStationery,
   [PATHS.ownerHardware]: PATHS.billingHardware,

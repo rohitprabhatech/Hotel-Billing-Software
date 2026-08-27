@@ -144,6 +144,7 @@ class AddonService:
                     "name": addon.name,
                     "extra_price": float(addon.extra_price),
                     "linked_item_id": addon.linked_item_id,
+                    "linked_item_name": addon.linked_item.name if addon.linked_item else None,
                     "is_default": addon.is_default,
                     "sort_order": addon.sort_order,
                     "is_active": addon.is_active,

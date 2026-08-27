@@ -2,6 +2,9 @@
 
 Policy: ingredients deduct at settle/bill finalize — not at KOT fire.
 See app.constants.recipes.RECIPE_DEDUCTION_POLICY.
+
+Sprint 6: cafe add-on options with linked_item_id also contribute to the sold map
+(one linked unit per add-on selection × line quantity) before recipe expansion.
 """
 
 from decimal import Decimal
@@ -11,6 +14,43 @@ from app.utils.money import qty
 
 
 class RecipeStockService:
+    @staticmethod
+    def merge_addon_linked_qty(sold: dict[str, Decimal], order_items) -> dict[str, Decimal]:
+        """Add stock qty for order-line add-ons that link to an inventory item.
+
+        Cafe-only data path: hotel orders never carry add-ons (module gate).
+        Linked qty is merged into the sold map so recipe expand still applies if
+        the linked SKU itself has a recipe.
+        """
+        if not order_items:
+            return sold
+        merged = dict(sold or {})
+        for line in order_items:
+            line_qty = qty(getattr(line, "quantity", 0) or 0)
+            if line_qty <= 0:
+                continue
+            for order_addon in getattr(line, "addons", None) or []:
+                linked_id = None
+                addon = getattr(order_addon, "addon", None)
+                if addon is not None:
+                    linked_id = getattr(addon, "linked_item_id", None)
+                if not linked_id:
+                    # Fallback if relationship not loaded — resolve by addon_id.
+                    addon_id = getattr(order_addon, "addon_id", None)
+                    if addon_id:
+                        from app.repositories.cafe_offer_repository import AddonRepository
+
+                        rows = AddonRepository.get_addons_by_ids(
+                            getattr(order_addon, "tenant_id", None) or "",
+                            [addon_id],
+                        )
+                        linked_id = rows[0].linked_item_id if rows else None
+                if not linked_id:
+                    continue
+                key = str(linked_id)
+                merged[key] = merged.get(key, Decimal("0")) + line_qty
+        return merged
+
     @staticmethod
     def expand_for_deduction(tenant_id: str, sold: dict[str, Decimal]) -> dict[str, Decimal]:
         """Map sold catalog item quantities to stock item quantities via recipes.
@@ -58,4 +98,16 @@ class RecipeStockService:
             if not item_id:
                 continue
             sold[str(item_id)] = sold.get(str(item_id), Decimal("0")) + qty(quantity)
+        return RecipeStockService.expand_for_deduction(tenant_id, sold)
+
+    @staticmethod
+    def expand_for_order_settle(tenant_id: str, order_items) -> dict[str, Decimal]:
+        """Sold menu/combo lines + cafe add-on linked SKUs → stock deductions."""
+        sold: dict[str, Decimal] = {}
+        for line in order_items or []:
+            item_id = getattr(line, "item_id", None)
+            if not item_id:
+                continue
+            sold[str(item_id)] = sold.get(str(item_id), Decimal("0")) + qty(getattr(line, "quantity", 0))
+        sold = RecipeStockService.merge_addon_linked_qty(sold, order_items)
         return RecipeStockService.expand_for_deduction(tenant_id, sold)

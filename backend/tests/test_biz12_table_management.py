@@ -215,3 +215,99 @@ def test_table_open_order_summary_and_bill_history(client):
     bills = history.get_json()["data"]
     assert len(bills) >= 1
     assert bills[0]["table_number"] == "POS-TB01" or bills[0]["reference"] == "POS-TB01"
+
+
+def test_update_and_deactivate_table(client):
+    headers = login(client, "owner@hotela.com", "Owner@12345")
+    table = _create_table(client, headers, "Edit-T1", capacity=4)
+
+    updated = client.patch(
+        f"/api/v1/tables/{table['id']}",
+        headers=headers,
+        json={"code": "Edit-T10", "capacity": 6},
+    )
+    assert updated.status_code == 200, updated.get_json()
+    assert updated.get_json()["data"]["code"] == "Edit-T10"
+    assert updated.get_json()["data"]["capacity"] == 6
+    assert updated.get_json()["data"]["id"] == table["id"]
+
+    removed = client.delete(f"/api/v1/tables/{table['id']}", headers=headers)
+    assert removed.status_code == 200, removed.get_json()
+    assert removed.get_json()["data"]["is_active"] is False
+
+    listing = client.get("/api/v1/tables", headers=headers)
+    assert all(row["id"] != table["id"] for row in listing.get_json()["data"])
+
+
+def test_billing_user_can_update_and_deactivate_table(client):
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+    created = client.post(
+        "/api/v1/tables",
+        headers=billing,
+        json={"code": "BillEdit-T1", "capacity": 2},
+    )
+    assert created.status_code == 201, created.get_json()
+    table_id = created.get_json()["data"]["id"]
+
+    updated = client.patch(
+        f"/api/v1/tables/{table_id}",
+        headers=billing,
+        json={"capacity": 8},
+    )
+    assert updated.status_code == 200, updated.get_json()
+    assert updated.get_json()["data"]["capacity"] == 8
+
+    removed = client.delete(f"/api/v1/tables/{table_id}", headers=billing)
+    assert removed.status_code == 200, removed.get_json()
+
+
+def test_cannot_deactivate_table_with_open_order(client):
+    owner = login(client, "owner@hotela.com", "Owner@12345")
+    billing = login(client, "billing@hotela.com", "Billing@12345")
+    table = _create_table(client, owner, "Active-Del-T1")
+    cat = client.post(
+        "/api/v1/categories",
+        headers=owner,
+        json={"name": "Active Del Cat"},
+    ).get_json()["data"]
+    item = client.post(
+        "/api/v1/items",
+        headers=owner,
+        json={
+            "name": "Active Del Item",
+            "category_id": cat["id"],
+            "price": "50",
+            "gst_percentage": "5",
+            "stock_quantity": "20",
+        },
+    ).get_json()["data"]
+    order = client.post(
+        "/api/v1/orders",
+        headers=billing,
+        json={
+            "channel": "dine_in",
+            "dining_table_id": table["id"],
+            "items": [{"item_id": item["id"], "quantity": "1"}],
+        },
+    )
+    assert order.status_code == 201, order.get_json()
+
+    blocked = client.delete(f"/api/v1/tables/{table['id']}", headers=owner)
+    assert blocked.status_code == 400, blocked.get_json()
+    assert "active order" in blocked.get_json()["error"]["message"].lower()
+
+
+def test_table_update_delete_tenant_isolation(client):
+    owner_a = login(client, "owner@hotela.com", "Owner@12345")
+    owner_b = login(client, "owner@hotelb.com", "Owner@12345")
+    table = _create_table(client, owner_a, "Iso-Edit-T1")
+
+    denied_patch = client.patch(
+        f"/api/v1/tables/{table['id']}",
+        headers=owner_b,
+        json={"capacity": 99},
+    )
+    assert denied_patch.status_code == 404, denied_patch.get_json()
+
+    denied_delete = client.delete(f"/api/v1/tables/{table['id']}", headers=owner_b)
+    assert denied_delete.status_code == 404, denied_delete.get_json()

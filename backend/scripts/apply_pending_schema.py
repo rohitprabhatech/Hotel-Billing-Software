@@ -41,6 +41,7 @@ SCRIPTS = [
     "apply_email_bill_delivery.py",
     "apply_stock_movements.py",
     "apply_stock_receive.py",
+    "apply_stock_movement_sources.py",
     "apply_perf_indexes.py",
     "apply_master_admins.py",
     "apply_registration_requests.py",

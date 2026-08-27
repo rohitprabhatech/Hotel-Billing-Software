@@ -31,7 +31,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
@@ -42,8 +42,8 @@ import { getApiErrorMessage } from '../../utils/apiError';
 import { uomLabel } from '../../utils/uom';
 import {
   createBill,
+  billPrintPath,
   downloadBillPdf,
-  openBillPrint,
   sendBillEmail,
   sendBillWhatsapp,
 } from '../../services/billService';
@@ -94,6 +94,7 @@ function sortCategoriesHierarchically(categories) {
 
 export default function NewBillPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { canWriteCategories } = usePermissions();
   const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
   const tablesEnabled = useModuleGate('table_management');
@@ -1187,7 +1188,9 @@ export default function NewBillPage() {
             variant="outlined"
             disabled={whatsappSending || emailSending}
             onClick={() => {
-              openBillPrint(createdBill.id, { auto: true });
+              navigate(billPrintPath(createdBill.id, { auto: true }), {
+                state: { from: PATHS.billingNew },
+              });
             }}
           >
             Print Bill

@@ -30,8 +30,12 @@ export async function recordBillPrint(billId) {
   return data;
 }
 
+export function billPrintPath(billId, { auto = false } = {}) {
+  return `/print/bills/${billId}${auto ? '?auto=1' : ''}`;
+}
+
 export function openBillPrint(billId, { auto = false } = {}) {
-  const url = `/print/bills/${billId}${auto ? '?auto=1' : ''}`;
+  const url = billPrintPath(billId, { auto });
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 

@@ -63,7 +63,7 @@ def list_table_bills(table_id):
 
 
 @tables_bp.patch("/<table_id>")
-@roles_required(ROLE_OWNER, ROLE_MANAGER)
+@roles_required(*_STAFF)
 @module_required("table_management")
 @permission_required(PERM_TABLES_WRITE)
 def update_table(table_id):
@@ -71,7 +71,7 @@ def update_table(table_id):
 
 
 @tables_bp.delete("/<table_id>")
-@roles_required(ROLE_OWNER, ROLE_MANAGER)
+@roles_required(*_STAFF)
 @module_required("table_management")
 @permission_required(PERM_TABLES_WRITE)
 def deactivate_table(table_id):

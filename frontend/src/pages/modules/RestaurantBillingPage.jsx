@@ -468,7 +468,13 @@ export default function RestaurantBillingPage() {
           /* ignore */
         }
       }
-      if (billId) navigate(`/print/bills/${billId}`);
+      if (billId) {
+        const from =
+          user?.role === 'OWNER' || user?.role === 'MANAGER'
+            ? PATHS.ownerRestaurantBilling
+            : PATHS.billingRestaurantBilling;
+        navigate(`/print/bills/${billId}`, { state: { from } });
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, 'Payment failed'));
     } finally {
@@ -876,7 +882,16 @@ export default function RestaurantBillingPage() {
                 {billHistory[0]?.id ? (
                   <Button
                     variant="outlined"
-                    onClick={() => navigate(`/print/bills/${billHistory[0].id}`)}
+                    onClick={() =>
+                      navigate(`/print/bills/${billHistory[0].id}`, {
+                        state: {
+                          from:
+                            user?.role === 'OWNER' || user?.role === 'MANAGER'
+                              ? PATHS.ownerRestaurantBilling
+                              : PATHS.billingRestaurantBilling,
+                        },
+                      })
+                    }
                   >
                     Print Bill
                   </Button>
@@ -925,7 +940,16 @@ export default function RestaurantBillingPage() {
                           <Button
                             size="small"
                             sx={{ minWidth: 0, p: 0, fontSize: '0.7rem' }}
-                            onClick={() => navigate(`/print/bills/${bill.id}`)}
+                            onClick={() =>
+                              navigate(`/print/bills/${bill.id}`, {
+                                state: {
+                                  from:
+                                    user?.role === 'OWNER' || user?.role === 'MANAGER'
+                                      ? PATHS.ownerRestaurantBilling
+                                      : PATHS.billingRestaurantBilling,
+                                },
+                              })
+                            }
                           >
                             Print
                           </Button>
@@ -977,7 +1001,13 @@ export default function RestaurantBillingPage() {
               }
             }
             const billId = result?.bills?.[0]?.id || result?.id;
-            if (billId) navigate(`/print/bills/${billId}`);
+            if (billId) {
+              const from =
+                user?.role === 'OWNER' || user?.role === 'MANAGER'
+                  ? PATHS.ownerRestaurantBilling
+                  : PATHS.billingRestaurantBilling;
+              navigate(`/print/bills/${billId}`, { state: { from } });
+            }
           }}
         />
       </Collapse>

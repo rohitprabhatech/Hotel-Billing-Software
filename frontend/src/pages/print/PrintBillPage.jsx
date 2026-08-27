@@ -1,10 +1,21 @@
+import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import BillPreview from '../../print/BillPreview';
 import '../../print/receipt.css';
+import { PATHS } from '../../routes/paths';
 import { getBill, recordBillPrint } from '../../services/billService';
+
+function defaultBillingPath(user) {
+  const role = user?.role;
+  const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
+  if (role === 'OWNER' || role === 'MANAGER') {
+    return isHotel ? PATHS.ownerRestaurantBilling : PATHS.ownerDashboard;
+  }
+  return isHotel ? PATHS.billingNew : PATHS.billingHome;
+}
 
 export default function PrintBillPage() {
   const { billId } = useParams();
@@ -12,6 +23,7 @@ export default function PrintBillPage() {
   const isOwner = user?.role === 'OWNER';
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [bill, setBill] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -59,6 +71,29 @@ export default function PrintBillPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auto, bill]);
 
+  const handleBack = () => {
+    const from = location.state?.from;
+    if (typeof from === 'string' && from.startsWith('/')) {
+      navigate(from, { replace: true });
+      return;
+    }
+
+    // Prefer closing a print popup opened via window.open when possible.
+    if (window.opener && !window.opener.closed) {
+      window.close();
+      return;
+    }
+
+    const sameOriginReferrer =
+      document.referrer && document.referrer.startsWith(window.location.origin);
+    if (sameOriginReferrer && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate(defaultBillingPath(user), { replace: true });
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
@@ -69,10 +104,16 @@ export default function PrintBillPage() {
 
   return (
     <Box className="print-root" sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', py: 3 }}>
-      <Stack className="no-print" spacing={1} alignItems="center" mb={2}>
-        <Typography variant="h6">Print Bill #{bill?.bill_number}</Typography>
+      <Stack className="no-print" spacing={1} alignItems="stretch" mb={2} sx={{ px: 2, maxWidth: 720, mx: 'auto' }}>
+        <Box>
+          <Button startIcon={<ArrowBackOutlinedIcon />} onClick={handleBack} sx={{ mb: 1 }}>
+            Back
+          </Button>
+        </Box>
+        <Typography variant="h6" textAlign="center">
+          Print Bill #{bill?.bill_number}
+        </Typography>
         {error ? <Alert severity="error">{error}</Alert> : null}
-        <Button onClick={() => navigate(-1)}>Back</Button>
       </Stack>
       <BillPreview
         bill={bill}

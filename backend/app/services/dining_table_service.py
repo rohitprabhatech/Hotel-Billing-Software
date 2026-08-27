@@ -3,6 +3,7 @@
 from app.constants.permissions import PERM_TABLES_READ, PERM_TABLES_STATUS, PERM_TABLES_WRITE
 from app.constants.tables import (
     TABLE_STATUS_AVAILABLE,
+    TABLE_STATUS_BILL_PENDING,
     TABLE_STATUS_OCCUPIED,
     assert_valid_table_status,
     can_transition_table_status,
@@ -84,8 +85,29 @@ class DiningTableService:
         require_permission(PERM_TABLES_WRITE)
         ctx = require_request_context()
         code_value = DiningTableService._normalize_code(code)
-        if DiningTableRepository.find_by_code(ctx.tenant_id, code_value):
+        existing = DiningTableRepository.find_by_code(ctx.tenant_id, code_value)
+        if existing is not None and existing.is_active:
             raise ConflictError("A table with this code already exists")
+
+        # Soft-deleted rows keep the unique code — reactivate instead of conflicting.
+        if existing is not None and not existing.is_active:
+            old = DiningTableService.serialize(existing)
+            existing.is_active = True
+            existing.status = TABLE_STATUS_AVAILABLE
+            existing.section = DiningTableService._normalize_section(section)
+            existing.capacity = DiningTableService._normalize_capacity(capacity)
+            existing.merged_into_id = None
+            new_data = DiningTableService.serialize(existing)
+            AuditService.log(
+                tenant_id=ctx.tenant_id,
+                action="CREATE_DINING_TABLE",
+                entity_type="DINING_TABLE",
+                entity_id=existing.id,
+                old_data=old,
+                new_data=new_data,
+            )
+            db.session.commit()
+            return new_data
 
         table = DiningTable(
             id=new_uuid(),
@@ -121,8 +143,11 @@ class DiningTableService:
         if code_provided:
             code_value = DiningTableService._normalize_code(code)
             existing = DiningTableRepository.find_by_code(ctx.tenant_id, code_value)
-            if existing and existing.id != table.id:
+            if existing and existing.id != table.id and existing.is_active:
                 raise ConflictError("A table with this code already exists")
+            # If an inactive row holds the code, free it so rename stays unique.
+            if existing and existing.id != table.id and not existing.is_active:
+                existing.code = f"{existing.code[:20]}~{existing.id[:8]}"
             table.code = code_value
         if section_provided:
             table.section = DiningTableService._normalize_section(section)
@@ -153,6 +178,16 @@ class DiningTableService:
         children = DiningTableRepository.list_merged_children(ctx.tenant_id, table.id)
         if children:
             raise ValidationError("Unmerge tables before deactivating the primary table.")
+
+        open_order = OrderRepository.get_open_by_table(ctx.tenant_id, table.id)
+        if open_order is not None:
+            raise ValidationError(
+                "This table has an active order/bill and cannot be removed."
+            )
+        if table.status in {TABLE_STATUS_OCCUPIED, TABLE_STATUS_BILL_PENDING}:
+            raise ValidationError(
+                "This table has an active order/bill and cannot be removed."
+            )
 
         old = DiningTableService.serialize(table)
         table.is_active = False

@@ -1,4 +1,6 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import MergeTypeOutlinedIcon from '@mui/icons-material/MergeTypeOutlined';
 import {
   Alert,
@@ -13,11 +15,13 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,10 +36,12 @@ import { filterControlSx } from '../../layouts/shell';
 import { getApiErrorMessage } from '../../utils/apiError';
 import {
   createTable,
+  deactivateTable,
   listTables,
   mergeTables,
   setTableStatus,
   unmergeTables,
+  updateTable,
 } from '../../services/tableService';
 
 const STATUS_OPTIONS = [
@@ -88,7 +94,9 @@ export default function TablesPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergePrimaryId, setMergePrimaryId] = useState('');
@@ -134,7 +142,23 @@ export default function TablesPage() {
     [tables],
   );
 
-  const onCreate = async () => {
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
+  const openEdit = (table) => {
+    setEditing(table);
+    setForm({
+      code: table.code || '',
+      section: table.section || '',
+      capacity: table.capacity ?? '',
+    });
+    setOpen(true);
+  };
+
+  const onSave = async () => {
     if (!form.code.trim()) {
       setError('Table code is required.');
       return;
@@ -143,17 +167,41 @@ export default function TablesPage() {
     setError('');
     setSuccess('');
     try {
-      await createTable({
+      const payload = {
         code: form.code.trim(),
         section: form.section.trim() || null,
         capacity: form.capacity === '' ? null : Number(form.capacity),
-      });
+      };
+      if (editing) {
+        await updateTable(editing.id, payload);
+        setSuccess(`Table ${payload.code} updated.`);
+      } else {
+        await createTable(payload);
+        setSuccess('Table added.');
+      }
       setOpen(false);
+      setEditing(null);
       setForm(emptyForm);
-      setSuccess('Table added.');
       await load();
     } catch (err) {
       setError(getApiErrorMessage(err, 'Unable to save table.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onRemove = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await deactivateTable(deleteTarget.id);
+      setSuccess(`Table ${deleteTarget.code} removed.`);
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Unable to remove table.'));
     } finally {
       setSaving(false);
     }
@@ -220,7 +268,7 @@ export default function TablesPage() {
     <>
       {canManageTables ? (
         <PageActions>
-          <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={() => setOpen(true)}>
+          <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={openCreate}>
             Add table
           </Button>
           {canUpdateTableStatus ? (
@@ -275,7 +323,7 @@ export default function TablesPage() {
               title="No tables configured"
               description="Add dining tables with codes, optional sections, and capacity."
               actionLabel={canManageTables ? 'Add table' : undefined}
-              onAction={canManageTables ? () => setOpen(true) : undefined}
+              onAction={canManageTables ? openCreate : undefined}
             />
           ) : (
             <Box
@@ -306,7 +354,33 @@ export default function TablesPage() {
                       <Typography variant="h6" component="div">
                         {table.code}
                       </Typography>
-                      <Chip size="small" color={statusColor(table.status)} label={statusLabel(table.status)} />
+                      <Stack direction="row" spacing={0.25} alignItems="center">
+                        {canManageTables ? (
+                          <>
+                            <Tooltip title="Edit Table">
+                              <IconButton
+                                size="small"
+                                aria-label={`Edit ${table.code}`}
+                                onClick={() => openEdit(table)}
+                                disabled={Boolean(table.merged_into_id)}
+                              >
+                                <EditOutlinedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Remove Table">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                aria-label={`Remove ${table.code}`}
+                                onClick={() => setDeleteTarget(table)}
+                              >
+                                <DeleteOutlineOutlinedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        ) : null}
+                        <Chip size="small" color={statusColor(table.status)} label={statusLabel(table.status)} />
+                      </Stack>
                     </Stack>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                       {table.section || 'No section'}
@@ -346,12 +420,20 @@ export default function TablesPage() {
         </Stack>
       </PageShell>
 
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Add table</DialogTitle>
+      <Dialog
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setEditing(null);
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{editing ? 'Edit Table' : 'Add table'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="Table code"
+              label="Table Number"
               value={form.code}
               onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
               required
@@ -366,19 +448,51 @@ export default function TablesPage() {
               placeholder="Ground floor"
             />
             <TextField
-              label="Capacity (optional)"
+              label="Capacity"
               type="number"
               value={form.capacity}
               onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))}
               fullWidth
               inputProps={{ min: 1, max: 999 }}
             />
+            {editing ? (
+              <Typography variant="body2" color="text.secondary">
+                Status: {statusLabel(editing.status)} (change status from the table card)
+              </Typography>
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={onCreate} disabled={saving}>
-            Save
+          <Button
+            onClick={() => {
+              setOpen(false);
+              setEditing(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={onSave} disabled={saving}>
+            {saving ? 'Saving…' : editing ? 'Save Changes' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Delete/Remove Table?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Typography variant="body2">
+              <strong>Table:</strong> {deleteTarget?.code}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Are you sure? Historical bills keep this table number. Active orders will block removal.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={onRemove} disabled={saving}>
+            {saving ? 'Removing…' : 'Remove'}
           </Button>
         </DialogActions>
       </Dialog>

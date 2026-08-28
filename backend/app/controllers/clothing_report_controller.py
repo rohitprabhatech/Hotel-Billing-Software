@@ -12,6 +12,7 @@ def sales_report():
         date=request.args.get("date"),
         from_date=request.args.get("from") or request.args.get("from_date"),
         to_date=request.args.get("to") or request.args.get("to_date"),
+        period=request.args.get("period"),
         payment_method=request.args.get("payment_method"),
         brand=request.args.get("brand"),
         size=request.args.get("size"),

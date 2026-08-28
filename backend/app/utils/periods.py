@@ -1,11 +1,22 @@
 """Reporting period helpers in tenant timezone."""
 
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+_DEFAULT_TZ = "Asia/Kolkata"
+_TZ_ALIASES = {
+    "Asia/Kolkatar": _DEFAULT_TZ,  # common env typo
+}
 
 
-def get_tz(tz_name: str = "Asia/Kolkata") -> ZoneInfo:
-    return ZoneInfo(tz_name)
+def get_tz(tz_name: str = _DEFAULT_TZ) -> ZoneInfo:
+    token = _TZ_ALIASES.get((tz_name or "").strip(), (tz_name or "").strip() or _DEFAULT_TZ)
+    try:
+        return ZoneInfo(token)
+    except ZoneInfoNotFoundError:
+        if token != _DEFAULT_TZ:
+            return ZoneInfo(_DEFAULT_TZ)
+        raise
 
 
 def local_now(tz_name: str = "Asia/Kolkata") -> datetime:

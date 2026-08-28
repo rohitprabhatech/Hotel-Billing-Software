@@ -74,7 +74,7 @@ const drawerWidth = DRAWER_WIDTH;
 const billingNav = [
   { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
 
-  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
+  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'] },
   {
     to: PATHS.billingRestaurantBilling,
     label: 'Table Bill',
@@ -92,10 +92,18 @@ const billingNav = [
     emphasize: true,
   },
   {
+    to: PATHS.billingClothing,
+    label: 'Clothing POS',
+    icon: <CheckroomOutlinedIcon />,
+    module: 'variants',
+    businessTypes: ['clothing'],
+    emphasize: true,
+  },
+  {
     to: PATHS.billingNew,
     label: 'Quick Bill',
     icon: <BoltOutlinedIcon />,
-    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'],
   },
   {
     to: PATHS.billingNew,
@@ -107,7 +115,7 @@ const billingNav = [
     to: PATHS.billingBills,
     label: "Today's Bills",
     icon: <ReceiptLongOutlinedIcon />,
-    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'],
   },
   {
     to: PATHS.billingBills,
@@ -214,7 +222,7 @@ const billingNav = [
     hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
 
-  { type: 'section', label: 'Customers', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
+  { type: 'section', label: 'Customers', businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'] },
   { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
   {
     to: PATHS.billingCredit,
@@ -251,10 +259,10 @@ const billingNav = [
     businessTypes: ['hardware', 'building_material'],
   },
   {
-    to: PATHS.billingClothing,
-    label: 'Clothing POS',
-    icon: <CheckroomOutlinedIcon />,
-    module: 'variants',
+    to: PATHS.billingReturns,
+    label: 'Returns / Exchange',
+    icon: <AssignmentReturnOutlinedIcon />,
+    module: 'returns_exchange',
     businessTypes: ['clothing'],
   },
   {
@@ -262,6 +270,7 @@ const billingNav = [
     label: 'Returns / Exchange',
     icon: <AssignmentReturnOutlinedIcon />,
     module: 'returns_exchange',
+    hideForBusinessTypes: ['clothing'],
   },
 
   { type: 'section', label: 'Account' },
@@ -434,6 +443,57 @@ const cafeBillingUserNav = [
   },
 ];
 
+/** Slim sidebar for clothing Billing Users — Clothing POS first, no F&B floor. */
+const clothingBillingUserNav = [
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Billing' },
+  {
+    to: PATHS.billingClothing,
+    label: 'Clothing POS',
+    icon: <CheckroomOutlinedIcon />,
+    module: 'variants',
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingNew,
+    label: 'Quick Bill',
+    icon: <BoltOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingBills,
+    label: "Today's Bills",
+    icon: <ReceiptLongOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingReturns,
+    label: 'Returns / Exchange',
+    icon: <AssignmentReturnOutlinedIcon />,
+    module: 'returns_exchange',
+  },
+  {
+    to: PATHS.billingItems,
+    label: 'Items',
+    icon: <Inventory2OutlinedIcon />,
+  },
+  {
+    to: PATHS.billingCategories,
+    label: 'Categories',
+    icon: <CategoryOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingCustomers,
+    label: 'Customers',
+    icon: <ContactsOutlinedIcon />,
+  },
+  { type: 'section', label: 'Account' },
+  { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  {
+    to: PATHS.billingChangePassword,
+    label: 'Settings',
+    icon: <LockOutlinedIcon />,
+  },
+];
+
 /** Drop section headers that have no visible link items before the next section. */
 function pruneEmptySections(items) {
   const result = [];
@@ -466,6 +526,12 @@ function pageMeta(pathname, businessType) {
       return {
         title: 'Cafe Billing',
         subtitle: 'Cafe POS → add-ons & combos → pay → print.',
+      };
+    }
+    if (businessType === 'clothing') {
+      return {
+        title: 'Clothing Billing',
+        subtitle: 'Clothing POS → pick size & color → pay → print.',
       };
     }
     return {
@@ -620,7 +686,7 @@ function pageMeta(pathname, businessType) {
   if (pathname.startsWith(PATHS.billingClothing)) {
     return {
       title: 'Clothing POS',
-      subtitle: 'Pick size and color from live variant stock.',
+      subtitle: 'Scan variant barcodes or pick size and color from live stock.',
     };
   }
   if (pathname.startsWith(PATHS.billingReturns)) {
@@ -720,6 +786,7 @@ export default function BillingLayout() {
     const businessType = user?.tenant?.business_type;
     const isHotel = businessType === 'hotel_restaurant';
     const isCafe = businessType === 'cafe_tea';
+    const isClothing = businessType === 'clothing';
     const isBillingUser = role === 'BILLING_USER';
     let items;
 
@@ -751,6 +818,9 @@ export default function BillingLayout() {
     }
     if (isCafe && isBillingUser) {
       return pruneEmptySections(filterByModule(withOptionalReports(cafeBillingUserNav), businessType));
+    }
+    if (isClothing && isBillingUser) {
+      return pruneEmptySections(filterByModule(clothingBillingUserNav, businessType));
     }
 
     if (!isOwner) {
@@ -859,11 +929,13 @@ export default function BillingLayout() {
               ? 'Hotel Billing'
               : user?.tenant?.business_type === 'cafe_tea'
                 ? 'Cafe Billing'
-                : isOwner
-                  ? 'Owner · Billing'
-                  : isManager
-                    ? 'Manager · Billing'
-                    : 'Billing'}
+                : user?.tenant?.business_type === 'clothing'
+                  ? 'Clothing Billing'
+                  : isOwner
+                    ? 'Owner · Billing'
+                    : isManager
+                      ? 'Manager · Billing'
+                      : 'Billing'}
           </Typography>
         </Box>
       </Toolbar>

@@ -25,13 +25,16 @@ class ClothingReportService:
         }
 
     @staticmethod
-    def _period_bounds(*, date=None, from_date=None, to_date=None):
+    def _period_bounds(*, date=None, from_date=None, to_date=None, period=None):
         if from_date and to_date:
             start, end, label, *_ = ReportService._bounds("custom", from_date, to_date)
             return start, end, label, "custom"
         if date:
             start, end, label, *_ = ReportService._bounds("custom", date, date)
             return start, end, label, "daily"
+        if period:
+            start, end, label, *_ = ReportService._bounds(period)
+            return start, end, label, period
         start, end, label, *_ = ReportService._bounds("today")
         return start, end, label, "daily"
 
@@ -41,6 +44,7 @@ class ClothingReportService:
         date=None,
         from_date=None,
         to_date=None,
+        period=None,
         payment_method=None,
         brand=None,
         size=None,
@@ -49,7 +53,7 @@ class ClothingReportService:
     ):
         ctx = ReportService._ensure_reports_access()
         start, end, label, period = ClothingReportService._period_bounds(
-            date=date, from_date=from_date, to_date=to_date
+            date=date, from_date=from_date, to_date=to_date, period=period
         )
         method = ReportService._normalize_filter(payment_method)
         filters = ClothingReportService._filters(

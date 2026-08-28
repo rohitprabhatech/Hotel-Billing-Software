@@ -104,7 +104,7 @@ function pruneEmptySections(items) {
 
 const navItems = [
   { to: PATHS.ownerDashboard, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
-  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
+  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'] },
   {
     to: PATHS.ownerRestaurantBilling,
     label: 'Table Billing',
@@ -122,10 +122,18 @@ const navItems = [
     emphasize: true,
   },
   {
+    to: PATHS.ownerClothing,
+    label: 'Clothing POS',
+    icon: <CheckroomOutlinedIcon />,
+    module: 'variants',
+    businessTypes: ['clothing'],
+    emphasize: true,
+  },
+  {
     to: PATHS.billingHome,
     label: 'Billing Desk',
     icon: <PointOfSaleOutlinedIcon />,
-    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'],
   },
   {
     to: PATHS.billingHome,
@@ -137,7 +145,7 @@ const navItems = [
     to: PATHS.ownerBills,
     label: "Today's Bills",
     icon: <ReceiptLongOutlinedIcon />,
-    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'],
   },
   {
     to: PATHS.ownerBills,
@@ -210,6 +218,13 @@ const navItems = [
     module: 'addons_combos',
     businessTypes: ['cafe_tea'],
   },
+  {
+    to: PATHS.ownerReturns,
+    label: 'Returns / Exchange',
+    icon: <AssignmentReturnOutlinedIcon />,
+    module: 'returns_exchange',
+    businessTypes: ['clothing'],
+  },
   { to: PATHS.ownerItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
   { to: PATHS.ownerCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
   { to: PATHS.ownerItemActivity, label: 'Item Activity', icon: <HistoryOutlinedIcon /> },
@@ -250,17 +265,11 @@ const navItems = [
     businessTypes: ['hardware', 'building_material'],
   },
   {
-    to: PATHS.ownerClothing,
-    label: 'Clothing POS',
-    icon: <CheckroomOutlinedIcon />,
-    module: 'variants',
-    businessTypes: ['clothing'],
-  },
-  {
     to: PATHS.ownerReturns,
     label: 'Returns / Exchange',
     icon: <AssignmentReturnOutlinedIcon />,
     module: 'returns_exchange',
+    hideForBusinessTypes: ['clothing'],
   },
   {
     to: PATHS.ownerRepairs,

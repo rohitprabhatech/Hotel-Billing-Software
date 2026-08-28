@@ -25,8 +25,10 @@ Automated: `backend/tests/test_biz25_clothing_variants.py`, `backend/tests/test_
 Phase gate (from `backend/`):
 
 ```bash
-python -m pytest tests/test_biz25_clothing_variants.py tests/test_biz26_clothing_images_pos.py tests/test_biz27_clothing_returns.py tests/test_biz28_clothing_reports_and_testing_gate.py -q
+python -m pytest tests/test_biz25_clothing_variants.py tests/test_biz26_clothing_images_pos.py tests/test_biz27_clothing_returns.py tests/test_biz28_clothing_reports_and_testing_gate.py tests/test_clth_billing_polish_gate.py -q
 ```
+
+Billing polish gate (CLTH-6): [`../../14-sprints/clth-6-billing-polish-gate-report.md`](../../14-sprints/clth-6-billing-polish-gate-report.md).
 
 Sign-off: [`../../14-sprints/biz-28-clothing-gate-report.md`](../../14-sprints/biz-28-clothing-gate-report.md).
 

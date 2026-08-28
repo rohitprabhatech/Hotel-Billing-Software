@@ -2,7 +2,7 @@
 
 **Product:** Business Billing  
 **Scope:** All **14** supported business types (Medical Store / pharmacy **excluded**)  
-**Alembic head:** `20260826_biz66_perf_indexes`  
+**Alembic head:** `20260827_cafe_coupons`  
 **Date:** 2026-08-26  
 
 Sign this checklist before enabling industry tenants on production. Platform baseline (auth, billing, Master Admin, subscriptions) is assumed live.

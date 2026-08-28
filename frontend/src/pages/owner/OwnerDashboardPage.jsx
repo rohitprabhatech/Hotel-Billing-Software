@@ -54,6 +54,7 @@ import { fetchAuditAlerts, listAuditLogs } from '../../services/auditService';
 import { cancelBill, listBills } from '../../services/billService';
 import { listNotifications } from '../../services/notificationService';
 import { fetchCafeDashboard } from '../../services/cafeService';
+import { fetchClothingSales } from '../../services/clothingService';
 import { fetchReportSummary } from '../../services/reportService';
 import { listTables } from '../../services/tableService';
 import { paymentMethodLabel } from '../../utils/paymentMethod';
@@ -62,6 +63,8 @@ import { RestaurantDashboardWidgets } from '../modules/MenuPage';
 const STOCK_ALERT_TYPES = new Set(['LOW_STOCK', 'OUT_OF_STOCK']);
 const WA_FAILED_TYPE = 'WHATSAPP_DELIVERY_FAILED';
 const EMAIL_FAILED_TYPE = 'EMAIL_DELIVERY_FAILED';
+const LOW_VARIANT_THRESHOLD = 3;
+const CLOTHING_WIDGET_LIMIT = 8;
 
 const PERIOD_HINTS = {
   today: "Today's business overview",
@@ -134,6 +137,27 @@ function SalesChartTooltip({ active, payload }) {
   );
 }
 
+function classifyLowVariants(rows = []) {
+  return rows
+    .filter((row) => row.is_active !== false)
+    .map((row) => {
+      const qty = Number(row.stock_quantity || 0);
+      if (qty <= 0) return { ...row, status: 'out' };
+      if (qty <= LOW_VARIANT_THRESHOLD) return { ...row, status: 'low' };
+      return null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.status === b.status) return Number(a.stock_quantity) - Number(b.stock_quantity);
+      return a.status === 'out' ? -1 : 1;
+    });
+}
+
+function variantLabel(row) {
+  const parts = [row.size, row.color].filter(Boolean);
+  return parts.length ? parts.join(' / ') : 'Variant';
+}
+
 function PeriodSelect({ period, onChange, richPeriods, sx, label = 'Period', id = 'owner-dash-period' }) {
   const labelId = `${id}-label`;
   return (
@@ -173,17 +197,20 @@ export default function OwnerDashboardPage() {
   const { user } = useAuth();
   const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
   const isCafe = user?.tenant?.business_type === 'cafe_tea';
-  const richPeriods = isHotel || isCafe;
+  const isClothing = user?.tenant?.business_type === 'clothing';
+  const richPeriods = isHotel || isCafe || isClothing;
   const businessName = user?.tenant?.business_name || user?.tenant?.name || 'Your Business';
   const businessTypeLabel = user?.tenant?.business_type_label || null;
   const [period, setPeriod] = useState(() =>
     user?.tenant?.business_type === 'hotel_restaurant' ||
-    user?.tenant?.business_type === 'cafe_tea'
+    user?.tenant?.business_type === 'cafe_tea' ||
+    user?.tenant?.business_type === 'clothing'
       ? 'last_7_days'
       : 'today',
   );
   const [data, setData] = useState(null);
   const [cafeDash, setCafeDash] = useState(null);
+  const [clothingDash, setClothingDash] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [stockAlerts, setStockAlerts] = useState([]);
   const [waFailedAlerts, setWaFailedAlerts] = useState([]);
@@ -202,7 +229,8 @@ export default function OwnerDashboardPage() {
   // Align hotel/cafe default once tenant type is known (without fighting user changes).
   const richDefaultApplied = useRef(
     user?.tenant?.business_type === 'hotel_restaurant' ||
-      user?.tenant?.business_type === 'cafe_tea',
+      user?.tenant?.business_type === 'cafe_tea' ||
+      user?.tenant?.business_type === 'clothing',
   );
   useEffect(() => {
     if (richDefaultApplied.current) return;
@@ -210,7 +238,8 @@ export default function OwnerDashboardPage() {
     richDefaultApplied.current = true;
     if (
       user.tenant.business_type === 'hotel_restaurant' ||
-      user.tenant.business_type === 'cafe_tea'
+      user.tenant.business_type === 'cafe_tea' ||
+      user.tenant.business_type === 'clothing'
     ) {
       setPeriod('last_7_days');
     }
@@ -225,11 +254,24 @@ export default function OwnerDashboardPage() {
       if (isCafe) {
         tasks.push(fetchCafeDashboard({ period: selectedPeriod }).catch(() => null));
       }
-      const [summaryRes, cafeRes] = await Promise.all(tasks);
+      if (isClothing) {
+        tasks.push(fetchClothingSales({ period: selectedPeriod }).catch(() => null));
+      }
+      const results = await Promise.all(tasks);
       if (requestId !== salesRequestId.current) return;
+      const summaryRes = results[0];
+      let nextIndex = 1;
       setData(summaryRes.data);
       if (isCafe) {
-        setCafeDash(cafeRes?.data || null);
+        setCafeDash(results[nextIndex]?.data || null);
+        nextIndex += 1;
+      } else {
+        setCafeDash(null);
+      }
+      if (isClothing) {
+        setClothingDash(results[nextIndex]?.data || null);
+      } else {
+        setClothingDash(null);
       }
     } catch (err) {
       if (requestId !== salesRequestId.current) return;
@@ -241,7 +283,7 @@ export default function OwnerDashboardPage() {
         setSalesLoading(false);
       }
     }
-  }, [isCafe]);
+  }, [isCafe, isClothing]);
 
   const loadShell = useCallback(async () => {
     setError('');
@@ -309,14 +351,14 @@ export default function OwnerDashboardPage() {
     (data?.day_wise || []).some((row) => Number(row.total_sales || 0) > 0);
 
   const salesChangeHint = useMemo(() => {
-    if (!(isHotel || isCafe) || !(previous.total_sales > 0)) return undefined;
+    if (!(isHotel || isCafe || isClothing) || !(previous.total_sales > 0)) return undefined;
     const change =
       ((Number(current.total_sales || 0) - Number(previous.total_sales || 0)) /
         Number(previous.total_sales)) *
       100;
     const arrow = change >= 0 ? '↑' : '↓';
     return `${arrow} ${Math.abs(change).toFixed(1)}% vs ${data?.previous_label || 'previous'}`;
-  }, [isHotel, isCafe, current.total_sales, previous.total_sales, data?.previous_label]);
+  }, [isHotel, isCafe, isClothing, current.total_sales, previous.total_sales, data?.previous_label]);
 
   const popularItems = isCafe
     ? cafeDash?.popular_items || data?.top_items || []
@@ -325,6 +367,21 @@ export default function OwnerDashboardPage() {
   const lowIngredients = cafeDash?.low_ingredients || [];
   const lowIngredientOut = lowIngredients.filter((row) => row.status === 'out').length;
   const lowIngredientLow = lowIngredients.filter((row) => row.status === 'low').length;
+  const clothingReturns = clothingDash?.returns || {};
+  const lowVariants = useMemo(
+    () => classifyLowVariants(clothingDash?.variant_stock || []).slice(0, CLOTHING_WIDGET_LIMIT),
+    [clothingDash?.variant_stock],
+  );
+  const lowVariantOut = lowVariants.filter((row) => row.status === 'out').length;
+  const lowVariantLow = lowVariants.filter((row) => row.status === 'low').length;
+  const topSizes = useMemo(
+    () => [...(clothingDash?.by_size || [])].sort((a, b) => Number(b.quantity) - Number(a.quantity)).slice(0, CLOTHING_WIDGET_LIMIT),
+    [clothingDash?.by_size],
+  );
+  const topColors = useMemo(
+    () => [...(clothingDash?.by_color || [])].sort((a, b) => Number(b.quantity) - Number(a.quantity)).slice(0, CLOTHING_WIDGET_LIMIT),
+    [clothingDash?.by_color],
+  );
 
   const chartData = useMemo(() => {
     const rows = data?.day_wise || [];
@@ -479,6 +536,22 @@ export default function OwnerDashboardPage() {
           Restock ingredients used by recipes.
         </Alert>
       ) : null}
+      {isClothing && lowVariants.length > 0 ? (
+        <Alert
+          severity={lowVariantOut > 0 ? 'error' : 'warning'}
+          action={
+            <Button color="inherit" size="small" component={RouterLink} to={PATHS.ownerVariants}>
+              Variants
+            </Button>
+          }
+        >
+          <strong>Variant stock:</strong> {lowVariantOut ? `${lowVariantOut} out` : null}
+          {lowVariantOut && lowVariantLow ? ' · ' : null}
+          {lowVariantLow ? `${lowVariantLow} low` : null}
+          {!lowVariantOut && !lowVariantLow ? `${lowVariants.length} need attention` : null}.
+          Restock size/color rows before they sell out.
+        </Alert>
+      ) : null}
       {waFailedAlerts.length > 0 ? (
         <Alert
           severity="error"
@@ -526,7 +599,7 @@ export default function OwnerDashboardPage() {
 
       <Section
         title={
-          isHotel || isCafe
+          isHotel || isCafe || isClothing
             ? `${periodLabel} Overview`
             : period === 'today'
               ? "Today's Overview"
@@ -613,6 +686,57 @@ export default function OwnerDashboardPage() {
                 lowIngredients.length
                   ? `${lowIngredientOut} out · ${lowIngredientLow} low`
                   : 'Recipe ingredients OK'
+              }
+            />
+          </Box>
+        ) : isClothing ? (
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 2.5,
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(5, 1fr)' },
+            }}
+          >
+            <KpiCard
+              title={`Sales (${periodLabel})`}
+              value={money(current.total_sales)}
+              hint={
+                salesChangeHint ||
+                (period !== 'today'
+                  ? `Totals for selected period (${periodLabel})`
+                  : data?.previous_label
+                    ? `${data.previous_label}: ${money(previous.total_sales)}`
+                    : undefined)
+              }
+            />
+            <KpiCard
+              title="Bills"
+              value={current.bill_count ?? '—'}
+              hint={data?.previous_label ? `${data.previous_label}: ${previous.bill_count ?? '—'}` : undefined}
+            />
+            <KpiCard
+              title="Average Bill"
+              value={money(current.average_bill)}
+              hint={
+                data?.previous_label ? `${data.previous_label}: ${money(previous.average_bill)}` : undefined
+              }
+            />
+            <KpiCard
+              title="Returns"
+              value={clothingReturns.return_count ?? 0}
+              hint={
+                Number(clothingReturns.exchange_count || 0) > 0
+                  ? `${clothingReturns.exchange_count} exchange${clothingReturns.exchange_count === 1 ? '' : 's'}`
+                  : 'Returns in this period'
+              }
+            />
+            <KpiCard
+              title="Low Variants"
+              value={lowVariants.length || 0}
+              hint={
+                lowVariants.length
+                  ? `${lowVariantOut} out · ${lowVariantLow} low`
+                  : 'Variant stock OK'
               }
             />
           </Box>
@@ -775,7 +899,7 @@ export default function OwnerDashboardPage() {
         </Section>
       ) : null}
 
-      {isHotel || isCafe ? (
+      {isHotel || isCafe || isClothing ? (
         <>
           <Section
             title="Sales Analytics"
@@ -1022,6 +1146,146 @@ export default function OwnerDashboardPage() {
                   />
                 ) : null}
               </TableCard>
+            </Section>
+          ) : null}
+
+          {isClothing ? (
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 3,
+                gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+              }}
+            >
+              <Section title="Top Sizes Sold">
+                <TableCard>
+                  <Table size="small" sx={{ minWidth: 360 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Size</TableCell>
+                        <TableCell align="right">Qty</TableCell>
+                        <TableCell align="right">Revenue</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {topSizes.map((row) => (
+                        <TableRow key={row.size || row.label} hover>
+                          <TableCell>{row.size || row.label || '—'}</TableCell>
+                          <TableCell align="right">{row.quantity ?? '—'}</TableCell>
+                          <TableCell align="right">{money(row.revenue)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {!topSizes.length ? (
+                    <EmptyState
+                      title="No size sales yet"
+                      description="Size breakdown for this period will appear after variant bills."
+                    />
+                  ) : null}
+                </TableCard>
+              </Section>
+
+              <Section title="Top Colors Sold">
+                <TableCard>
+                  <Table size="small" sx={{ minWidth: 360 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Color</TableCell>
+                        <TableCell align="right">Qty</TableCell>
+                        <TableCell align="right">Revenue</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {topColors.map((row) => (
+                        <TableRow key={row.color || row.label} hover>
+                          <TableCell>{row.color || row.label || '—'}</TableCell>
+                          <TableCell align="right">{row.quantity ?? '—'}</TableCell>
+                          <TableCell align="right">{money(row.revenue)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {!topColors.length ? (
+                    <EmptyState
+                      title="No color sales yet"
+                      description="Color breakdown for this period will appear after variant bills."
+                    />
+                  ) : null}
+                </TableCard>
+              </Section>
+            </Box>
+          ) : null}
+
+          {isClothing ? (
+            <Section
+              title="Low Variant Stock"
+              actions={
+                <Button component={RouterLink} to={PATHS.ownerVariants} size="small">
+                  Variants
+                </Button>
+              }
+            >
+              <TableCard>
+                <Table size="small" sx={{ minWidth: 560 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item</TableCell>
+                      <TableCell>Variant</TableCell>
+                      <TableCell align="right">Stock</TableCell>
+                      <TableCell>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {lowVariants.map((row) => (
+                      <TableRow key={row.variant_id} hover>
+                        <TableCell>
+                          <TruncateText value={row.item_name || 'Item'} maxWidth={220} />
+                        </TableCell>
+                        <TableCell>{variantLabel(row)}</TableCell>
+                        <TableCell align="right">{row.stock_quantity}</TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            color={row.status === 'out' ? 'error' : 'warning'}
+                            label={row.status === 'out' ? 'Out' : 'Low'}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {!lowVariants.length ? (
+                  <EmptyState
+                    title="Variant stock looks healthy"
+                    description="Active variants at or below 3 units will appear here."
+                  />
+                ) : null}
+              </TableCard>
+            </Section>
+          ) : null}
+
+          {isClothing ? (
+            <Section
+              title="Returns & Exchanges"
+              actions={
+                <Button component={RouterLink} to={PATHS.ownerReturns} size="small">
+                  Returns
+                </Button>
+              }
+            >
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 2.5,
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' },
+                }}
+              >
+                <KpiCard title="Returns" value={clothingReturns.return_count ?? 0} hint={clothingDash?.label || periodLabel} />
+                <KpiCard title="Exchanges" value={clothingReturns.exchange_count ?? 0} hint="In selected period" />
+                <KpiCard title="Refunds" value={money(clothingReturns.refund_amount)} hint="Cash/credit returned" />
+                <KpiCard title="Extra collected" value={money(clothingReturns.extra_payable)} hint="Exchange top-ups" />
+              </Box>
             </Section>
           ) : null}
         </>

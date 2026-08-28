@@ -7,6 +7,8 @@
 **Alembic head (current):** `20260827_cafe_coupons`  
 (includes hotel billing settings audit, stock movement sources, cafe coupons; see `docs/03-database/11-alembic-revision-order.md`)
 
+**Clothing billing polish (CLTH-1…6):** frontend + report `period` param only — **no** extra migration beyond cafe head.
+
 **Regenerate greenfield SQL (local only):**  
 `python scripts/regenerate_02_schema.py` — overwrites `02_schema.sql` from models. Never apply the output to production.
 

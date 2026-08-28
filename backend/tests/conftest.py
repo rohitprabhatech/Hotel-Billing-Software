@@ -18,6 +18,7 @@ def app():
     application = create_app("testing")
     application.config["JWT_SECRET_KEY"] = "test-jwt-secret-key-32chars-min!!"
     application.config["SECRET_KEY"] = "test-secret-key-32chars-minimum!!"
+    application.config["REPORT_TIMEZONE"] = "Asia/Kolkata"
 
     with application.app_context():
         db.create_all()

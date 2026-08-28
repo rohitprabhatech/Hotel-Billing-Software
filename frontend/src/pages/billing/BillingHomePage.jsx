@@ -1,4 +1,6 @@
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
+import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
+import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
@@ -30,6 +32,7 @@ import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { fetchTodaySummary, listBills } from '../../services/billService';
+import { fetchClothingPosCatalog } from '../../services/clothingService';
 import { listItems } from '../../services/itemService';
 import { listTables } from '../../services/tableService';
 import { PATHS } from '../../routes/paths';
@@ -535,6 +538,253 @@ function CafeBillingHome({
   );
 }
 
+/** Clothing desk home — variant POS first, not Hotel table or Cafe flow. */
+function ClothingBillingHome({
+  businessName,
+  loading,
+  error,
+  summary,
+  lowVariantCount,
+  recent,
+  navigate,
+  billCount,
+  returnsEnabled,
+}) {
+  return (
+    <>
+      <PageActions>
+        <Stack direction="row" spacing={1}>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingClothing}
+            variant="contained"
+            startIcon={<CheckroomOutlinedIcon />}
+          >
+            Clothing POS
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingNew}
+            variant="outlined"
+            startIcon={<PointOfSaleOutlinedIcon />}
+          >
+            Quick Bill
+          </Button>
+        </Stack>
+      </PageActions>
+
+      <PageShell spacing={2.5}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+            {businessName}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Clothing POS — pick size &amp; color, take payment, print or share bill.
+          </Typography>
+        </Box>
+
+        {error ? <Alert severity="error">{error}</Alert> : null}
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          }}
+        >
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(PATHS.billingClothing)}
+            sx={{
+              textAlign: 'left',
+              border: '2px solid',
+              borderColor: 'primary.main',
+              borderRadius: 2,
+              p: { xs: 2.5, sm: 3 },
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              font: 'inherit',
+              color: 'inherit',
+              minHeight: 120,
+              '&:hover': { bgcolor: 'action.hover' },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <CheckroomOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                CLOTHING POS
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Size×color grid — bill from live variant stock.
+            </Typography>
+          </Box>
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(returnsEnabled ? PATHS.billingReturns : PATHS.billingBills)}
+            sx={{
+              textAlign: 'left',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2,
+              p: { xs: 2.5, sm: 3 },
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              font: 'inherit',
+              color: 'inherit',
+              minHeight: 120,
+              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <AssignmentReturnOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                {returnsEnabled ? 'RETURNS' : "TODAY'S BILLS"}
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              {returnsEnabled
+                ? 'Look up a bill to return or exchange a size/color.'
+                : 'Review bills generated from this desk today.'}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            gridTemplateColumns: {
+              xs: '1fr 1fr',
+              md: 'repeat(3, 1fr)',
+            },
+          }}
+        >
+          <KpiCard
+            title="Today's Sales"
+            value={loading ? '—' : money(summary.total_sales)}
+            icon={<CheckroomOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Bills Today"
+            value={loading ? '—' : billCount ?? summary.bill_count ?? 0}
+            icon={<ReceiptLongOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Out of Stock Variants"
+            value={loading ? '—' : lowVariantCount}
+            icon={<Inventory2OutlinedIcon fontSize="small" />}
+          />
+        </Box>
+
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingClothing}
+            variant="contained"
+            size="small"
+            startIcon={<CheckroomOutlinedIcon />}
+          >
+            Clothing POS
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingBills}
+            variant="outlined"
+            size="small"
+            startIcon={<ReceiptLongOutlinedIcon />}
+          >
+            Today&apos;s Bills
+          </Button>
+          {returnsEnabled ? (
+            <Button
+              component={RouterLink}
+              to={PATHS.billingReturns}
+              variant="outlined"
+              size="small"
+              startIcon={<AssignmentReturnOutlinedIcon />}
+            >
+              Returns
+            </Button>
+          ) : null}
+          <Button
+            component={RouterLink}
+            to={PATHS.billingCustomers}
+            variant="outlined"
+            size="small"
+          >
+            Customers
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingItems}
+            variant="outlined"
+            size="small"
+            startIcon={<Inventory2OutlinedIcon />}
+          >
+            Items
+          </Button>
+        </Stack>
+
+        <Section
+          title="Today's Bills"
+          description="Latest clothing bills from this desk."
+          actions={
+            <Button component={RouterLink} to={PATHS.billingBills} size="small">
+              View all
+            </Button>
+          }
+        >
+          <TableCard>
+            {loading ? (
+              <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
+                <CircularProgress size={28} />
+              </Box>
+            ) : (
+              <Table size="small" sx={{ minWidth: 360 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Bill</TableCell>
+                    <TableCell>Payment</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recent.map((bill) => (
+                    <TableRow key={bill.id} hover>
+                      <TableCell sx={{ fontWeight: 600 }}>#{bill.bill_number}</TableCell>
+                      <TableCell>
+                        {bill.payment_method_label || paymentMethodLabel(bill.payment_method)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 650 }}>
+                        {moneyExact(bill.grand_total)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!recent.length ? (
+                    <TableRow>
+                      <TableCell colSpan={3} sx={{ p: 0, border: 0 }}>
+                        <EmptyState
+                          title="No bills yet today"
+                          description="Start with Clothing POS — pick a size and color from variant stock."
+                          actionLabel="Clothing POS"
+                          onAction={() => navigate(PATHS.billingClothing)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            )}
+          </TableCard>
+        </Section>
+      </PageShell>
+    </>
+  );
+}
+
 export default function BillingHomePage() {
   const { role, user } = useAuth();
   const navigate = useNavigate();
@@ -543,12 +793,16 @@ export default function BillingHomePage() {
   const businessType = user?.tenant?.business_type || '';
   const isHotel = businessType === 'hotel_restaurant';
   const isCafe = businessType === 'cafe_tea';
+  const isClothing = businessType === 'clothing';
   const tablesEnabled = useModuleGate('table_management');
   const cafePosEnabled = useModuleGate('addons_combos');
+  const clothingPosEnabled = useModuleGate('variants');
+  const returnsEnabled = useModuleGate('returns_exchange');
   const [summary, setSummary] = useState({ total_sales: 0, bill_count: 0 });
   const [recent, setRecent] = useState([]);
   const [tables, setTables] = useState([]);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [lowVariantCount, setLowVariantCount] = useState(0);
   const [waFailedCount, setWaFailedCount] = useState(0);
   const [emailFailedCount, setEmailFailedCount] = useState(0);
   const [error, setError] = useState('');
@@ -571,17 +825,30 @@ export default function BillingHomePage() {
       tasks.push(
         listItems({ is_active: true, per_page: 200 }).catch(() => ({ data: [] })),
       );
+    } else if (isClothing && clothingPosEnabled) {
+      tasks.push(Promise.resolve(null));
+      tasks.push(
+        fetchClothingPosCatalog({ limit: 200 }).catch(() => ({ data: { items: [] } })),
+      );
     }
     Promise.all(tasks)
       .then((results) => {
-        const [summaryRes, billsRes, failedRes, emailFailedRes, tablesRes, itemsRes] = results;
+        const [summaryRes, billsRes, failedRes, emailFailedRes, tablesRes, stockRes] = results;
         setSummary(summaryRes.data || { total_sales: 0, bill_count: 0 });
         setRecent(billsRes.data || []);
         setWaFailedCount(failedRes.meta?.total || 0);
         setEmailFailedCount(emailFailedRes.meta?.total || 0);
         if (tablesRes) setTables(tablesRes.data || []);
-        if (itemsRes) {
-          const low = (itemsRes.data || []).filter((item) => {
+        if (isClothing && stockRes?.data?.items) {
+          let emptyVariants = 0;
+          (stockRes.data.items || []).forEach((item) => {
+            (item.variants || []).forEach((variant) => {
+              if (Number(variant.stock_quantity || 0) <= 0) emptyVariants += 1;
+            });
+          });
+          setLowVariantCount(emptyVariants);
+        } else if (stockRes?.data) {
+          const low = (stockRes.data || []).filter((item) => {
             if (item.stock_quantity == null || item.minimum_stock_level == null) return false;
             return Number(item.stock_quantity) <= Number(item.minimum_stock_level);
           }).length;
@@ -592,7 +859,7 @@ export default function BillingHomePage() {
         setError(err.response?.data?.error?.message || 'Failed to load billing dashboard');
       })
       .finally(() => setLoading(false));
-  }, [isHotel, isCafe, tablesEnabled]);
+  }, [isHotel, isCafe, isClothing, tablesEnabled, clothingPosEnabled]);
 
   const tableStats = useMemo(() => {
     const stats = {
@@ -634,6 +901,22 @@ export default function BillingHomePage() {
         recent={recent}
         navigate={navigate}
         billCount={summary.bill_count}
+      />
+    );
+  }
+
+  if (isClothing && clothingPosEnabled) {
+    return (
+      <ClothingBillingHome
+        businessName={businessName}
+        loading={loading}
+        error={error}
+        summary={summary}
+        lowVariantCount={lowVariantCount}
+        recent={recent}
+        navigate={navigate}
+        billCount={summary.bill_count}
+        returnsEnabled={returnsEnabled}
       />
     );
   }

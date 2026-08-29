@@ -106,6 +106,7 @@ Related: [`14-sprints/sprint-tracker.md`](./14-sprints/sprint-tracker.md)
 
 | Date | Note |
 |------|------|
+| 2026-08-29 | **Clothing billing sign-off** (`rs/testing/cloth-29` → `dev`): optional manual **Customer name** on Clothing POS (`customer_name` on bill API). **No new migration** — Alembic head `20260827_cafe_coupons`. |
 | 2026-08-29 | **Cafe billing sign-off** (`rs/testing/29` → `dev`): hide Tables/Kitchen/Orders from cafe sidebar (owner + billing user); timezone hardening for billing home (`f35dc8b`). **No new migration** — Alembic head remains `20260827_cafe_coupons`; run `flask db upgrade` on deploy only if behind. |
 | 2026-08-28 | **Cafe billing phase** (`rs/feature/cafe`) + **Clothing billing polish CLTH-1…6** (`rs/feature/cloth`) merged to `dev`. Cafe: coupons migration `20260827_cafe_coupons`, linked-addon stock, ingredient stock UI, owner dashboard. Clothing: nav isolation, billing home, barcode POS, owner widgets, POS polish; CLTH-6 gate tests (30+14 regression). **No new Alembic revision** — hosted DBs: `flask db upgrade` to `20260827_cafe_coupons`. |
 | 2026-08-26 | **Final technical audit:** regenerated greenfield `sql/02_schema.sql` (94 tables ↔ models), SQL README, `chk_items_stock` / `chk_roles_name` on models, deferred `bill_items.serial_unit_id` FK, FE `getApiErrorMessage` + New Bill wiring, PageShell overflow hardening. No new Alembic revision (head still `20260826_biz66_perf_indexes`). Branch: `rs/feature/billingV3`. |

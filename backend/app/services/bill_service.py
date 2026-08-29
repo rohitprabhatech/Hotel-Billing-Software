@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 from flask import current_app
 
@@ -26,6 +25,7 @@ from app.services.tenant_service import TenantService
 from app.utils.exceptions import InsufficientStockError, NotFoundError, ValidationError
 from app.utils.ids import new_uuid
 from app.utils.money import calculate_bill_totals, money, qty
+from app.utils.periods import get_tz, report_timezone_name
 from app.utils.request_context import require_request_context
 
 
@@ -968,8 +968,8 @@ class BillService:
 
     @staticmethod
     def _today_bounds():
-        tz_name = current_app.config.get("REPORT_TIMEZONE", "Asia/Kolkata")
-        tz = ZoneInfo(tz_name)
+        tz_name = report_timezone_name(current_app.config.get("REPORT_TIMEZONE"))
+        tz = get_tz(tz_name)
         now_local = datetime.now(tz)
         start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
         end_local = start_local + timedelta(days=1)

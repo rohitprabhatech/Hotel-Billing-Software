@@ -13,7 +13,7 @@ from app.repositories.audit_log_repository import (
 from app.repositories.bill_repository import BillRepository
 from app.repositories.user_repository import UserRepository
 from app.utils.exceptions import ForbiddenError, NotFoundError, ValidationError
-from app.utils.periods import day_bounds, local_now, parse_date, to_utc_naive
+from app.utils.periods import day_bounds, local_now, parse_date, report_timezone_name, to_utc_naive
 from app.utils.request_context import require_request_context
 
 # Soft thresholds for activity indicators (not accusations)
@@ -39,7 +39,7 @@ class AuditLogService:
 
     @staticmethod
     def _tz():
-        return current_app.config.get("REPORT_TIMEZONE", "Asia/Kolkata")
+        return report_timezone_name()
 
     @staticmethod
     def catalog_meta():

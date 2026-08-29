@@ -7,6 +7,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 from app.utils.database_url import resolve_database_url
+from app.utils.periods import normalize_tz_name
 
 load_dotenv()
 
@@ -40,7 +41,7 @@ class BaseConfig:
         "CORS_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173",
     )
-    REPORT_TIMEZONE = os.getenv("REPORT_TIMEZONE", "Asia/Kolkata")
+    REPORT_TIMEZONE = normalize_tz_name(os.getenv("REPORT_TIMEZONE", "Asia/Kolkata"))
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
     # Email / SMTP (provider-agnostic)

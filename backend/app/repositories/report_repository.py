@@ -1,11 +1,27 @@
 """Tenant-scoped sales report queries."""
 
+from datetime import datetime, timedelta
+
 from sqlalchemy import and_, case, func
 
 from app.extensions import db
 from app.models.bill import Bill, BillItem
 from app.models.category import Category
 from app.models.item import Item
+from app.utils.periods import get_tz, report_timezone_name
+
+
+def _mysql_tz_offset(tz_name: str) -> str:
+    tz = get_tz(tz_name)
+    offset = datetime.now(tz).utcoffset()
+    if offset is None:
+        return "+00:00"
+    total_seconds = int(offset.total_seconds())
+    sign = "+" if total_seconds >= 0 else "-"
+    total_seconds = abs(total_seconds)
+    hours, rem = divmod(total_seconds, 3600)
+    minutes = rem // 60
+    return f"{sign}{hours:02d}:{minutes:02d}"
 
 
 class ReportRepository:
@@ -265,14 +281,15 @@ class ReportRepository:
         """Aggregate finalized sales by local calendar day (tenant timezone)."""
         bind = db.session.get_bind()
         dialect = bind.dialect.name if bind is not None else "sqlite"
-        # Bills store UTC-naive timestamps; bucket by Asia/Kolkata (or offset) local date.
+        resolved_tz = report_timezone_name(tz_name)
+        # Bills store UTC-naive timestamps; bucket by tenant local calendar day.
         if dialect == "mysql":
-            offset = "+05:30" if tz_name == "Asia/Kolkata" else "+00:00"
+            offset = _mysql_tz_offset(resolved_tz)
             day_expr = func.date(func.convert_tz(Bill.created_at, "+00:00", offset))
         else:
-            # SQLite (tests): apply minute offset from UTC.
-            minutes = "330" if tz_name == "Asia/Kolkata" else "0"
-            day_expr = func.date(Bill.created_at, f"+{minutes} minutes")
+            tz = get_tz(resolved_tz)
+            offset_minutes = int((datetime.now(tz).utcoffset() or timedelta()).total_seconds() // 60)
+            day_expr = func.date(Bill.created_at, f"+{offset_minutes} minutes")
 
         query = (
             db.session.query(

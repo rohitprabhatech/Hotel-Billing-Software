@@ -7,7 +7,7 @@ from app.repositories.report_repository import ReportRepository
 from app.repositories.tenant_repository import TenantRepository
 from app.services.ai_industry_analyzers import run_industry_analyzers
 from app.utils.exceptions import ForbiddenError, ValidationError
-from app.utils.periods import resolve_period
+from app.utils.periods import report_timezone_name, resolve_period
 from app.utils.request_context import require_request_context
 
 ALLOWED_PERIODS = frozenset(
@@ -44,7 +44,7 @@ class AiAssistantService:
 
     @staticmethod
     def _tz():
-        return current_app.config.get("REPORT_TIMEZONE", "Asia/Kolkata")
+        return report_timezone_name()
 
     @staticmethod
     def _bounds(period: str, from_date=None, to_date=None):

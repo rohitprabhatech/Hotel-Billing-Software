@@ -11,7 +11,7 @@ from app.repositories.stock_movement_repository import StockMovementRepository
 from app.utils.exceptions import ValidationError
 from app.utils.permission_access import require_permission
 from app.utils.ids import new_uuid
-from app.utils.periods import parse_date, to_utc_naive
+from app.utils.periods import parse_date, report_timezone_name, to_utc_naive
 from app.utils.request_context import require_request_context
 
 _ALLOWED_SOURCES = {
@@ -35,7 +35,7 @@ _ALLOWED_SOURCES = {
 class StockMovementService:
     @staticmethod
     def _tz():
-        return current_app.config.get("REPORT_TIMEZONE", "Asia/Kolkata")
+        return report_timezone_name()
 
     @staticmethod
     def record(

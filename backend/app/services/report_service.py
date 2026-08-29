@@ -26,7 +26,7 @@ from app.services.audit_service import AuditService
 from app.services.module_service import ModuleService
 from app.utils.exceptions import NotFoundError, ValidationError
 from app.utils.permission_access import require_permission
-from app.utils.periods import fill_day_wise_series, resolve_period
+from app.utils.periods import fill_day_wise_series, report_timezone_name, resolve_period
 from app.utils.request_context import require_request_context
 
 METRIC_LABELS = {
@@ -56,7 +56,7 @@ class ReportService:
 
     @staticmethod
     def _tz():
-        return current_app.config.get("REPORT_TIMEZONE", "Asia/Kolkata")
+        return report_timezone_name()
 
     @staticmethod
     def _bounds(period: str, from_date=None, to_date=None):

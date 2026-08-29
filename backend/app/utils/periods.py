@@ -9,14 +9,32 @@ _TZ_ALIASES = {
 }
 
 
-def get_tz(tz_name: str = _DEFAULT_TZ) -> ZoneInfo:
-    token = _TZ_ALIASES.get((tz_name or "").strip(), (tz_name or "").strip() or _DEFAULT_TZ)
+def normalize_tz_name(tz_name: str | None = _DEFAULT_TZ) -> str:
+    """Return a canonical IANA timezone name (handles common env typos)."""
+    token = (tz_name or "").strip() or _DEFAULT_TZ
+    token = _TZ_ALIASES.get(token, token)
     try:
-        return ZoneInfo(token)
+        ZoneInfo(token)
+        return token
     except ZoneInfoNotFoundError:
-        if token != _DEFAULT_TZ:
-            return ZoneInfo(_DEFAULT_TZ)
-        raise
+        return _DEFAULT_TZ
+
+
+def report_timezone_name(config_value: str | None = None) -> str:
+    """Resolved report timezone from Flask config or an explicit override."""
+    if config_value is None:
+        from flask import has_app_context, current_app
+
+        if has_app_context():
+            config_value = current_app.config.get("REPORT_TIMEZONE", _DEFAULT_TZ)
+        else:
+            config_value = _DEFAULT_TZ
+    return normalize_tz_name(config_value)
+
+
+def get_tz(tz_name: str = _DEFAULT_TZ) -> ZoneInfo:
+    token = normalize_tz_name(tz_name)
+    return ZoneInfo(token)
 
 
 def local_now(tz_name: str = "Asia/Kolkata") -> datetime:

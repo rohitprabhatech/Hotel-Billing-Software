@@ -13,7 +13,9 @@ class AddonRepository:
             return []
         return (
             db.session.query(ItemAddonGroup)
-            .options(joinedload(ItemAddonGroup.addons))
+            .options(
+                joinedload(ItemAddonGroup.addons).joinedload(ItemAddon.linked_item),
+            )
             .filter(
                 ItemAddonGroup.tenant_id == tenant_id,
                 ItemAddonGroup.menu_item_id.in_(menu_item_ids),
@@ -27,7 +29,10 @@ class AddonRepository:
     def list_groups_by_tenant(tenant_id: str) -> list[ItemAddonGroup]:
         return (
             db.session.query(ItemAddonGroup)
-            .options(joinedload(ItemAddonGroup.addons), joinedload(ItemAddonGroup.menu_item))
+            .options(
+                joinedload(ItemAddonGroup.addons).joinedload(ItemAddon.linked_item),
+                joinedload(ItemAddonGroup.menu_item),
+            )
             .filter(ItemAddonGroup.tenant_id == tenant_id)
             .order_by(ItemAddonGroup.menu_item_id.asc(), ItemAddonGroup.sort_order.asc())
             .all()
@@ -37,7 +42,10 @@ class AddonRepository:
     def get_group_by_id(tenant_id: str, group_id: str) -> ItemAddonGroup | None:
         return (
             db.session.query(ItemAddonGroup)
-            .options(joinedload(ItemAddonGroup.addons), joinedload(ItemAddonGroup.menu_item))
+            .options(
+                joinedload(ItemAddonGroup.addons).joinedload(ItemAddon.linked_item),
+                joinedload(ItemAddonGroup.menu_item),
+            )
             .filter(ItemAddonGroup.id == group_id, ItemAddonGroup.tenant_id == tenant_id)
             .first()
         )
@@ -48,7 +56,7 @@ class AddonRepository:
             return []
         return (
             db.session.query(ItemAddon)
-            .options(joinedload(ItemAddon.group))
+            .options(joinedload(ItemAddon.group), joinedload(ItemAddon.linked_item))
             .filter(ItemAddon.tenant_id == tenant_id, ItemAddon.id.in_(addon_ids), ItemAddon.is_active.is_(True))
             .all()
         )

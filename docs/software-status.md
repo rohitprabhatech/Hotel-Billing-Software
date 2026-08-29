@@ -6,7 +6,7 @@
 | Field | Value |
 |-------|--------|
 | **Last updated** | 2026-08-29 |
-| **Current sprint** | **Cafe billing** complete on `dev` (nav + API hardening) |
+| **Current sprint** | **Clothing billing** sign-off on `dev` (POS optional customer name) |
 | **Alembic head** | `20260827_cafe_coupons` |
 
 ---

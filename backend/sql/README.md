@@ -11,6 +11,8 @@
 
 **Cafe billing nav (2026-08-29):** sidebar isolation (hide Tables/Kitchen/Orders for `cafe_tea`) — **frontend only**, **no** SQL/Alembic change. Hosted DBs stay at `20260827_cafe_coupons`.
 
+**Clothing POS customer name (2026-08-29):** optional manual name on bill — **frontend + existing `bills.customer_name` column**; **no** new migration.
+
 **Regenerate greenfield SQL (local only):**  
 `python scripts/regenerate_02_schema.py` — overwrites `02_schema.sql` from models. Never apply the output to production.
 

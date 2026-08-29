@@ -82,6 +82,7 @@ export default function ClothingPosPage() {
   const [cart, setCart] = useState([]);
   const [picker, setPicker] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerName, setCustomerName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
@@ -302,6 +303,14 @@ export default function ClothingPosPage() {
     setCart([]);
     setPaymentMethod(DEFAULT_PAYMENT_METHOD);
     setSelectedCustomer(null);
+    setCustomerName('');
+  };
+
+  const resolvedCustomerName = () => {
+    const picked = selectedCustomer?.name?.trim();
+    if (picked) return picked;
+    const manual = customerName.trim();
+    return manual || null;
   };
 
   const checkout = async ({ confirmed = false } = {}) => {
@@ -330,6 +339,7 @@ export default function ClothingPosPage() {
       const res = await createBill({
         payment_method: paymentMethod,
         customer_id: selectedCustomer?.id || null,
+        customer_name: resolvedCustomerName(),
         items: cart.map((line) => ({
           item_id: line.item_id,
           variant_id: line.variant_id,
@@ -395,7 +405,7 @@ export default function ClothingPosPage() {
     doSendWhatsapp({
       country_code: createdBill.customer_phone_country_code,
       phone: createdBill.customer_phone_national,
-      customer_name: createdBill.customer_name || null,
+      customer_name: createdBill.customer_name || resolvedCustomerName(),
     });
   };
 
@@ -611,16 +621,28 @@ export default function ClothingPosPage() {
                       </Box>
                     ))}
                     <Divider />
+                    <TextField
+                      size="small"
+                      label="Customer name (optional)"
+                      placeholder="Walk-in or type name manually"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      fullWidth
+                      inputProps={{ maxLength: 120 }}
+                    />
                     <CustomerPicker
                       value={selectedCustomer}
-                      onChange={setSelectedCustomer}
+                      onChange={(customer) => {
+                        setSelectedCustomer(customer);
+                        setCustomerName(customer?.name || '');
+                      }}
                       onClear={() => {
                         setSelectedCustomer(null);
                         if (paymentMethod === PAYMENT_CREDIT) {
                           setPaymentMethod(PAYMENT_CASH);
                         }
                       }}
-                      label={creditEnabled ? 'Customer (required for udhari)' : 'Customer (optional)'}
+                      label={creditEnabled ? 'Or pick saved customer (udhari)' : 'Or pick saved customer (optional)'}
                     />
                     {selectedCustomer ? (
                       <Chip
@@ -833,7 +855,7 @@ export default function ClothingPosPage() {
               doSendWhatsapp({
                 country_code: phoneDraftCc,
                 phone: phoneDraft,
-                customer_name: createdBill?.customer_name || null,
+                customer_name: createdBill?.customer_name || resolvedCustomerName(),
               })
             }
           >

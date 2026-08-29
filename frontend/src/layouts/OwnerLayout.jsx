@@ -153,20 +153,20 @@ const navItems = [
     icon: <ReceiptLongOutlinedIcon />,
     hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
-  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
+  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant'] },
   {
     to: PATHS.ownerTables,
     label: 'Tables',
     icon: <TableRestaurantOutlinedIcon />,
     module: 'table_management',
-    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+    businessTypes: ['hotel_restaurant'],
   },
   {
     to: PATHS.ownerKitchen,
     label: 'Kitchen',
     icon: <KitchenOutlinedIcon />,
     module: 'kitchen',
-    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+    businessTypes: ['hotel_restaurant'],
   },
   {
     to: PATHS.ownerOrders,
@@ -174,13 +174,6 @@ const navItems = [
     icon: <ReceiptLongOutlinedIcon />,
     module: 'order_channels',
     businessTypes: ['hotel_restaurant'],
-  },
-  {
-    to: PATHS.ownerOrders,
-    label: 'Orders',
-    icon: <ReceiptLongOutlinedIcon />,
-    module: 'order_channels',
-    businessTypes: ['cafe_tea'],
   },
   { type: 'section', label: 'Menu', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
   {

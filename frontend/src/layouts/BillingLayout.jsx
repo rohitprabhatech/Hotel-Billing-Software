@@ -124,20 +124,20 @@ const billingNav = [
     hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
 
-  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
+  { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant'] },
   {
     to: PATHS.billingTables,
     label: 'Tables',
     icon: <TableRestaurantOutlinedIcon />,
     module: 'table_management',
-    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+    businessTypes: ['hotel_restaurant'],
   },
   {
     to: PATHS.billingKitchen,
     label: 'Kitchen',
     icon: <KitchenOutlinedIcon />,
     module: 'kitchen',
-    businessTypes: ['hotel_restaurant', 'cafe_tea'],
+    businessTypes: ['hotel_restaurant'],
   },
   {
     to: PATHS.billingOrders,
@@ -145,13 +145,6 @@ const billingNav = [
     icon: <ListAltOutlinedIcon />,
     module: 'order_channels',
     businessTypes: ['hotel_restaurant'],
-  },
-  {
-    to: PATHS.billingOrders,
-    label: 'Orders',
-    icon: <ListAltOutlinedIcon />,
-    module: 'order_channels',
-    businessTypes: ['cafe_tea'],
   },
 
   { type: 'section', label: 'Menu', businessTypes: ['hotel_restaurant', 'cafe_tea'] },
@@ -377,24 +370,6 @@ const cafeBillingUserNav = [
     to: PATHS.billingBills,
     label: "Today's Bills",
     icon: <ReceiptLongOutlinedIcon />,
-  },
-  {
-    to: PATHS.billingTables,
-    label: 'Tables',
-    icon: <TableRestaurantOutlinedIcon />,
-    module: 'table_management',
-  },
-  {
-    to: PATHS.billingKitchen,
-    label: 'Kitchen',
-    icon: <KitchenOutlinedIcon />,
-    module: 'kitchen',
-  },
-  {
-    to: PATHS.billingOrders,
-    label: 'Orders',
-    icon: <ListAltOutlinedIcon />,
-    module: 'order_channels',
   },
   {
     to: PATHS.billingMenu,

@@ -37,7 +37,7 @@ def _item(client, headers, category_id, name, **overrides):
 
 def test_quotation_convert_preserves_lines(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
-    _switch(client, owner, "building_material")
+    _switch(client, owner, "hardware")
     cat_id = _category(client, owner)
     cement = _item(client, owner, cat_id, "OPC 53", price="350", stock_quantity="80")
     sand = _item(client, owner, cat_id, "River Sand", price="45", uom="kg", stock_quantity="500")

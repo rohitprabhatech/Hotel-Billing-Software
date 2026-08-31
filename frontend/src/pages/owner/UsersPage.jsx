@@ -40,6 +40,7 @@ import {
   resetUserPassword,
   updateUser,
 } from '../../services/userService';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 const emptyForm = { name: '', email: '', password: '', role: 'BILLING_USER' };
 
@@ -50,6 +51,17 @@ const ASSIGNABLE_ROLES = [
 
 function roleLabel(role) {
   return ASSIGNABLE_ROLES.find((r) => r.value === role)?.label || role;
+}
+
+function isValidCreateForm(form) {
+  const name = form.name.trim();
+  const email = form.email.trim();
+  return (
+    name.length > 0 &&
+    email.includes('@') &&
+    email.includes('.') &&
+    form.password.length >= 8
+  );
 }
 
 export default function UsersPage() {
@@ -79,7 +91,7 @@ export default function UsersPage() {
       const response = await listUsers();
       setUsers(response.data || []);
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Unable to load users. Please try again.');
+      setError(getApiErrorMessage(err, 'Unable to load users. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -90,17 +102,26 @@ export default function UsersPage() {
   }, []);
 
   const onCreate = async () => {
+    if (!isValidCreateForm(form)) {
+      setError('Enter name, a valid email, and a password with at least 8 characters.');
+      return;
+    }
     setSaving(true);
     setError('');
     setSuccess('');
     try {
-      await createTenantUser(form);
+      await createTenantUser({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: isHotel ? 'BILLING_USER' : form.role,
+      });
       setOpen(false);
       setForm(emptyForm);
       setSuccess('User created successfully.');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to create user');
+      setError(getApiErrorMessage(err, 'Failed to create user'));
     } finally {
       setSaving(false);
     }
@@ -130,7 +151,7 @@ export default function UsersPage() {
       setEditUser(null);
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to update user');
+      setError(getApiErrorMessage(err, 'Failed to update user'));
     } finally {
       setSaving(false);
     }
@@ -147,7 +168,7 @@ export default function UsersPage() {
       setDeleteUser(null);
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to deactivate user');
+      setError(getApiErrorMessage(err, 'Failed to deactivate user'));
     } finally {
       setSaving(false);
     }
@@ -164,7 +185,7 @@ export default function UsersPage() {
       setResetUser(null);
       setResetPassword('');
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to reset password');
+      setError(getApiErrorMessage(err, 'Failed to reset password'));
     } finally {
       setSaving(false);
     }
@@ -340,7 +361,11 @@ export default function UsersPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={onCreate} disabled={saving}>
+          <Button
+            variant="contained"
+            onClick={onCreate}
+            disabled={saving || !isValidCreateForm(form)}
+          >
             {saving ? 'Saving...' : 'Create'}
           </Button>
         </DialogActions>

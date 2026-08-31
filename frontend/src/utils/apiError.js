@@ -13,6 +13,32 @@ const STATUS_FALLBACKS = {
   503: 'Service temporarily unavailable. Please try again later.',
 };
 
+const FIELD_LABELS = {
+  name: 'Name',
+  email: 'Email',
+  password: 'Password',
+  role: 'Role',
+};
+
+function formatValidationDetails(details) {
+  if (!details || typeof details !== 'object') return '';
+  const lines = [];
+  const walk = (obj, prefix = '') => {
+    Object.entries(obj).forEach(([key, val]) => {
+      const label = FIELD_LABELS[key] || (prefix ? `${prefix}.${key}` : key);
+      if (Array.isArray(val)) {
+        val.forEach((msg) => {
+          lines.push(typeof msg === 'string' ? `${label}: ${msg}` : `${label}: ${JSON.stringify(msg)}`);
+        });
+      } else if (val && typeof val === 'object') {
+        walk(val, label);
+      }
+    });
+  };
+  walk(details);
+  return lines.join(' ');
+}
+
 /**
  * @param {unknown} err
  * @param {string} [fallback]
@@ -21,10 +47,19 @@ const STATUS_FALLBACKS = {
 export function getApiErrorMessage(err, fallback = 'Something went wrong. Please try again.') {
   const status = err?.response?.status;
   const payload = err?.response?.data;
+  const apiError = payload?.error;
   const apiMessage =
-    payload?.error?.message ||
+    apiError?.message ||
     payload?.message ||
     (typeof payload?.error === 'string' ? payload.error : null);
+
+  const detailText = formatValidationDetails(apiError?.details);
+  if (detailText) {
+    if (apiMessage && apiMessage !== 'Validation failed' && apiMessage.length < 500) {
+      return `${apiMessage} ${detailText}`;
+    }
+    return detailText;
+  }
 
   if (apiMessage && typeof apiMessage === 'string') {
     // Never surface raw HTML / huge dumps

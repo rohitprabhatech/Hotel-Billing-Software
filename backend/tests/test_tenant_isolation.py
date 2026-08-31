@@ -66,7 +66,7 @@ def test_business_types_endpoint_is_public(client):
     assert "hotel_restaurant" in codes
     assert "clothing" in codes
     assert "travel_agency" in codes
-    assert len(types) == 14
+    assert len(types) == 13
     assert "medical" not in codes
     assert "medical_store" not in codes
     assert "other" not in codes

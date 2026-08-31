@@ -6,6 +6,7 @@ import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined';
+import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import {
   Alert,
@@ -786,6 +787,253 @@ function ClothingBillingHome({
   );
 }
 
+/** Hardware / building material desk home — UoM POS first, not generic New Bill. */
+function HardwareBillingHome({
+  businessName,
+  loading,
+  error,
+  summary,
+  lowStockCount,
+  recent,
+  navigate,
+  billCount,
+  creditEnabled,
+}) {
+  const posPath = PATHS.billingHardware;
+
+  return (
+    <>
+      <PageActions>
+        <Stack direction="row" spacing={1}>
+          <Button
+            component={RouterLink}
+            to={posPath}
+            variant="contained"
+            startIcon={<StraightenOutlinedIcon />}
+          >
+            Hardware POS
+          </Button>
+          {creditEnabled ? (
+            <Button
+              component={RouterLink}
+              to={PATHS.billingCredit}
+              variant="outlined"
+              startIcon={<ReceiptLongOutlinedIcon />}
+            >
+              Credit / Udhari
+            </Button>
+          ) : (
+            <Button
+              component={RouterLink}
+              to={PATHS.billingBills}
+              variant="outlined"
+              startIcon={<ReceiptLongOutlinedIcon />}
+            >
+              Today&apos;s Bills
+            </Button>
+          )}
+        </Stack>
+      </PageActions>
+
+      <PageShell spacing={2.5}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+            {businessName}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Hardware POS — pipes, cement, tiles, rods by metre, kg, sqft, and more.
+          </Typography>
+        </Box>
+
+        {error ? <Alert severity="error">{error}</Alert> : null}
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          }}
+        >
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(posPath)}
+            sx={{
+              textAlign: 'left',
+              border: '2px solid',
+              borderColor: 'primary.main',
+              borderRadius: 2,
+              p: { xs: 2.5, sm: 3 },
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              font: 'inherit',
+              color: 'inherit',
+              minHeight: 120,
+              '&:hover': { bgcolor: 'action.hover' },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <StraightenOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                HARDWARE POS
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Bill by measured quantity — price per metre, kg, sqft, and more.
+            </Typography>
+          </Box>
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(PATHS.billingBills)}
+            sx={{
+              textAlign: 'left',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2,
+              p: { xs: 2.5, sm: 3 },
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              font: 'inherit',
+              color: 'inherit',
+              minHeight: 120,
+              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <ReceiptLongOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                TODAY&apos;S BILLS
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Review bills, reprint, or share on WhatsApp.
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            gridTemplateColumns: {
+              xs: '1fr 1fr',
+              md: 'repeat(3, 1fr)',
+            },
+          }}
+        >
+          <KpiCard
+            title="Today's Sales"
+            value={loading ? '—' : money(summary.total_sales)}
+            icon={<StraightenOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Bills Today"
+            value={loading ? '—' : billCount ?? summary.bill_count ?? 0}
+            icon={<ReceiptLongOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Low Stock Items"
+            value={loading ? '—' : lowStockCount}
+            icon={<Inventory2OutlinedIcon fontSize="small" />}
+          />
+        </Box>
+
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            component={RouterLink}
+            to={posPath}
+            variant="contained"
+            size="small"
+            startIcon={<StraightenOutlinedIcon />}
+          >
+            Hardware POS
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingBills}
+            variant="outlined"
+            size="small"
+            startIcon={<ReceiptLongOutlinedIcon />}
+          >
+            Today&apos;s Bills
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingCustomers}
+            variant="outlined"
+            size="small"
+          >
+            Customers
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingItems}
+            variant="outlined"
+            size="small"
+            startIcon={<Inventory2OutlinedIcon />}
+          >
+            Items
+          </Button>
+        </Stack>
+
+        <Section
+          title="Today's Bills"
+          description="Latest hardware and building-material bills from this desk."
+          actions={
+            <Button component={RouterLink} to={PATHS.billingBills} size="small">
+              View all
+            </Button>
+          }
+        >
+          <TableCard>
+            {loading ? (
+              <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
+                <CircularProgress size={28} />
+              </Box>
+            ) : (
+              <Table size="small" sx={{ minWidth: 360 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Bill</TableCell>
+                    <TableCell>Payment</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recent.map((bill) => (
+                    <TableRow key={bill.id} hover>
+                      <TableCell sx={{ fontWeight: 600 }}>#{bill.bill_number}</TableCell>
+                      <TableCell>
+                        {bill.payment_method_label || paymentMethodLabel(bill.payment_method)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 650 }}>
+                        {moneyExact(bill.grand_total)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!recent.length ? (
+                    <TableRow>
+                      <TableCell colSpan={3} sx={{ p: 0, border: 0 }}>
+                        <EmptyState
+                          title="No bills yet today"
+                          description="Start with Hardware POS — set length, weight, or area quantity."
+                          actionLabel="Hardware POS"
+                          onAction={() => navigate(posPath)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            )}
+          </TableCard>
+        </Section>
+      </PageShell>
+    </>
+  );
+}
+
 export default function BillingHomePage() {
   const { role, user } = useAuth();
   const navigate = useNavigate();
@@ -795,9 +1043,12 @@ export default function BillingHomePage() {
   const isHotel = businessType === 'hotel_restaurant';
   const isCafe = businessType === 'cafe_tea';
   const isClothing = businessType === 'clothing';
+  const isHardware = businessType === 'hardware' || businessType === 'building_material';
   const tablesEnabled = useModuleGate('table_management');
   const cafePosEnabled = useModuleGate('addons_combos');
   const clothingPosEnabled = useModuleGate('variants');
+  const hardwarePosEnabled = useModuleGate('uom_measurement');
+  const creditEnabled = useModuleGate('customer_credit');
   const returnsEnabled = useModuleGate('returns_exchange');
   const [summary, setSummary] = useState({ total_sales: 0, bill_count: 0 });
   const [recent, setRecent] = useState([]);
@@ -831,6 +1082,11 @@ export default function BillingHomePage() {
       tasks.push(
         fetchClothingPosCatalog({ limit: 200 }).catch(() => ({ data: { items: [] } })),
       );
+    } else if (isHardware && hardwarePosEnabled) {
+      tasks.push(Promise.resolve(null));
+      tasks.push(
+        listItems({ is_active: true, per_page: 200 }).catch(() => ({ data: [] })),
+      );
     }
     Promise.all(tasks)
       .then((results) => {
@@ -848,6 +1104,12 @@ export default function BillingHomePage() {
             });
           });
           setLowVariantCount(emptyVariants);
+        } else if (isHardware && stockRes?.data) {
+          const low = (stockRes.data || []).filter((item) => {
+            if (item.stock_quantity == null || item.minimum_stock_level == null) return false;
+            return Number(item.stock_quantity) <= Number(item.minimum_stock_level);
+          }).length;
+          setLowStockCount(low);
         } else if (stockRes?.data) {
           const low = (stockRes.data || []).filter((item) => {
             if (item.stock_quantity == null || item.minimum_stock_level == null) return false;
@@ -860,7 +1122,7 @@ export default function BillingHomePage() {
         setError(err.response?.data?.error?.message || 'Failed to load billing dashboard');
       })
       .finally(() => setLoading(false));
-  }, [isHotel, isCafe, isClothing, tablesEnabled, clothingPosEnabled]);
+  }, [isHotel, isCafe, isClothing, isHardware, tablesEnabled, clothingPosEnabled, hardwarePosEnabled]);
 
   const tableStats = useMemo(() => {
     const stats = {
@@ -918,6 +1180,22 @@ export default function BillingHomePage() {
         navigate={navigate}
         billCount={summary.bill_count}
         returnsEnabled={returnsEnabled}
+      />
+    );
+  }
+
+  if (isHardware && hardwarePosEnabled) {
+    return (
+      <HardwareBillingHome
+        businessName={businessName}
+        loading={loading}
+        error={error}
+        summary={summary}
+        lowStockCount={lowStockCount}
+        recent={recent}
+        navigate={navigate}
+        billCount={summary.bill_count}
+        creditEnabled={creditEnabled}
       />
     );
   }

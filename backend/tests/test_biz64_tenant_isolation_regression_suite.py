@@ -232,8 +232,8 @@ def test_industry_cluster_cross_tenant_idor(client, cluster):
         _assert_owner_ok(client, owner_a, f"/api/v1/installations/{install['id']}")
 
     elif cluster == "hardware_docs":
-        _switch(client, owner_a, "building_material")
-        _switch(client, owner_b, "building_material")
+        _switch(client, owner_a, "hardware")
+        _switch(client, owner_b, "hardware")
         cat = _category(client, owner_a, "Iso HW")
         pipe = _item(client, owner_a, cat, "Iso Pipe", price="450", uom="m")
         quote = client.post(

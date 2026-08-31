@@ -96,23 +96,15 @@ const INDUSTRY_PANELS = {
     ],
   },
   hardware: {
-    title: 'Hardware',
-    blurb: 'Length/weight UOM POS, quotations, and challans.',
+    title: 'Hardware / building material',
+    blurb: 'UOM POS for pipes, cement, and tiles — quotations, challans, warehouses, and credit.',
     accent: '#7D6608',
     actions: [
       { to: PATHS.ownerHardware, label: 'Hardware POS', icon: HandymanOutlinedIcon, module: 'uom_measurement' },
       { to: PATHS.ownerQuotations, label: 'Quotations', icon: ReceiptLongOutlinedIcon, module: 'quotation' },
       { to: PATHS.ownerChallans, label: 'Challans', icon: ReceiptLongOutlinedIcon, module: 'delivery_challan' },
-    ],
-  },
-  building_material: {
-    title: 'Building material',
-    blurb: 'Trade credit, warehouses, and material POS.',
-    accent: '#6E2C00',
-    actions: [
-      { to: PATHS.ownerHardware, label: 'Material POS', icon: HandymanOutlinedIcon, module: 'uom_measurement' },
       { to: PATHS.ownerWarehouses, label: 'Warehouses', icon: WarehouseOutlinedIcon, module: 'warehouse' },
-      { to: PATHS.ownerCredit, label: 'Trade credit', icon: ReceiptLongOutlinedIcon, module: 'customer_credit' },
+      { to: PATHS.ownerCredit, label: 'Credit', icon: ReceiptLongOutlinedIcon, module: 'customer_credit' },
     ],
   },
   bakery_sweet: {
@@ -218,7 +210,8 @@ export default function IndustryDashboardPanel({ compact = false, workspace = 'o
   const { user } = useAuth();
   const { isModuleEnabled } = useModules();
   const businessType = user?.tenant?.business_type || '';
-  const panel = INDUSTRY_PANELS[businessType] || DEFAULT_PANEL;
+  const panelKey = businessType === 'building_material' ? 'hardware' : businessType;
+  const panel = INDUSTRY_PANELS[panelKey] || DEFAULT_PANEL;
 
   const actions = (panel.actions || [])
     .map((action) => {

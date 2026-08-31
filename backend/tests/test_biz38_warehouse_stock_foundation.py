@@ -37,7 +37,7 @@ def _item(client, headers, category_id, name="Cement", **overrides):
 
 def test_transfer_conserves_quantity_between_warehouses(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
-    _switch(client, owner, "building_material")
+    _switch(client, owner, "hardware")
     cat_id = _category(client, owner)
     item = _item(client, owner, cat_id, stock_quantity="40")
 
@@ -85,7 +85,7 @@ def test_transfer_conserves_quantity_between_warehouses(client):
 def test_sell_from_selected_warehouse(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     billing = login(client, "billing@hotela.com", "Billing@12345")
-    _switch(client, owner, "building_material")
+    _switch(client, owner, "hardware")
     cat_id = _category(client, owner)
     item = _item(client, owner, cat_id, stock_quantity="20")
 

@@ -1,4 +1,4 @@
-"""Sprint BIZ-01 — 14 business types catalog."""
+"""Sprint BIZ-01 — 13 business types catalog (hardware + building material combined)."""
 
 from app.constants.business_types import (
     ALLOWED_BUSINESS_TYPES,
@@ -10,13 +10,14 @@ from app.constants.business_types import (
 )
 
 
-def test_catalog_has_exactly_fourteen_types():
+def test_catalog_has_exactly_thirteen_types():
     rows = list_business_types()
-    assert len(rows) == 14
-    assert len(ALLOWED_BUSINESS_TYPES) == 14
+    assert len(rows) == 13
+    assert len(ALLOWED_BUSINESS_TYPES) == 13
     codes = {r["code"] for r in rows}
     assert codes == ALLOWED_BUSINESS_TYPES
     assert "other" not in codes
+    assert "building_material" not in codes
     assert "medical" not in codes
     assert "medical_store" not in codes
     assert "pharmacy" not in codes
@@ -54,11 +55,17 @@ def test_coerce_and_map_helpers():
     assert coerce_business_type("") == "grocery_kirana"
 
 
-def test_api_lists_fourteen_types(client):
+def test_building_material_maps_to_hardware():
+    assert map_legacy_business_type("building_material") == "hardware"
+    assert coerce_business_type("building_material") == "hardware"
+    assert normalize_business_type("building_material", allow_legacy=True) == "hardware"
+
+
+def test_api_lists_thirteen_types(client):
     response = client.get("/api/v1/tenants/business-types")
     assert response.status_code == 200
     types = response.get_json()["data"]["business_types"]
-    assert len(types) == 14
+    assert len(types) == 13
     codes = [t["code"] for t in types]
     assert codes[0] == "hotel_restaurant"
     assert "travel_agency" in codes

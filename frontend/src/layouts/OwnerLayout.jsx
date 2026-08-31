@@ -255,7 +255,7 @@ const navItems = [
     label: 'Hardware POS',
     icon: <StraightenOutlinedIcon />,
     module: 'uom_measurement',
-    businessTypes: ['hardware', 'building_material'],
+    businessTypes: ['hardware'],
   },
   {
     to: PATHS.ownerReturns,

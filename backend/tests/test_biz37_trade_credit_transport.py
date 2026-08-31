@@ -79,7 +79,7 @@ def test_bill_totals_include_transport_non_gst(client):
 def test_credit_sale_outstanding_includes_transport(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     billing = login(client, "billing@hotela.com", "Billing@12345")
-    _switch(client, owner, "building_material")
+    _switch(client, owner, "hardware")
     cat_id = _category(client, owner)
     item = _item(client, owner, cat_id, price="100", gst_percentage="0")
     customer = _customer(client, owner)

@@ -117,10 +117,10 @@ def test_convert_and_units_catalog(client):
     assert converted.get_json()["data"]["converted_quantity"] == 21.528
 
 
-def test_building_material_shares_hardware_apis(client):
+def test_hardware_store_tile_quote(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     billing = login(client, "billing@hotela.com", "Billing@12345")
-    _switch(client, owner, "building_material")
+    _switch(client, owner, "hardware")
     cat_id = _category(client, owner, "Tiles")
     tile = _item(
         client,

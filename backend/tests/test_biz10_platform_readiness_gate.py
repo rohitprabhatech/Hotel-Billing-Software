@@ -323,7 +323,7 @@ def test_gate_business_types_and_modules_smoke(client):
     response = client.get("/api/v1/tenants/business-types")
     assert response.status_code == 200
     types = response.get_json()["data"]["business_types"]
-    assert len(types) == 14
+    assert len(types) == 13
 
     owner = login(client, "owner@hotela.com", "Owner@12345")
     modules = client.get("/api/v1/tenants/me/modules", headers=owner)

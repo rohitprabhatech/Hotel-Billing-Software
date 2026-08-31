@@ -86,7 +86,7 @@ def test_restaurant_hardware_vertical_forbidden(client):
         assert client.get(path, headers=owner).status_code == 403, path
 
 
-def test_gate_module_matrix_hardware_vs_building_material(client):
+def test_gate_module_matrix_combined_hardware_store(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     _switch(client, owner, "hardware")
     hardware = client.get("/api/v1/tenants/me/modules", headers=owner).get_json()["data"][
@@ -99,26 +99,11 @@ def test_gate_module_matrix_hardware_vs_building_material(client):
         "customer_credit",
         "transport_charges",
         "bulk_pricing",
+        "warehouse",
     ):
         assert code in hardware, code
-    assert "warehouse" not in hardware
     assert "serial_imei" not in hardware
     assert "order_channels" not in hardware
-
-    _switch(client, owner, "building_material")
-    building = client.get("/api/v1/tenants/me/modules", headers=owner).get_json()["data"][
-        "enabled_modules"
-    ]
-    for code in (
-        "uom_measurement",
-        "quotation",
-        "delivery_challan",
-        "warehouse",
-        "customer_credit",
-        "transport_charges",
-    ):
-        assert code in building, code
-    assert "bulk_pricing" not in building
 
 
 def test_gate_pipe_quote_and_hardware_pos_catalog(client):
@@ -261,7 +246,7 @@ def test_gate_trade_credit_customer_and_supplier(client):
 def test_gate_warehouse_transfer_and_sell(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
     billing = login(client, "billing@hotela.com", "Billing@12345")
-    _switch(client, owner, "building_material")
+    _switch(client, owner, "hardware")
     cat_id = _category(client, owner, "Gate-WH")
     item = _item(client, owner, cat_id, "Gate Cement", price="80", gst_percentage="0", stock_quantity="30")
 
@@ -313,10 +298,6 @@ def test_gate_warehouse_transfer_and_sell(client):
     }
     assert by_wh[yard_id] == Decimal("6")
     assert by_wh[main["id"]] == Decimal("20")
-
-    # Hardware cannot use warehouses
-    _switch(client, owner, "hardware")
-    assert client.get("/api/v1/warehouses", headers=owner).status_code == 403
 
 
 def test_gate_permissions_billing_cannot_write_docs(client):
@@ -381,7 +362,7 @@ def test_gate_cross_tenant_isolation(client):
 
 def test_gate_audit_and_api_envelopes(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")
-    _switch(client, owner, "building_material")
+    _switch(client, owner, "hardware")
     cat_id = _category(client, owner, "Gate-Audit")
     item = _item(client, owner, cat_id, "Audit Bag", stock_quantity="20")
 

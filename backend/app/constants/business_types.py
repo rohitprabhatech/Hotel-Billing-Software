@@ -13,12 +13,11 @@ BUSINESS_TYPES: tuple[tuple[str, str], ...] = (
     ("grocery_kirana", "Grocery / Kirana"),
     ("clothing", "Clothing Shops"),
     ("mobile", "Mobile Shops"),
-    ("hardware", "Hardware Stores"),
+    ("hardware", "Hardware / Building Material"),
     ("bakery_sweet", "Bakery / Sweet Shops"),
     ("stationery", "Stationery Shops"),
     ("electronics", "Electronics Shops"),
     ("furniture", "Furniture Shops"),
-    ("building_material", "Hardware / Building Material"),
     ("book_store", "Book Stores"),
     ("wholesale", "Wholesale Shops"),
     ("travel_agency", "Travel Agencies"),
@@ -53,6 +52,7 @@ LEGACY_BUSINESS_TYPE_MAP: dict[str, str] = {
     # Doc aliases sometimes used in packs
     "bakery_sweets": "bakery_sweet",
     "bookstore": "book_store",
+    "building_material": "hardware",
 }
 
 # Permanently rejected (never map into catalog).

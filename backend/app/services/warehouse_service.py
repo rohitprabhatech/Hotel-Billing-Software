@@ -338,11 +338,28 @@ class WarehouseService:
         else:
             warehouse = WarehouseService.ensure_default_warehouse(tenant_id)
         item = ItemRepository.get_by_id_and_tenant(item_id, tenant_id)
+        need = qty(quantity)
+        stock = WarehouseRepository.get_stock(tenant_id, warehouse.id, item_id)
+        current = qty(stock.quantity) if stock else Decimal("0")
+        # Legacy tenants may have item.stock_quantity without mirrored warehouse rows.
+        if current < need and item is not None and item.stock_quantity is not None:
+            pre_sale_item = qty(item.stock_quantity) + need
+            if pre_sale_item >= need:
+                bootstrap = pre_sale_item - current
+                if bootstrap > 0:
+                    WarehouseService.adjust_warehouse_stock(
+                        tenant_id=tenant_id,
+                        warehouse_id=warehouse.id,
+                        item_id=item_id,
+                        delta=bootstrap,
+                        item=item,
+                        warehouse=warehouse,
+                    )
         WarehouseService.adjust_warehouse_stock(
             tenant_id=tenant_id,
             warehouse_id=warehouse.id,
             item_id=item_id,
-            delta=-qty(quantity),
+            delta=-need,
             notify=True,
             item=item,
             warehouse=warehouse,

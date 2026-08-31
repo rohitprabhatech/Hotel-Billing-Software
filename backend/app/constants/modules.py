@@ -129,6 +129,7 @@ _BUSINESS_TYPE_INDUSTRY: dict[str, frozenset[str]] = {
             "variants",
             "quotation",
             "delivery_challan",
+            "warehouse",
             "transport_charges",
         }
     ),
@@ -164,16 +165,6 @@ _BUSINESS_TYPE_INDUSTRY: dict[str, frozenset[str]] = {
             "quotation",
             "delivery_tracking",
             "installation",
-        }
-    ),
-    "building_material": frozenset(
-        {
-            "uom_measurement",
-            "quotation",
-            "delivery_challan",
-            "warehouse",
-            "customer_credit",
-            "transport_charges",
         }
     ),
     "book_store": frozenset(

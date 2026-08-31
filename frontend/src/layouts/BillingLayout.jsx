@@ -77,7 +77,7 @@ const billingNav = [
   {
     type: 'section',
     label: 'Sell',
-    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware', 'building_material'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware'],
   },
   {
     to: PATHS.billingRestaurantBilling,
@@ -112,14 +112,6 @@ const billingNav = [
     emphasize: true,
   },
   {
-    to: PATHS.billingHardware,
-    label: 'Material POS',
-    icon: <StraightenOutlinedIcon />,
-    module: 'uom_measurement',
-    businessTypes: ['building_material'],
-    emphasize: true,
-  },
-  {
     to: PATHS.billingNew,
     label: 'Quick Bill',
     icon: <BoltOutlinedIcon />,
@@ -129,19 +121,19 @@ const billingNav = [
     to: PATHS.billingNew,
     label: 'New Bill',
     icon: <ReceiptLongOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea', 'hardware', 'building_material'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea', 'hardware'],
   },
   {
     to: PATHS.billingBills,
     label: "Today's Bills",
     icon: <ReceiptLongOutlinedIcon />,
-    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware', 'building_material'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware'],
   },
   {
     to: PATHS.billingBills,
     label: 'Bills',
     icon: <ReceiptLongOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea', 'hardware', 'building_material'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea', 'hardware'],
   },
 
   { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant'] },
@@ -238,7 +230,7 @@ const billingNav = [
   {
     type: 'section',
     label: 'Customers',
-    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware', 'building_material'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware'],
   },
   { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
   {
@@ -499,14 +491,6 @@ const hardwareBillingUserNav = [
     emphasize: true,
   },
   {
-    to: PATHS.billingHardware,
-    label: 'Material POS',
-    icon: <StraightenOutlinedIcon />,
-    module: 'uom_measurement',
-    businessTypes: ['building_material'],
-    emphasize: true,
-  },
-  {
     to: PATHS.billingBills,
     label: "Today's Bills",
     icon: <ReceiptLongOutlinedIcon />,
@@ -588,14 +572,8 @@ function pageMeta(pathname, businessType) {
     }
     if (businessType === 'hardware') {
       return {
-        title: 'Hardware Billing',
+        title: 'Hardware / Building Material Billing',
         subtitle: 'Hardware POS → length / weight / area → pay → print.',
-      };
-    }
-    if (businessType === 'building_material') {
-      return {
-        title: 'Building Material Billing',
-        subtitle: 'Material POS → measured quantities → pay → print.',
       };
     }
     return {
@@ -999,10 +977,9 @@ export default function BillingLayout() {
                 ? 'Cafe Billing'
                 : user?.tenant?.business_type === 'clothing'
                   ? 'Clothing Billing'
-                  : user?.tenant?.business_type === 'hardware'
+                  : user?.tenant?.business_type === 'hardware' ||
+                      user?.tenant?.business_type === 'building_material'
                     ? 'Hardware Billing'
-                    : user?.tenant?.business_type === 'building_material'
-                      ? 'Material Billing'
                       : isOwner
                     ? 'Owner · Billing'
                     : isManager

@@ -5,7 +5,7 @@ import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
-import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutlined';
+import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import {
   Alert,
@@ -33,6 +33,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { fetchTodaySummary, listBills } from '../../services/billService';
 import { fetchClothingPosCatalog } from '../../services/clothingService';
+import { fetchHardwarePosCatalog } from '../../services/hardwareService';
 import { listItems } from '../../services/itemService';
 import { listTables } from '../../services/tableService';
 import { PATHS } from '../../routes/paths';

@@ -74,7 +74,11 @@ const drawerWidth = DRAWER_WIDTH;
 const billingNav = [
   { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
 
-  { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'] },
+  {
+    type: 'section',
+    label: 'Sell',
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware', 'building_material'],
+  },
   {
     to: PATHS.billingRestaurantBilling,
     label: 'Table Bill',
@@ -100,6 +104,22 @@ const billingNav = [
     emphasize: true,
   },
   {
+    to: PATHS.billingHardware,
+    label: 'Hardware POS',
+    icon: <StraightenOutlinedIcon />,
+    module: 'uom_measurement',
+    businessTypes: ['hardware'],
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingHardware,
+    label: 'Material POS',
+    icon: <StraightenOutlinedIcon />,
+    module: 'uom_measurement',
+    businessTypes: ['building_material'],
+    emphasize: true,
+  },
+  {
     to: PATHS.billingNew,
     label: 'Quick Bill',
     icon: <BoltOutlinedIcon />,
@@ -109,19 +129,19 @@ const billingNav = [
     to: PATHS.billingNew,
     label: 'New Bill',
     icon: <ReceiptLongOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea', 'hardware', 'building_material'],
   },
   {
     to: PATHS.billingBills,
     label: "Today's Bills",
     icon: <ReceiptLongOutlinedIcon />,
-    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'],
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware', 'building_material'],
   },
   {
     to: PATHS.billingBills,
     label: 'Bills',
     icon: <ReceiptLongOutlinedIcon />,
-    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
+    hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea', 'hardware', 'building_material'],
   },
 
   { type: 'section', label: 'Floor', businessTypes: ['hotel_restaurant'] },
@@ -215,7 +235,11 @@ const billingNav = [
     hideForBusinessTypes: ['hotel_restaurant', 'cafe_tea'],
   },
 
-  { type: 'section', label: 'Customers', businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'] },
+  {
+    type: 'section',
+    label: 'Customers',
+    businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing', 'hardware', 'building_material'],
+  },
   { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
   {
     to: PATHS.billingCredit,
@@ -243,13 +267,6 @@ const billingNav = [
     icon: <MenuBookOutlinedIcon />,
     module: 'barcode_pos',
     businessTypes: ['stationery', 'book_store'],
-  },
-  {
-    to: PATHS.billingHardware,
-    label: 'Hardware POS',
-    icon: <StraightenOutlinedIcon />,
-    module: 'uom_measurement',
-    businessTypes: ['hardware', 'building_material'],
   },
   {
     to: PATHS.billingReturns,
@@ -469,6 +486,66 @@ const clothingBillingUserNav = [
   },
 ];
 
+/** Slim sidebar for hardware / building-material Billing Users — UoM POS first. */
+const hardwareBillingUserNav = [
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Billing' },
+  {
+    to: PATHS.billingHardware,
+    label: 'Hardware POS',
+    icon: <StraightenOutlinedIcon />,
+    module: 'uom_measurement',
+    businessTypes: ['hardware'],
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingHardware,
+    label: 'Material POS',
+    icon: <StraightenOutlinedIcon />,
+    module: 'uom_measurement',
+    businessTypes: ['building_material'],
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingBills,
+    label: "Today's Bills",
+    icon: <ReceiptLongOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingItems,
+    label: 'Items',
+    icon: <Inventory2OutlinedIcon />,
+  },
+  {
+    to: PATHS.billingCategories,
+    label: 'Categories',
+    icon: <CategoryOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingCustomers,
+    label: 'Customers',
+    icon: <ContactsOutlinedIcon />,
+  },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  {
+    to: PATHS.billingExpenses,
+    label: 'Expenses',
+    icon: <PaymentsOutlinedIcon />,
+  },
+  { type: 'section', label: 'Account' },
+  { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  {
+    to: PATHS.billingChangePassword,
+    label: 'Settings',
+    icon: <LockOutlinedIcon />,
+  },
+];
+
 /** Drop section headers that have no visible link items before the next section. */
 function pruneEmptySections(items) {
   const result = [];
@@ -507,6 +584,18 @@ function pageMeta(pathname, businessType) {
       return {
         title: 'Clothing Billing',
         subtitle: 'Clothing POS → pick size & color → pay → print.',
+      };
+    }
+    if (businessType === 'hardware') {
+      return {
+        title: 'Hardware Billing',
+        subtitle: 'Hardware POS → length / weight / area → pay → print.',
+      };
+    }
+    if (businessType === 'building_material') {
+      return {
+        title: 'Building Material Billing',
+        subtitle: 'Material POS → measured quantities → pay → print.',
       };
     }
     return {
@@ -762,6 +851,7 @@ export default function BillingLayout() {
     const isHotel = businessType === 'hotel_restaurant';
     const isCafe = businessType === 'cafe_tea';
     const isClothing = businessType === 'clothing';
+    const isHardware = businessType === 'hardware' || businessType === 'building_material';
     const isBillingUser = role === 'BILLING_USER';
     let items;
 
@@ -796,6 +886,9 @@ export default function BillingLayout() {
     }
     if (isClothing && isBillingUser) {
       return pruneEmptySections(filterByModule(clothingBillingUserNav, businessType));
+    }
+    if (isHardware && isBillingUser) {
+      return pruneEmptySections(filterByModule(withOptionalReports(hardwareBillingUserNav), businessType));
     }
 
     if (!isOwner) {
@@ -906,7 +999,11 @@ export default function BillingLayout() {
                 ? 'Cafe Billing'
                 : user?.tenant?.business_type === 'clothing'
                   ? 'Clothing Billing'
-                  : isOwner
+                  : user?.tenant?.business_type === 'hardware'
+                    ? 'Hardware Billing'
+                    : user?.tenant?.business_type === 'building_material'
+                      ? 'Material Billing'
+                      : isOwner
                     ? 'Owner · Billing'
                     : isManager
                       ? 'Manager · Billing'

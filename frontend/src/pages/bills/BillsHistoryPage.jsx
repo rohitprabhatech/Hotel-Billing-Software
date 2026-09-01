@@ -1,5 +1,6 @@
 import {
   Alert,
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -20,12 +21,18 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
+import IconActionButton from '../../components/ui/IconActionButton';
 import SearchInput from '../../components/ui/SearchInput';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { filterControlSx } from '../../layouts/shell';
@@ -39,8 +46,6 @@ import {
   sendBillEmail,
 } from '../../services/billService';
 import BillPreview from '../../print/BillPreview';
-import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { PAYMENT_CASH, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
 
 function waStatusLabel(status) {
@@ -61,7 +66,7 @@ function waStatusVariant(status) {
 
 const PAGE_SIZE = 25;
 
-export default function BillsHistoryPage({ todayDefault = false }) {
+export default function BillsHistoryPage({ todayDefault = false, allowBillCancel = false }) {
   const [searchParams] = useSearchParams();
   const initialWa = (searchParams.get('whatsapp_status') || '').toUpperCase();
   const initialEmail = (searchParams.get('email_status') || '').toUpperCase();
@@ -242,6 +247,12 @@ export default function BillsHistoryPage({ todayDefault = false }) {
     }
   };
 
+  const openCancelForBill = (bill) => {
+    setSelected(bill);
+    setCancelReason('');
+    setCancelOpen(true);
+  };
+
   const onCancel = async () => {
     if (!selected) return;
     setSaving(true);
@@ -252,7 +263,7 @@ export default function BillsHistoryPage({ todayDefault = false }) {
       setSelected(res.data);
       setCancelOpen(false);
       setCancelReason('');
-      setSuccess(`Bill #${res.data.bill_number} cancelled`);
+      setSuccess(`Bill #${res.data.bill_number} removed`);
       await load(page);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to cancel bill');
@@ -263,23 +274,45 @@ export default function BillsHistoryPage({ todayDefault = false }) {
 
   return (
     <PageShell>
+      <Stack spacing={0.5}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          Bills
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Search, print, and manage finalized bills{allowBillCancel ? '. Owners can remove bills from here.' : '.'}
+        </Typography>
+      </Stack>
+
       <FilterBar
         actions={
-          <Button variant="outlined" onClick={() => load(1)} disabled={loading}>
+          <Button variant="contained" onClick={() => load(1)} disabled={loading}>
             Search
           </Button>
         }
       >
-        <SearchInput
-          label="Search bill / reference"
-          placeholder="Search bill / reference"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') load(1);
+        <Box
+          sx={{
+            width: '100%',
+            display: 'grid',
+            gap: 1.5,
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'minmax(200px, 1fr) auto',
+            },
+            alignItems: 'end',
           }}
-          sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}
-        />
+        >
+          <SearchInput
+            label="Search bill / reference"
+            placeholder="Bill number, reference, customer…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') load(1);
+            }}
+            sx={{ minWidth: 0 }}
+          />
+        </Box>
         <FormControl sx={filterControlSx}>
           <InputLabel>Status</InputLabel>
           <Select
@@ -371,11 +404,11 @@ export default function BillsHistoryPage({ todayDefault = false }) {
             <TableHead>
               <TableRow>
                 <TableCell>Bill No</TableCell>
+                <TableCell>Customer</TableCell>
                 <TableCell>Reference</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Payment Method</TableCell>
+                <TableCell>Payment</TableCell>
                 <TableCell align="right">Total</TableCell>
-                <TableCell>Prints</TableCell>
                 <TableCell>WhatsApp</TableCell>
                 <TableCell>Created By</TableCell>
                 <TableCell>Time</TableCell>
@@ -388,17 +421,18 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                   <TableCell sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                     {bill.bill_number}
                   </TableCell>
+                  <TableCell>{bill.customer_name || '—'}</TableCell>
                   <TableCell>{bill.reference || bill.table_number || '—'}</TableCell>
                   <TableCell>
                     <StatusBadge
                       label={bill.status === 'CANCELLED' ? 'Cancelled' : 'Paid'}
+                      variant={bill.status === 'CANCELLED' ? 'cancelled' : 'paid'}
                     />
                   </TableCell>
                   <TableCell>{paymentMethodLabel(bill.payment_method)}</TableCell>
                   <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                     ₹{Number(bill.grand_total).toFixed(2)}
                   </TableCell>
-                  <TableCell>{bill.printed_count}</TableCell>
                   <TableCell>
                     {waStatusLabel(bill.whatsapp_delivery_status) ? (
                       <StatusBadge
@@ -410,41 +444,44 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                     )}
                   </TableCell>
                   <TableCell>{bill.created_by_name || '—'}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
                     {bill.created_at ? new Date(bill.created_at).toLocaleString() : '—'}
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end" useFlexGap flexWrap="wrap">
-                      <Button size="small" onClick={() => openDetails(bill)}>
-                        View
-                      </Button>
-                      <Button size="small" onClick={() => openBillPrint(bill.id)}>
-                        Print
-                      </Button>
+                    <Stack direction="row" spacing={0.25} justifyContent="flex-end" useFlexGap flexWrap="wrap">
+                      <IconActionButton title="View bill" onClick={() => openDetails(bill)}>
+                        <VisibilityOutlinedIcon fontSize="small" />
+                      </IconActionButton>
+                      <IconActionButton title="Print bill" onClick={() => openBillPrint(bill.id)}>
+                        <PrintOutlinedIcon fontSize="small" />
+                      </IconActionButton>
                       {bill.status === 'FINALIZED' ? (
-                        <Button
-                          size="small"
+                        <IconActionButton
+                          title={waLabel(bill.whatsapp_delivery_status)}
                           color="success"
-                          startIcon={<WhatsAppIcon fontSize="inherit" />}
                           disabled={waSending || Boolean(emailBusyId)}
                           onClick={() => startWhatsapp(bill)}
                         >
-                          {waBusyId === bill.id
-                            ? 'Sending…'
-                            : waLabel(bill.whatsapp_delivery_status)}
-                        </Button>
+                          <WhatsAppIcon fontSize="small" />
+                        </IconActionButton>
                       ) : null}
                       {bill.status === 'FINALIZED' ? (
-                        <Button
-                          size="small"
-                          startIcon={<EmailOutlinedIcon fontSize="inherit" />}
+                        <IconActionButton
+                          title={emailLabel(bill.email_delivery_status)}
                           disabled={Boolean(emailBusyId) || waSending}
                           onClick={() => startEmail(bill)}
                         >
-                          {emailBusyId === bill.id
-                            ? 'Sending…'
-                            : emailLabel(bill.email_delivery_status)}
-                        </Button>
+                          <EmailOutlinedIcon fontSize="small" />
+                        </IconActionButton>
+                      ) : null}
+                      {allowBillCancel && bill.status === 'FINALIZED' ? (
+                        <IconActionButton
+                          title="Remove bill"
+                          color="error"
+                          onClick={() => openCancelForBill(bill)}
+                        >
+                          <DeleteOutlineOutlinedIcon fontSize="small" />
+                        </IconActionButton>
                       ) : null}
                     </Stack>
                   </TableCell>
@@ -580,9 +617,9 @@ export default function BillsHistoryPage({ todayDefault = false }) {
           ) : null}
         </DialogContent>
         <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
-          {selected?.status === 'FINALIZED' ? (
+          {allowBillCancel && selected?.status === 'FINALIZED' ? (
             <Button color="error" onClick={() => setCancelOpen(true)}>
-              Cancel Bill
+              Remove Bill
             </Button>
           ) : null}
           {selected?.status === 'FINALIZED' ? (
@@ -764,11 +801,15 @@ export default function BillsHistoryPage({ todayDefault = false }) {
       </Dialog>
 
       <Dialog open={cancelOpen} onClose={() => setCancelOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Cancel Bill #{selected?.bill_number}</DialogTitle>
+        <DialogTitle>Remove Bill #{selected?.bill_number}</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
+            <Alert severity="warning">
+              This cancels the bill and reverses stock / credit where applicable. This action is only
+              available to the business owner.
+            </Alert>
             <TextField
-              label="Cancellation reason"
+              label="Reason for removal"
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
               fullWidth
@@ -786,7 +827,7 @@ export default function BillsHistoryPage({ todayDefault = false }) {
             disabled={saving || !cancelReason.trim()}
             onClick={onCancel}
           >
-            Confirm Cancel
+            {saving ? 'Removing…' : 'Confirm Remove'}
           </Button>
         </DialogActions>
       </Dialog>

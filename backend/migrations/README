@@ -16,4 +16,4 @@ Never run `sql/02_schema.sql` on production data.
 - Phase 8 only (legacy): `python scripts/stamp_alembic_head.py`
 - Industry head (tables already present): `python scripts/stamp_alembic_industry_head.py`
 
-Current head: `20260826_biz66_perf_indexes` (see `docs/03-database/11-alembic-revision-order.md`).
+Current head: `20260831_bills_payment_method_credit_check` (60 revisions — see `docs/03-database/11-alembic-revision-order.md` and `docs/03-database/DATABASE-AUDIT-REPORT.md`).

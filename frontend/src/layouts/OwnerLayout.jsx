@@ -93,6 +93,104 @@ function pruneEmptySections(items) {
   return result;
 }
 
+/** Grocery / Kirana owner sidebar — setup → stock → sell → udhari → reports. */
+const groceryOwnerNav = [
+  { to: PATHS.ownerDashboard, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Counter' },
+  {
+    to: PATHS.ownerGrocery,
+    label: 'Grocery POS',
+    icon: <ShoppingCartOutlinedIcon />,
+    module: 'barcode_pos',
+    emphasize: true,
+  },
+  { to: PATHS.ownerBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Udhari (Credit)' },
+  {
+    to: PATHS.ownerCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  {
+    to: PATHS.ownerOutstanding,
+    label: 'Outstanding Report',
+    icon: <AssessmentOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  { type: 'section', label: 'Catalog setup' },
+  { to: PATHS.ownerCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
+  { to: PATHS.ownerItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
+  { to: PATHS.ownerItemActivity, label: 'Item Activity', icon: <HistoryOutlinedIcon /> },
+  { type: 'section', label: 'Stock in' },
+  { to: PATHS.ownerSuppliers, label: 'Suppliers', icon: <LocalShippingOutlinedIcon /> },
+  { to: PATHS.ownerPurchases, label: 'Purchases', icon: <ShoppingCartOutlinedIcon /> },
+  {
+    to: PATHS.ownerBatches,
+    label: 'Batches / Expiry',
+    icon: <EventAvailableOutlinedIcon />,
+    module: 'batch_expiry',
+  },
+  { to: PATHS.ownerStockMovements, label: 'Stock Movements', icon: <SwapVertOutlinedIcon /> },
+  { type: 'section', label: 'Customers & money' },
+  { to: PATHS.ownerCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { to: PATHS.ownerExpenses, label: 'Expenses', icon: <PaymentsOutlinedIcon /> },
+  { type: 'section', label: 'Reports' },
+  { to: PATHS.ownerReports, label: 'Sales Reports', icon: <AssessmentOutlinedIcon /> },
+  { to: PATHS.ownerAudit, label: 'Audit & Activity', icon: <HistoryOutlinedIcon /> },
+  { type: 'section', label: 'Admin' },
+  { to: PATHS.ownerUsers, label: 'Users', icon: <PeopleOutlinedIcon /> },
+  { to: PATHS.ownerSettings, label: 'Settings', icon: <SettingsOutlinedIcon /> },
+  { to: PATHS.ownerProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  { to: PATHS.ownerAi, label: 'AI Assistant', icon: <AutoAwesomeOutlinedIcon /> },
+];
+
+/** Stationery shop owner sidebar — search POS, bulk packs, udhari, catalog. */
+const stationeryOwnerNav = [
+  { to: PATHS.ownerDashboard, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Counter' },
+  {
+    to: PATHS.ownerStationery,
+    label: 'Stationery POS',
+    icon: <MenuBookOutlinedIcon />,
+    module: 'barcode_pos',
+    emphasize: true,
+  },
+  { to: PATHS.ownerBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Udhari (Credit)' },
+  {
+    to: PATHS.ownerCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  {
+    to: PATHS.ownerOutstanding,
+    label: 'Outstanding Report',
+    icon: <AssessmentOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  { type: 'section', label: 'Catalog setup' },
+  { to: PATHS.ownerCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
+  { to: PATHS.ownerItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
+  { to: PATHS.ownerItemActivity, label: 'Item Activity', icon: <HistoryOutlinedIcon /> },
+  { type: 'section', label: 'Stock in' },
+  { to: PATHS.ownerSuppliers, label: 'Suppliers', icon: <LocalShippingOutlinedIcon /> },
+  { to: PATHS.ownerPurchases, label: 'Purchases', icon: <ShoppingCartOutlinedIcon /> },
+  { to: PATHS.ownerStockMovements, label: 'Stock Movements', icon: <SwapVertOutlinedIcon /> },
+  { type: 'section', label: 'Customers & money' },
+  { to: PATHS.ownerCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { to: PATHS.ownerExpenses, label: 'Expenses', icon: <PaymentsOutlinedIcon /> },
+  { type: 'section', label: 'Reports' },
+  { to: PATHS.ownerReports, label: 'Sales Reports', icon: <AssessmentOutlinedIcon /> },
+  { to: PATHS.ownerAudit, label: 'Audit & Activity', icon: <HistoryOutlinedIcon /> },
+  { type: 'section', label: 'Admin' },
+  { to: PATHS.ownerUsers, label: 'Users', icon: <PeopleOutlinedIcon /> },
+  { to: PATHS.ownerSettings, label: 'Settings', icon: <SettingsOutlinedIcon /> },
+  { to: PATHS.ownerProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  { to: PATHS.ownerAi, label: 'AI Assistant', icon: <AutoAwesomeOutlinedIcon /> },
+];
+
 const navItems = [
   { to: PATHS.ownerDashboard, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
   { type: 'section', label: 'Sell', businessTypes: ['hotel_restaurant', 'cafe_tea', 'clothing'] },
@@ -646,10 +744,16 @@ export default function OwnerLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const entitled = subscriptionAllowsAccess(user?.tenant?.subscription);
-  const visibleNav = useMemo(
-    () => pruneEmptySections(filterByModule(navItems, user?.tenant?.business_type)),
-    [filterByModule, user?.tenant?.business_type],
-  );
+  const visibleNav = useMemo(() => {
+    const businessType = user?.tenant?.business_type;
+    const items =
+      businessType === 'grocery_kirana'
+        ? groceryOwnerNav
+        : businessType === 'stationery'
+          ? stationeryOwnerNav
+          : navItems;
+    return pruneEmptySections(filterByModule(items, businessType));
+  }, [filterByModule, user?.tenant?.business_type]);
 
   useEffect(() => {
     let active = true;
@@ -692,7 +796,13 @@ export default function OwnerLayout() {
   };
 
   const ownerBrandSubtitle =
-    user?.tenant?.business_type === 'hotel_restaurant' ? 'Owner · Hotel' : 'Owner · Console';
+    user?.tenant?.business_type === 'hotel_restaurant'
+      ? 'Owner · Hotel'
+      : user?.tenant?.business_type === 'grocery_kirana'
+        ? 'Owner · Grocery'
+        : user?.tenant?.business_type === 'stationery'
+          ? 'Owner · Stationery'
+          : 'Owner · Console';
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>

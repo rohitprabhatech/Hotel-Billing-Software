@@ -62,6 +62,8 @@ function billingBrandSubtitle(user, { isOwner, isManager }) {
   if (type === 'hotel_restaurant') return 'Hotel Billing';
   if (type === 'cafe_tea') return 'Cafe Billing';
   if (type === 'clothing') return 'Clothing Billing';
+  if (type === 'grocery_kirana') return 'Grocery Billing';
+  if (type === 'stationery') return 'Stationery Billing';
   if (type === 'hardware' || type === 'building_material') return 'Hardware Billing';
   if (isOwner) return 'Owner · Billing';
   if (isManager) return 'Manager · Billing';
@@ -419,6 +421,120 @@ const cafeBillingUserNav = [
     label: 'Wastage',
     icon: <DeleteSweepOutlinedIcon />,
     module: 'wastage',
+  },
+  { type: 'section', label: 'Account' },
+  { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  {
+    to: PATHS.billingChangePassword,
+    label: 'Settings',
+    icon: <LockOutlinedIcon />,
+  },
+];
+
+/** Grocery / Kirana billing desk — counter first, then udhari and catalog. */
+const groceryBillingNav = [
+  { type: 'section', label: 'Counter' },
+  {
+    to: PATHS.billingGrocery,
+    label: 'Grocery POS',
+    icon: <ShoppingCartOutlinedIcon />,
+    module: 'barcode_pos',
+    emphasize: true,
+  },
+  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Udhari (Credit)' },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  { type: 'section', label: 'Catalog setup' },
+  { to: PATHS.billingCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
+  { to: PATHS.billingItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
+  { type: 'section', label: 'Stock in' },
+  { to: PATHS.billingSuppliers, label: 'Suppliers', icon: <LocalShippingOutlinedIcon /> },
+  { to: PATHS.billingPurchases, label: 'Purchases', icon: <ShoppingCartOutlinedIcon /> },
+  { type: 'section', label: 'Customers & money' },
+  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { to: PATHS.billingExpenses, label: 'Expenses', icon: <PaymentsOutlinedIcon /> },
+];
+
+/** Stationery billing desk — search POS first, then udhari and catalog. */
+const stationeryBillingNav = [
+  { type: 'section', label: 'Counter' },
+  {
+    to: PATHS.billingStationery,
+    label: 'Stationery POS',
+    icon: <MenuBookOutlinedIcon />,
+    module: 'barcode_pos',
+    emphasize: true,
+  },
+  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Udhari (Credit)' },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  { type: 'section', label: 'Catalog setup' },
+  { to: PATHS.billingCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
+  { to: PATHS.billingItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
+  { type: 'section', label: 'Stock in' },
+  { to: PATHS.billingSuppliers, label: 'Suppliers', icon: <LocalShippingOutlinedIcon /> },
+  { to: PATHS.billingPurchases, label: 'Purchases', icon: <ShoppingCartOutlinedIcon /> },
+  { type: 'section', label: 'Customers & money' },
+  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { to: PATHS.billingExpenses, label: 'Expenses', icon: <PaymentsOutlinedIcon /> },
+];
+
+/** Slim sidebar for stationery Billing Users — POS + udhari only. */
+const stationeryBillingUserNav = [
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Counter' },
+  {
+    to: PATHS.billingStationery,
+    label: 'Stationery POS',
+    icon: <MenuBookOutlinedIcon />,
+    module: 'barcode_pos',
+    emphasize: true,
+  },
+  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Udhari (Credit)' },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  { type: 'section', label: 'Account' },
+  { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  {
+    to: PATHS.billingChangePassword,
+    label: 'Settings',
+    icon: <LockOutlinedIcon />,
+  },
+];
+
+/** Slim sidebar for grocery Billing Users — POS + udhari only. */
+const groceryBillingUserNav = [
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Counter' },
+  {
+    to: PATHS.billingGrocery,
+    label: 'Grocery POS',
+    icon: <ShoppingCartOutlinedIcon />,
+    module: 'barcode_pos',
+    emphasize: true,
+  },
+  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Udhari (Credit)' },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
   },
   { type: 'section', label: 'Account' },
   { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
@@ -831,6 +947,8 @@ export default function BillingLayout() {
     const isHotel = businessType === 'hotel_restaurant';
     const isCafe = businessType === 'cafe_tea';
     const isClothing = businessType === 'clothing';
+    const isGrocery = businessType === 'grocery_kirana';
+    const isStationery = businessType === 'stationery';
     const isHardware = businessType === 'hardware' || businessType === 'building_material';
     const isBillingUser = role === 'BILLING_USER';
     let items;
@@ -864,6 +982,12 @@ export default function BillingLayout() {
     if (isCafe && isBillingUser) {
       return pruneEmptySections(filterByModule(withOptionalReports(cafeBillingUserNav), businessType));
     }
+    if (isGrocery && isBillingUser) {
+      return pruneEmptySections(filterByModule(withOptionalReports(groceryBillingUserNav), businessType));
+    }
+    if (isStationery && isBillingUser) {
+      return pruneEmptySections(filterByModule(withOptionalReports(stationeryBillingUserNav), businessType));
+    }
     if (isClothing && isBillingUser) {
       return pruneEmptySections(filterByModule(clothingBillingUserNav, businessType));
     }
@@ -874,7 +998,7 @@ export default function BillingLayout() {
     if (!isOwner) {
       items = [
         { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
-        ...billingNav.slice(1),
+        ...(isGrocery ? groceryBillingNav : isStationery ? stationeryBillingNav : billingNav.slice(1)),
       ];
     } else {
       items = [
@@ -884,7 +1008,7 @@ export default function BillingLayout() {
           icon: <DashboardOutlinedIcon />,
           end: true,
         },
-        ...billingNav,
+        ...(isGrocery ? groceryBillingNav : isStationery ? stationeryBillingNav : billingNav),
       ];
     }
 

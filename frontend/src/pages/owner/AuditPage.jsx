@@ -85,7 +85,7 @@ export default function AuditPage() {
   const [filters, setFilters] = useState({
     user_id: '',
     category: '',
-    datePreset: 'today',
+    datePreset: 'last_7_days',
     from: '',
     to: '',
     q: '',
@@ -364,8 +364,8 @@ export default function AuditPage() {
         {!loading && logs.length ? (
           <PaginationBar
             page={page}
+            perPage={PAGE_SIZE}
             total={meta.total}
-            pageSize={PAGE_SIZE}
             onPageChange={(next) => load(next)}
           />
         ) : null}

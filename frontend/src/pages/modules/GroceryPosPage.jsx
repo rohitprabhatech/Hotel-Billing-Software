@@ -1,5 +1,7 @@
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import QrCodeScannerOutlinedIcon from '@mui/icons-material/QrCodeScannerOutlined';
+import ShoppingBasketOutlinedIcon from '@mui/icons-material/ShoppingBasketOutlined';
 import {
   Alert,
   Box,
@@ -10,10 +12,10 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   FormControlLabel,
   FormLabel,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Radio,
@@ -29,13 +31,15 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
+import PosCartPanel from '../../components/pos/PosCartPanel';
 import TruncateText from '../../components/TruncateText';
 import IconActionButton from '../../components/ui/IconActionButton';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useModuleGate } from '../../context/ModulesContext';
-import { createBill } from '../../services/billService';
+import { billPrintPath, createBill, openBillPrint } from '../../services/billService';
 import { getCustomer } from '../../services/customerService';
 import { fetchGroceryPosCatalog } from '../../services/groceryService';
 import { getItemByBarcode } from '../../services/itemService';
@@ -64,6 +68,7 @@ function applyTierPrice(line) {
 }
 
 export default function GroceryPosPage() {
+  const navigate = useNavigate();
   const moduleEnabled = useModuleGate('barcode_pos');
   const creditEnabled = useModuleGate('customer_credit');
   const priceListsEnabled = useModuleGate('price_lists');
@@ -77,10 +82,12 @@ export default function GroceryPosPage() {
   const [saving, setSaving] = useState(false);
   const [recentScans, setRecentScans] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [warehouses, setWarehouses] = useState([]);
   const [warehouseId, setWarehouseId] = useState('');
+  const [createdBill, setCreatedBill] = useState(null);
 
   const focusScan = useCallback(() => {
     window.requestAnimationFrame(() => barcodeRef.current?.focus());
@@ -132,6 +139,13 @@ export default function GroceryPosPage() {
 
   const cartTotal = useMemo(() => cart.reduce((sum, line) => sum + lineTotal(line), 0), [cart]);
   const lineCount = useMemo(() => cart.reduce((sum, line) => sum + Number(line.quantity || 0), 0), [cart]);
+
+  const resolvedCustomerName = () => {
+    const picked = selectedCustomer?.name?.trim();
+    if (picked) return picked;
+    const manual = customerName.trim();
+    return manual || null;
+  };
 
   const addToCart = useCallback((item, quantityOverride = null) => {
     const tracked = item.stock_quantity !== null && item.stock_quantity !== undefined;
@@ -225,6 +239,14 @@ export default function GroceryPosPage() {
       );
     });
   };
+
+  const resetAfterBill = () => {
+    setCart([]);
+    setPaymentMethod(DEFAULT_PAYMENT_METHOD);
+    setSelectedCustomer(null);
+    setCustomerName('');
+  };
+
   const checkout = async ({ confirmed = false } = {}) => {
     if (!cart.length) {
       setError('Scan items to build the bill.');
@@ -251,6 +273,7 @@ export default function GroceryPosPage() {
       const res = await createBill({
         payment_method: paymentMethod,
         customer_id: selectedCustomer?.id || null,
+        customer_name: resolvedCustomerName(),
         warehouse_id: warehouseEnabled && warehouseId ? warehouseId : undefined,
         items: cart.map((line) => ({
           item_id: line.item_id,
@@ -269,12 +292,13 @@ export default function GroceryPosPage() {
           extra = ' · Credit posted';
         }
       }
+      setCreatedBill(bill);
       setSuccess(
         `Bill ${bill.bill_number} — ${money(bill.grand_total)} (${paymentMethodLabel(bill.payment_method)})${extra}`,
       );
-      setCart([]);
-      setPaymentMethod(DEFAULT_PAYMENT_METHOD);
+      resetAfterBill();
       setConfirmOpen(false);
+      openBillPrint(bill.id, { auto: true });
       focusScan();
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Could not create bill.');
@@ -295,8 +319,36 @@ export default function GroceryPosPage() {
   return (
     <PageShell>
       <Stack spacing={2}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <ShoppingBasketOutlinedIcon color="primary" />
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            Grocery POS
+          </Typography>
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          Scan barcodes for fast checkout. Weight items (kg, g, l) support decimal quantities.
+        </Typography>
+
         {error ? <Alert severity="error">{error}</Alert> : null}
-        {success ? <Alert severity="success">{success}</Alert> : null}
+        {success ? (
+          <Alert
+            severity="success"
+            action={
+              createdBill ? (
+                <Button
+                  color="inherit"
+                  size="small"
+                  startIcon={<PrintOutlinedIcon />}
+                  onClick={() => navigate(billPrintPath(createdBill.id))}
+                >
+                  Print
+                </Button>
+              ) : null
+            }
+          >
+            {success}
+          </Alert>
+        ) : null}
 
         {warehouseEnabled && warehouses.length ? (
           <FormControl size="small" sx={{ maxWidth: 360 }}>
@@ -317,77 +369,158 @@ export default function GroceryPosPage() {
           </FormControl>
         ) : null}
 
-        <Card variant="outlined" sx={{ borderWidth: 2, borderColor: 'primary.main' }}>
-          <CardContent>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
-              <QrCodeScannerOutlinedIcon color="primary" sx={{ fontSize: 40, display: { xs: 'none', md: 'block' } }} />
-              <TextField
-                inputRef={barcodeRef}
-                autoFocus
-                fullWidth
-                label="Scan barcode"
-                placeholder="Focus here and scan — Enter adds line"
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    scanBarcode();
-                  }
-                }}
-                disabled={scanning}
-                size="medium"
-                sx={{ '& .MuiInputBase-root': { fontSize: '1.15rem' } }}
-              />
-              <Button variant="contained" onClick={scanBarcode} disabled={scanning || !barcode.trim()} sx={{ minWidth: 120 }}>
-                {scanning ? '…' : 'Add'}
-              </Button>
-            </Stack>
-            {recentScans.length ? (
-              <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mt: 2 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ width: '100%' }}>
-                  Quick pick
-                </Typography>
-                {recentScans.map((item) => (
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="stretch">
+          <Box sx={{ flex: 1.2 }}>
+            <Card variant="outlined" sx={{ borderColor: 'primary.main' }}>
+              <CardContent>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+                  <TextField
+                    inputRef={barcodeRef}
+                    autoFocus
+                    fullWidth
+                    label="Scan barcode"
+                    placeholder="Focus here and scan — Enter adds line"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        scanBarcode();
+                      }
+                    }}
+                    disabled={scanning}
+                    size="medium"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <QrCodeScannerOutlinedIcon fontSize="small" color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ '& .MuiInputBase-root': { fontSize: '1.05rem' } }}
+                    helperText="Scanner or type barcode, then press Enter"
+                  />
                   <Button
-                    key={item.id}
-                    size="small"
-                    variant="outlined"
-                    onClick={() => addToCart(item)}
+                    variant="contained"
+                    onClick={scanBarcode}
+                    disabled={scanning || !barcode.trim()}
+                    sx={{ minWidth: { sm: 100 }, width: { xs: '100%', sm: 'auto' } }}
                   >
-                    {item.name}
+                    {scanning ? '…' : 'Add'}
                   </Button>
-                ))}
-              </Stack>
-            ) : null}
-          </CardContent>
-        </Card>
+                </Stack>
+                {recentScans.length ? (
+                  <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mt: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ width: '100%' }}>
+                      Quick pick
+                    </Typography>
+                    {recentScans.map((item) => (
+                      <Button key={item.id} size="small" variant="outlined" onClick={() => addToCart(item)}>
+                        {item.name}
+                      </Button>
+                    ))}
+                  </Stack>
+                ) : null}
+              </CardContent>
+            </Card>
+          </Box>
 
-        <Card variant="outlined">
-          <CardContent>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 650, fontSize: '1.05rem' }}>
-                Current Bill
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {cart.length} lines · {lineCount} units
-              </Typography>
-            </Stack>
-
-            {!cart.length ? (
-              <Typography variant="body2" color="text.secondary">
-                Scan barcodes to add items. Weight items (kg/g/l) support decimal quantities.
-              </Typography>
-            ) : (
-              <>
+          <Box sx={{ flex: 1, minWidth: { md: 360 } }}>
+            <PosCartPanel
+              title="Current Bill"
+              actions={
+                cart.length ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {cart.length} lines · {lineCount} units
+                  </Typography>
+                ) : null
+              }
+              empty={
+                !cart.length
+                  ? 'Scan barcodes to add items. Use quick pick for frequent products.'
+                  : null
+              }
+              footer={
+                <Stack spacing={1.5}>
+                  <TextField
+                    size="small"
+                    label="Customer name (optional)"
+                    placeholder="Walk-in or type name manually"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    fullWidth
+                  />
+                  {creditEnabled ? (
+                    <>
+                      <CustomerPicker
+                        label="Customer (required for udhari)"
+                        value={selectedCustomer}
+                        onChange={(customer) => setSelectedCustomer(customer)}
+                        onClear={() => {
+                          setSelectedCustomer(null);
+                          if (paymentMethod === PAYMENT_CREDIT) {
+                            setPaymentMethod(PAYMENT_CASH);
+                          }
+                        }}
+                      />
+                      {selectedCustomer ? (
+                        <StatusBadge
+                          label={
+                            Number(selectedCustomer.balance || 0) > 0
+                              ? `Outstanding ${money(selectedCustomer.balance)}`
+                              : 'No outstanding'
+                          }
+                          variant={Number(selectedCustomer.balance || 0) > 0 ? 'pending' : 'active'}
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Total {money(cartTotal)}
+                  </Typography>
+                  <FormControl>
+                    <FormLabel>Payment</FormLabel>
+                    <RadioGroup
+                      row
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    >
+                      <FormControlLabel value={PAYMENT_CASH} control={<Radio size="small" />} label="Cash" />
+                      <FormControlLabel value={PAYMENT_ONLINE} control={<Radio size="small" />} label="Online" />
+                      {creditEnabled ? (
+                        <FormControlLabel
+                          value={PAYMENT_CREDIT}
+                          control={<Radio size="small" />}
+                          label="Credit (Udhari)"
+                          disabled={!selectedCustomer}
+                        />
+                      ) : null}
+                    </RadioGroup>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    color={paymentMethod === PAYMENT_CREDIT ? 'warning' : 'primary'}
+                    onClick={() => checkout()}
+                    disabled={saving || !cart.length}
+                  >
+                    {saving
+                      ? 'Creating bill…'
+                      : paymentMethod === PAYMENT_CREDIT
+                        ? 'Generate Bill (Credit)'
+                        : 'Generate Bill'}
+                  </Button>
+                </Stack>
+              }
+            >
+              {cart.length ? (
                 <Box sx={{ overflowX: 'auto' }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
                         <TableCell>Item</TableCell>
-                        <TableCell>Barcode</TableCell>
                         <TableCell align="right">Qty</TableCell>
-                        <TableCell>UoM</TableCell>
                         <TableCell align="right">Rate</TableCell>
                         <TableCell align="right">Amount</TableCell>
                         <TableCell width={48} />
@@ -397,10 +530,12 @@ export default function GroceryPosPage() {
                       {cart.map((line) => (
                         <TableRow key={line.item_id} hover>
                           <TableCell>
-                            <TruncateText value={line.name} maxWidth={180} />
+                            <TruncateText value={line.name} maxWidth={140} />
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {line.barcode || uomLabel(line.uom)}
+                            </Typography>
                           </TableCell>
-                          <TableCell>{line.barcode || '—'}</TableCell>
-                          <TableCell align="right" sx={{ minWidth: 100 }}>
+                          <TableCell align="right" sx={{ minWidth: 88 }}>
                             <TextField
                               type="number"
                               size="small"
@@ -411,10 +546,9 @@ export default function GroceryPosPage() {
                                 step: qtyStepForUom(line.uom),
                                 style: { textAlign: 'right' },
                               }}
-                              sx={{ width: 96 }}
+                              sx={{ width: 80 }}
                             />
                           </TableCell>
-                          <TableCell>{uomLabel(line.uom)}</TableCell>
                           <TableCell align="right">{money(line.price)}</TableCell>
                           <TableCell align="right">{money(lineTotal(line))}</TableCell>
                           <TableCell>
@@ -427,69 +561,10 @@ export default function GroceryPosPage() {
                     </TableBody>
                   </Table>
                 </Box>
-                <Divider sx={{ my: 2 }} />
-                {creditEnabled ? (
-                  <Stack spacing={1.5} sx={{ mb: 2 }}>
-                    <CustomerPicker
-                      label="Customer (required for udhari)"
-                      value={selectedCustomer}
-                      onChange={(customer) => setSelectedCustomer(customer)}
-                      onClear={() => {
-                        setSelectedCustomer(null);
-                        if (paymentMethod === PAYMENT_CREDIT) {
-                          setPaymentMethod(PAYMENT_CASH);
-                        }
-                      }}
-                    />
-                    {selectedCustomer ? (
-                      <StatusBadge
-                        label={
-                          Number(selectedCustomer.balance || 0) > 0
-                            ? `Outstanding ${money(selectedCustomer.balance)}`
-                            : 'No outstanding'
-                        }
-                        variant={Number(selectedCustomer.balance || 0) > 0 ? 'pending' : 'active'}
-                      />
-                    ) : null}
-                    <FormControl>
-                      <FormLabel>Payment</FormLabel>
-                      <RadioGroup
-                        row
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      >
-                        <FormControlLabel value={PAYMENT_CASH} control={<Radio size="small" />} label="Cash" />
-                        <FormControlLabel value={PAYMENT_ONLINE} control={<Radio size="small" />} label="Online" />
-                        <FormControlLabel
-                          value={PAYMENT_CREDIT}
-                          control={<Radio size="small" />}
-                          label="Credit (Udhari)"
-                          disabled={!selectedCustomer}
-                        />
-                      </RadioGroup>
-                    </FormControl>
-                  </Stack>
-                ) : null}
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="h6">{money(cartTotal)}</Typography>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    color={paymentMethod === PAYMENT_CREDIT ? 'warning' : 'primary'}
-                    onClick={() => checkout()}
-                    disabled={saving}
-                  >
-                    {saving
-                      ? 'Creating bill…'
-                      : paymentMethod === PAYMENT_CREDIT
-                        ? 'Generate Bill (Credit)'
-                        : 'Generate Bill'}
-                  </Button>
-                </Stack>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              ) : null}
+            </PosCartPanel>
+          </Box>
+        </Stack>
       </Stack>
 
       <Dialog open={confirmOpen} onClose={() => !saving && setConfirmOpen(false)} fullWidth maxWidth="xs">

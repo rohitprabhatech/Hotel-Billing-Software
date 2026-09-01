@@ -18,30 +18,18 @@ export default function FilterBar({ children, actions = null }) {
           '&:last-child': { pb: { xs: 2, sm: 2.25 } },
         }}
       >
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={1.5}
-          alignItems={{ xs: 'stretch', md: 'flex-end' }}
-          useFlexGap
-          flexWrap="wrap"
-        >
+        <Stack spacing={1.5}>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={1.5}
             useFlexGap
             flexWrap="wrap"
-            sx={{ flex: 1, minWidth: 0, alignItems: { sm: 'flex-end' } }}
+            sx={{ alignItems: { sm: 'flex-end' } }}
           >
             {children}
           </Stack>
           {actions ? (
-            <Stack
-              direction="row"
-              spacing={1}
-              useFlexGap
-              flexWrap="wrap"
-              sx={{ flexShrink: 0 }}
-            >
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" justifyContent="flex-end">
               {actions}
             </Stack>
           ) : null}

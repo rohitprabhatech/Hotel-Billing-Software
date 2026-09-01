@@ -6,14 +6,12 @@ import {
   Autocomplete,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
   FormControlLabel,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -34,6 +32,8 @@ import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -244,9 +244,11 @@ export default function WarehousesPage() {
                   <TableCell>{row.code}</TableCell>
                   <TableCell>{row.name}</TableCell>
                   <TableCell>
-                    {row.is_default ? <Chip size="small" color="primary" label="Default" /> : '—'}
+                    {row.is_default ? <StatusBadge label="Default" variant="info" /> : '—'}
                   </TableCell>
-                  <TableCell>{row.is_active ? 'Active' : 'Inactive'}</TableCell>
+                  <TableCell>
+                    <StatusBadge label={row.is_active ? 'Active' : 'Inactive'} />
+                  </TableCell>
                   <TableCell align="right">
                     {canWrite && !row.is_default ? (
                       <Button size="small" onClick={() => onMakeDefault(row)}>
@@ -434,12 +436,14 @@ export default function WarehousesPage() {
                   sx={{ width: 120 }}
                   helperText={atFrom != null ? `Available: ${atFrom}` : undefined}
                 />
-                <IconButton
-                  onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
+                <IconActionButton
+                  title="Remove line"
+                  color="error"
                   disabled={lines.length === 1}
+                  onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
                 >
-                  <DeleteOutlineOutlinedIcon />
-                </IconButton>
+                  <DeleteOutlineOutlinedIcon fontSize="small" />
+                </IconActionButton>
               </Stack>
               );
             })}

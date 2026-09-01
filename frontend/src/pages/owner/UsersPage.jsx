@@ -6,14 +6,11 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -24,7 +21,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
@@ -32,6 +28,10 @@ import EmptyState from '../../components/EmptyState';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -210,8 +210,8 @@ export default function UsersPage() {
 
         <TableCard>
           {loading ? (
-            <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}>
-              <CircularProgress size={28} />
+            <Box sx={{ p: 2 }}>
+              <LoadingSkeleton rows={5} height={56} />
             </Box>
           ) : (
             <Table size="small" sx={{ minWidth: 780 }}>
@@ -236,16 +236,11 @@ export default function UsersPage() {
                     </TableCell>
                     {!isHotel ? (
                       <TableCell>
-                        <Chip size="small" label={roleLabel(user.role)} variant="outlined" />
+                        <StatusBadge label={roleLabel(user.role)} variant="info" />
                       </TableCell>
                     ) : null}
                     <TableCell>
-                      <Chip
-                        size="small"
-                        label={user.is_active ? 'Active' : 'Inactive'}
-                        variant="outlined"
-                        color={user.is_active ? 'success' : 'default'}
-                      />
+                      <StatusBadge label={user.is_active ? 'Active' : 'Unavailable'} />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
@@ -255,36 +250,21 @@ export default function UsersPage() {
                     <TableCell align="right">
                       {user.role !== 'OWNER' ? (
                         <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                          <Tooltip title="Edit Billing User">
-                            <IconButton
-                              size="small"
-                              aria-label={`Edit ${user.name}`}
-                              onClick={() => openEditDialog(user)}
-                            >
-                              <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton title="Edit Billing User" onClick={() => openEditDialog(user)}>
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                           {user.is_active ? (
-                            <Tooltip title="Delete Billing User">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                aria-label={`Delete ${user.name}`}
-                                onClick={() => setDeleteUser(user)}
-                              >
-                                <DeleteOutlineOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          ) : null}
-                          <Tooltip title="Reset password">
-                            <IconButton
-                              size="small"
-                              aria-label={`Reset password for ${user.name}`}
-                              onClick={() => setResetUser(user)}
+                            <IconActionButton
+                              title="Delete Billing User"
+                              color="error"
+                              onClick={() => setDeleteUser(user)}
                             >
-                              <LockResetOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                              <DeleteOutlineOutlinedIcon fontSize="small" />
+                            </IconActionButton>
+                          ) : null}
+                          <IconActionButton title="Reset password" onClick={() => setResetUser(user)}>
+                            <LockResetOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         </Stack>
                       ) : (
                         <Typography variant="caption" color="text.secondary">
@@ -414,26 +394,15 @@ export default function UsersPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(deleteUser)} onClose={() => setDeleteUser(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Delete Billing User?</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ mt: 1 }}>
-            <Typography variant="body2">
-              <strong>User:</strong> {deleteUser?.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Are you sure? The account will be deactivated. Historical bills and audit records will
-              still show this user&apos;s name.
-            </Typography>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteUser(null)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={onDeactivateUser} disabled={saving}>
-            {saving ? 'Deleting…' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={Boolean(deleteUser)}
+        title="Delete Billing User?"
+        description={`Deactivate ${deleteUser?.name || 'this user'}? Historical bills and audit records will still show their name.`}
+        confirmLabel="Delete"
+        loading={saving}
+        onClose={() => setDeleteUser(null)}
+        onConfirm={onDeactivateUser}
+      />
 
       <Dialog open={Boolean(resetUser)} onClose={() => setResetUser(null)} fullWidth maxWidth="xs">
         <DialogTitle>Reset Password</DialogTitle>

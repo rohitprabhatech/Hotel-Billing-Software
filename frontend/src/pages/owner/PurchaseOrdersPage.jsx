@@ -5,12 +5,10 @@ import {
   Autocomplete,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   Stack,
   Table,
   TableBody,
@@ -27,6 +25,8 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -41,6 +41,15 @@ import { listSuppliers } from '../../services/supplierService';
 
 function money(value) {
   return `₹${Number(value || 0).toFixed(2)}`;
+}
+
+function docStatusVariant(status) {
+  const key = String(status || '').toUpperCase();
+  if (key === 'DRAFT') return 'pending';
+  if (key === 'CONFIRMED') return 'info';
+  if (key === 'CONVERTED') return 'active';
+  if (key === 'CANCELLED') return 'cancelled';
+  return 'info';
 }
 
 export default function PurchaseOrdersPage() {
@@ -216,7 +225,7 @@ export default function PurchaseOrdersPage() {
                     <TruncateText text={row.supplier_name || '—'} />
                   </TableCell>
                   <TableCell>
-                    <Chip size="small" label={row.status} />
+                    <StatusBadge label={row.status} variant={docStatusVariant(row.status)} />
                   </TableCell>
                   <TableCell align="right">{money(row.grand_total)}</TableCell>
                   <TableCell>{(row.items || []).length}</TableCell>
@@ -315,13 +324,14 @@ export default function PurchaseOrdersPage() {
                   }}
                   sx={{ width: 120 }}
                 />
-                <IconButton
-                  aria-label="Remove line"
-                  onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
+                <IconActionButton
+                  title="Remove line"
+                  color="error"
                   disabled={lines.length === 1}
+                  onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
                 >
-                  <DeleteOutlineOutlinedIcon />
-                </IconButton>
+                  <DeleteOutlineOutlinedIcon fontSize="small" />
+                </IconActionButton>
               </Stack>
             ))}
             <Box>

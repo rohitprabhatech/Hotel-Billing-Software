@@ -7,7 +7,6 @@ import {
   Card,
   CardActions,
   CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -22,6 +21,7 @@ import { useCallback, useEffect, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -205,11 +205,7 @@ export default function TourPackagesPage() {
                   <Typography variant="h6" component="h2">
                     {row.name}
                   </Typography>
-                  <Chip
-                    size="small"
-                    label={row.is_active ? 'Active' : 'Inactive'}
-                    color={row.is_active ? 'success' : 'default'}
-                  />
+                  <StatusBadge label={row.is_active ? 'Active' : 'Inactive'} />
                 </Stack>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   {row.code}
@@ -229,7 +225,7 @@ export default function TourPackagesPage() {
                     {row.description}
                   </Typography>
                 ) : null}
-                <Chip size="small" label="No stock tracking" sx={{ mt: 1.5 }} variant="outlined" />
+                <StatusBadge label="No stock tracking" variant="info" sx={{ mt: 1.5 }} />
               </CardContent>
               <CardActions>
                 {canWrite ? (

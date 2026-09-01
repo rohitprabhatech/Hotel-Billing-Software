@@ -76,6 +76,7 @@ export default function ProfilePage() {
 
   return (
     <PageShell maxWidth={880}>
+      <Stack spacing={3}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
@@ -129,6 +130,7 @@ export default function ProfilePage() {
           </Button>
         </Stack>
       </FormSection>
+      </Stack>
     </PageShell>
   );
 }

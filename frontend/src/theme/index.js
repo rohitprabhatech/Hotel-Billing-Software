@@ -364,7 +364,25 @@ export function createAppTheme(mode = 'light') {
         styleOverrides: {
           paper: ({ theme }) => ({
             border: `1px solid ${theme.palette.divider}`,
+            borderRadius: 10,
           }),
+        },
+      },
+      MuiSnackbar: {
+        styleOverrides: {
+          root: {
+            '& .MuiSnackbarContent-root': {
+              borderRadius: 8,
+            },
+          },
+        },
+      },
+      MuiLinearProgress: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+            height: 6,
+          },
         },
       },
     },

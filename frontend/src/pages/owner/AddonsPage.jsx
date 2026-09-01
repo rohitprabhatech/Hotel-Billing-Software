@@ -19,7 +19,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,6 +26,8 @@ import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
 import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -48,6 +49,7 @@ export default function AddonsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [open, setOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     menu_item_id: '',
@@ -147,15 +149,20 @@ export default function AddonsPage() {
     }
   };
 
-  const onDelete = async (id) => {
-    if (!window.confirm('Delete this add-on group?')) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
     setError('');
     try {
-      await deleteAddonGroup(id);
+      await deleteAddonGroup(deleteTarget.id);
       setSuccess('Add-on group deleted.');
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to delete add-on group.');
+      setDeleteTarget(null);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -227,16 +234,13 @@ export default function AddonsPage() {
                       </TableCell>
                       {canManageAddons ? (
                         <TableCell align="right">
-                          <Tooltip title="Delete group">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              aria-label={`Delete ${group.name}`}
-                              onClick={() => onDelete(group.id)}
-                            >
-                              <DeleteOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="Delete group"
+                            color="error"
+                            onClick={() => setDeleteTarget({ id: group.id, name: group.name })}
+                          >
+                            <DeleteOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         </TableCell>
                       ) : null}
                     </TableRow>
@@ -404,6 +408,16 @@ export default function AddonsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete add-on group?"
+        description={`Delete “${deleteTarget?.name || ''}”? Options in this group will be removed from the menu item.`}
+        confirmLabel="Delete"
+        loading={saving}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

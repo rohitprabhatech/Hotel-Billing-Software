@@ -4,7 +4,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -22,6 +21,7 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -149,10 +149,9 @@ export default function VariantsPage() {
                       </Stack>
                     </TableCell>
                     <TableCell align="right">
-                      <Chip
-                        size="small"
-                        color={Number(row.stock_quantity) <= 0 ? 'error' : 'default'}
+                      <StatusBadge
                         label={Number(row.stock_quantity)}
+                        variant={Number(row.stock_quantity) <= 0 ? 'cancelled' : 'active'}
                       />
                     </TableCell>
                   </TableRow>

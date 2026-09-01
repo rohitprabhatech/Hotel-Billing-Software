@@ -15,13 +15,11 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -29,6 +27,9 @@ import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -76,6 +77,13 @@ function statusColor(status) {
   if (status === 'reserved') return 'info';
   if (status === 'bill_pending') return 'error';
   return 'success';
+}
+
+function statusBadgeVariant(status) {
+  if (status === 'occupied') return 'pending';
+  if (status === 'reserved') return 'info';
+  if (status === 'bill_pending') return 'cancelled';
+  return 'active';
 }
 
 function statusLabel(status) {
@@ -357,29 +365,26 @@ export default function TablesPage() {
                       <Stack direction="row" spacing={0.25} alignItems="center">
                         {canManageTables ? (
                           <>
-                            <Tooltip title="Edit Table">
-                              <IconButton
-                                size="small"
-                                aria-label={`Edit ${table.code}`}
-                                onClick={() => openEdit(table)}
-                                disabled={Boolean(table.merged_into_id)}
-                              >
-                                <EditOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Remove Table">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                aria-label={`Remove ${table.code}`}
-                                onClick={() => setDeleteTarget(table)}
-                              >
-                                <DeleteOutlineOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            <IconActionButton
+                              title="Edit Table"
+                              onClick={() => openEdit(table)}
+                              disabled={Boolean(table.merged_into_id)}
+                            >
+                              <EditOutlinedIcon fontSize="small" />
+                            </IconActionButton>
+                            <IconActionButton
+                              title="Remove Table"
+                              color="error"
+                              onClick={() => setDeleteTarget(table)}
+                            >
+                              <DeleteOutlineOutlinedIcon fontSize="small" />
+                            </IconActionButton>
                           </>
                         ) : null}
-                        <Chip size="small" color={statusColor(table.status)} label={statusLabel(table.status)} />
+                        <StatusBadge
+                          label={statusLabel(table.status)}
+                          variant={statusBadgeVariant(table.status)}
+                        />
                       </Stack>
                     </Stack>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -477,25 +482,15 @@ export default function TablesPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Delete/Remove Table?</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ mt: 1 }}>
-            <Typography variant="body2">
-              <strong>Table:</strong> {deleteTarget?.code}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Are you sure? Historical bills keep this table number. Active orders will block removal.
-            </Typography>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={onRemove} disabled={saving}>
-            {saving ? 'Removing…' : 'Remove'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete/Remove Table?"
+        description={`Remove table ${deleteTarget?.code || ''}? Historical bills keep this table number. Active orders will block removal.`}
+        confirmLabel="Remove"
+        loading={saving}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={onRemove}
+      />
 
       <Dialog open={mergeOpen} onClose={() => setMergeOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Merge tables</DialogTitle>

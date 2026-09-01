@@ -11,7 +11,6 @@ import {
   Card,
   CardActions,
   CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -24,7 +23,6 @@ import {
   Select,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,6 +30,9 @@ import { useNavigate } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -98,33 +99,35 @@ function KotCard({
               {kot.kot_number}
             </Typography>
             <Stack direction="row" spacing={0.25} alignItems="center">
-              <Chip size="small" label={kot.status} sx={{ textTransform: 'capitalize' }} />
-              <Tooltip title="Print KOT">
-                <IconButton size="small" onClick={() => onPrint(kot)} sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                  <PrintOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <StatusBadge
+                label={kot.status}
+                variant={kot.status === 'ready' ? 'active' : kot.status === 'preparing' ? 'pending' : 'info'}
+                sx={{ textTransform: 'capitalize' }}
+              />
+              <IconActionButton
+                title="Print KOT"
+                onClick={() => onPrint(kot)}
+                sx={{ color: 'rgba(255,255,255,0.85)' }}
+              >
+                <PrintOutlinedIcon fontSize="small" />
+              </IconActionButton>
               {canEditDelete ? (
                 <>
-                  <Tooltip title="Edit KOT">
-                    <IconButton
-                      size="small"
-                      onClick={() => onEdit(kot)}
-                      sx={{ color: 'rgba(255,255,255,0.85)' }}
-                    >
-                      <EditOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete KOT">
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => onDelete(kot)}
-                      sx={{ color: 'error.light' }}
-                    >
-                      <DeleteOutlineOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  <IconActionButton
+                    title="Edit KOT"
+                    onClick={() => onEdit(kot)}
+                    sx={{ color: 'rgba(255,255,255,0.85)' }}
+                  >
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconActionButton>
+                  <IconActionButton
+                    title="Delete KOT"
+                    color="error"
+                    onClick={() => onDelete(kot)}
+                    sx={{ color: 'error.light' }}
+                  >
+                    <DeleteOutlineOutlinedIcon fontSize="small" />
+                  </IconActionButton>
                 </>
               ) : null}
             </Stack>
@@ -467,36 +470,26 @@ export default function KitchenPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog
+      <ConfirmDialog
         open={Boolean(deleteTarget)}
-        onClose={() => !deleteSaving && setDeleteTarget(null)}
-        fullWidth
-        maxWidth="xs"
+        title="Delete KOT?"
+        description="Are you sure you want to delete this KOT? The related order and bills are not deleted. Inventory is not changed."
+        confirmLabel="Delete"
+        loading={deleteSaving}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
       >
-        <DialogTitle>Delete KOT?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 1 }}>
+        <Stack spacing={1}>
+          <Typography variant="body2">
             KOT: <strong>{deleteTarget?.kot_number}</strong>
           </Typography>
           {deleteTarget?.dining_table_code ? (
-            <Typography variant="body2" sx={{ mb: 1 }}>
+            <Typography variant="body2">
               Table: <strong>{deleteTarget.dining_table_code}</strong>
             </Typography>
           ) : null}
-          <Typography variant="body2" color="text.secondary">
-            Are you sure you want to delete this KOT? The related order and bills are not deleted.
-            Inventory is not changed.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteTarget(null)} disabled={deleteSaving}>
-            Cancel
-          </Button>
-          <Button color="error" variant="contained" onClick={confirmDelete} disabled={deleteSaving}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </ConfirmDialog>
     </>
   );
 }

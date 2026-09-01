@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -29,6 +28,7 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { useAuth } from '../../context/AuthContext';
@@ -45,10 +45,10 @@ const CHANNEL_LABELS = {
   delivery: 'Delivery',
 };
 
-const STATUS_COLORS = {
-  OPEN: 'warning',
-  CANCELLED: 'default',
-  BILLED: 'success',
+const STATUS_VARIANTS = {
+  OPEN: 'pending',
+  CANCELLED: 'cancelled',
+  BILLED: 'active',
 };
 
 function money(value) {
@@ -234,7 +234,10 @@ export default function OrdersPage() {
                         <TableCell align="right">{order.item_count ?? 0}</TableCell>
                         <TableCell align="right">{money(order.grand_total)}</TableCell>
                         <TableCell>
-                          <Chip size="small" label={order.status} color={STATUS_COLORS[order.status] || 'default'} />
+                          <StatusBadge
+                            label={order.status}
+                            variant={STATUS_VARIANTS[order.status] || 'info'}
+                          />
                         </TableCell>
                         <TableCell align="right">
                           <Button size="small" onClick={() => openDetail(order.id)}>

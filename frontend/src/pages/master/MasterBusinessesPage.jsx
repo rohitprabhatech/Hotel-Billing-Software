@@ -1,8 +1,6 @@
 import {
   Alert,
   Button,
-  Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -28,6 +26,9 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import {
   activateBusiness,
   assignBusinessPlan,
@@ -56,11 +57,11 @@ function filtersFromSearch(searchParams) {
   };
 }
 
-function statusColor(status) {
-  if (status === 'ACTIVE') return 'success';
-  if (status === 'TRIAL' || status === 'EXPIRING') return 'warning';
-  if (status === 'EXPIRED' || status === 'CANCELLED' || status === 'SUSPENDED') return 'error';
-  return 'default';
+function subscriptionVariant(status) {
+  if (status === 'ACTIVE') return 'active';
+  if (status === 'TRIAL' || status === 'EXPIRING') return 'pending';
+  if (status === 'EXPIRED' || status === 'CANCELLED' || status === 'SUSPENDED') return 'cancelled';
+  return 'info';
 }
 
 function actionTitle(type) {
@@ -251,19 +252,17 @@ export default function MasterBusinessesPage() {
               ))}
             </Select>
           </FormControl>
-          <TextField
+          <SearchInput
             label="Search"
+            placeholder="Search businesses…"
             value={filters.q}
             onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
-            fullWidth
           />
         </Stack>
       </FilterBar>
 
       {loading ? (
-        <Stack alignItems="center" py={6}>
-          <CircularProgress size={28} />
-        </Stack>
+        <LoadingSkeleton rows={6} height={56} />
       ) : rows.length === 0 ? (
         <EmptyState title="No businesses" description="Approved businesses appear here." />
       ) : (
@@ -293,17 +292,15 @@ export default function MasterBusinessesPage() {
                       <TruncateText value={sub?.plan_name || '—'} />
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        color={tenantStatus === 'ACTIVE' ? 'success' : 'error'}
+                      <StatusBadge
                         label={tenantStatus === 'ACTIVE' ? 'Active' : 'Deactivated'}
+                        variant={tenantStatus === 'ACTIVE' ? 'active' : 'cancelled'}
                       />
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        color={statusColor(status)}
+                      <StatusBadge
                         label={sub?.is_expiring && status === 'TRIAL' ? 'TRIAL (expiring)' : status}
+                        variant={subscriptionVariant(status)}
                       />
                     </TableCell>
                     <TableCell>

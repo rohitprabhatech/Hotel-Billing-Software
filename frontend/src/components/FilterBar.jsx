@@ -6,23 +6,28 @@ import { Card, CardContent, Stack } from '@mui/material';
  */
 export default function FilterBar({ children, actions = null }) {
   return (
-    <Card>
+    <Card
+      sx={{
+        bgcolor: (theme) =>
+          theme.palette.mode === 'dark' ? 'background.paper' : 'rgba(255,255,255,0.9)',
+      }}
+    >
       <CardContent
         sx={{
-          p: { xs: 2, sm: 2.5 },
-          '&:last-child': { pb: { xs: 2, sm: 2.5 } },
+          p: { xs: 2, sm: 2.25 },
+          '&:last-child': { pb: { xs: 2, sm: 2.25 } },
         }}
       >
         <Stack
           direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
+          spacing={1.5}
           alignItems={{ xs: 'stretch', md: 'flex-end' }}
           useFlexGap
           flexWrap="wrap"
         >
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
+            spacing={1.5}
             useFlexGap
             flexWrap="wrap"
             sx={{ flex: 1, minWidth: 0, alignItems: { sm: 'flex-end' } }}

@@ -19,7 +19,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,6 +26,9 @@ import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -48,6 +50,7 @@ export default function CombosPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [open, setOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -148,15 +151,20 @@ export default function CombosPage() {
     }
   };
 
-  const onDelete = async (id) => {
-    if (!window.confirm('Delete this combo?')) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
     setError('');
     try {
-      await deleteCombo(id);
+      await deleteCombo(deleteTarget.id);
       setSuccess('Combo deleted.');
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to delete combo.');
+      setDeleteTarget(null);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -227,19 +235,18 @@ export default function CombosPage() {
                       <TableCell align="right">{money(combo.catalog_total)}</TableCell>
                       <TableCell align="right">{money(combo.combo_price)}</TableCell>
                       <TableCell align="right">{money(combo.savings)}</TableCell>
-                      <TableCell>{combo.is_popular ? 'Yes' : '—'}</TableCell>
+                      <TableCell>
+                        {combo.is_popular ? <StatusBadge label="Popular" variant="active" /> : '—'}
+                      </TableCell>
                       {canManageAddons ? (
                         <TableCell align="right">
-                          <Tooltip title="Delete combo">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              aria-label={`Delete ${combo.name}`}
-                              onClick={() => onDelete(combo.id)}
-                            >
-                              <DeleteOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="Delete combo"
+                            color="error"
+                            onClick={() => setDeleteTarget({ id: combo.id, name: combo.name })}
+                          >
+                            <DeleteOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         </TableCell>
                       ) : null}
                     </TableRow>
@@ -374,6 +381,16 @@ export default function CombosPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete combo?"
+        description={`Delete “${deleteTarget?.name || ''}”? It will be removed from Cafe POS.`}
+        confirmLabel="Delete"
+        loading={saving}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

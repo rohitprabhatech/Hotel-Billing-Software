@@ -2,14 +2,11 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import {
   Alert,
   Button,
-  Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -19,7 +16,6 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -29,6 +25,9 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { listMasterAuditLogs } from '../../services/masterService';
 
 const ACTIONS = [
@@ -112,9 +111,7 @@ export default function MasterAuditPage() {
       </FilterBar>
 
       {loading ? (
-        <Stack alignItems="center" py={6}>
-          <CircularProgress size={28} />
-        </Stack>
+        <LoadingSkeleton rows={6} height={56} />
       ) : rows.length === 0 ? (
         <EmptyState title="No audit entries" description="Master Admin actions appear here." />
       ) : (
@@ -139,17 +136,15 @@ export default function MasterAuditPage() {
                     <TruncateText value={row.actor_name || row.actor_email || '—'} />
                   </TableCell>
                   <TableCell>
-                    <Chip size="small" label={row.action} />
+                    <StatusBadge label={row.action} variant="info" />
                   </TableCell>
                   <TableCell>
                     <TruncateText value={`${row.entity_type}${row.entity_id ? ` · ${row.entity_id}` : ''}`} />
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title="View snapshot">
-                      <IconButton size="small" onClick={() => setDetail(row)} aria-label="View audit detail">
-                        <VisibilityOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <IconActionButton title="View snapshot" onClick={() => setDetail(row)}>
+                      <VisibilityOutlinedIcon fontSize="small" />
+                    </IconActionButton>
                   </TableCell>
                 </TableRow>
               ))}

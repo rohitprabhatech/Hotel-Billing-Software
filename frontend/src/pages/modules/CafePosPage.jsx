@@ -10,7 +10,6 @@ import {
   Box,
   Button,
   Card,
-  CardActionArea,
   CardContent,
   Checkbox,
   Chip,
@@ -35,6 +34,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
+import PosCatalogCard from '../../components/pos/PosCatalogCard';
+import IconActionButton from '../../components/ui/IconActionButton';
+import SearchInput from '../../components/ui/SearchInput';
 import { useModuleGate } from '../../context/ModulesContext';
 import { PATHS } from '../../routes/paths';
 import {
@@ -471,12 +473,10 @@ export default function CafePosPage() {
                 </Box>
               ) : null}
 
-              <TextField
-                size="small"
+              <SearchInput
                 placeholder="Search menu or combos…"
                 value={q}
                 onChange={(event) => setQ(event.target.value)}
-                fullWidth
               />
 
               {filteredCombos.length ? (
@@ -487,19 +487,11 @@ export default function CafePosPage() {
                   <Grid container spacing={1}>
                     {filteredCombos.map((combo) => (
                       <Grid item xs={6} sm={4} md={3} key={combo.id}>
-                        <Card variant="outlined" sx={{ height: '100%' }}>
-                          <CardActionArea onClick={() => addCombo(combo)} sx={{ height: '100%' }}>
-                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                              <Typography variant="body2" fontWeight={600} noWrap>
-                                {combo.name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {money(combo.combo_price)}
-                                {combo.is_popular ? ' · popular' : ''}
-                              </Typography>
-                            </CardContent>
-                          </CardActionArea>
-                        </Card>
+                        <PosCatalogCard
+                          title={combo.name}
+                          subtitle={`${money(combo.combo_price)}${combo.is_popular ? ' · popular' : ''}`}
+                          onClick={() => addCombo(combo)}
+                        />
                       </Grid>
                     ))}
                   </Grid>
@@ -513,19 +505,11 @@ export default function CafePosPage() {
                 <Grid container spacing={1}>
                   {filteredItems.map((item) => (
                     <Grid item xs={6} sm={4} md={3} key={item.id}>
-                      <Card variant="outlined" sx={{ height: '100%' }}>
-                        <CardActionArea onClick={() => openPicker(item)} sx={{ height: '100%' }}>
-                          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                            <Typography variant="body2" fontWeight={600} noWrap>
-                              {item.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {money(item.price)}
-                              {(item.addon_groups || []).length ? ' +' : ''}
-                            </Typography>
-                          </CardContent>
-                        </CardActionArea>
-                      </Card>
+                      <PosCatalogCard
+                        title={item.name}
+                        subtitle={`${money(item.price)}${(item.addon_groups || []).length ? ' +' : ''}`}
+                        onClick={() => openPicker(item)}
+                      />
                     </Grid>
                   ))}
                 </Grid>
@@ -534,10 +518,15 @@ export default function CafePosPage() {
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Card variant="outlined">
+            <Card
+              variant="outlined"
+              sx={{ position: { md: 'sticky' }, top: { md: 80 } }}
+            >
               <CardContent>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-                  <Typography variant="h6">Cart</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 650, fontSize: '1.05rem' }}>
+                    Current Bill
+                  </Typography>
                   {cart.length ? (
                     <Button size="small" onClick={clearCart}>
                       Clear
@@ -566,9 +555,9 @@ export default function CafePosPage() {
                               {money(Number(line.unit_price) * Number(line.quantity))}
                             </Typography>
                           </Box>
-                          <IconButton size="small" onClick={() => removeLine(line)} aria-label="Remove line">
+                          <IconActionButton title="Remove" onClick={() => removeLine(line)}>
                             <DeleteOutlineOutlinedIcon fontSize="small" />
-                          </IconButton>
+                          </IconActionButton>
                         </Stack>
                         <Stack direction="row" alignItems="center" spacing={0.5} mt={0.5}>
                           <IconButton size="small" onClick={() => bumpQty(line, -1)} aria-label="Decrease qty">
@@ -675,16 +664,17 @@ export default function CafePosPage() {
                     </Stack>
                     <Button
                       variant="contained"
+                      size="large"
                       startIcon={<AddShoppingCartOutlinedIcon />}
                       onClick={() => checkout()}
-                      disabled={saving}
+                      disabled={saving || !cart.length}
                       fullWidth
                     >
                       {saving
-                        ? 'Processing…'
+                        ? 'Generating bill…'
                         : paymentMethod === PAYMENT_CREDIT
                           ? 'Charge to credit'
-                          : 'Quick bill'}
+                          : 'Generate Bill'}
                     </Button>
                   </Stack>
                 )}

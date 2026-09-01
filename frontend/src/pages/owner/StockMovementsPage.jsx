@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Chip,
   FormControl,
   InputLabel,
   MenuItem,
@@ -24,6 +23,8 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
 import { filterControlSx } from '../../layouts/shell';
 import { listItems } from '../../services/itemService';
@@ -51,13 +52,12 @@ const PAGE_SIZE = 50;
 
 const SOURCE_LABEL = Object.fromEntries(SOURCE_OPTIONS.filter((row) => row.value).map((row) => [row.value, row.label]));
 
-function sourceColor(source) {
-  if (source === 'BILL' || source === 'RECIPE') return 'warning';
-  if (source === 'CANCEL' || source === 'RETURN') return 'info';
-  if (source === 'ADJUST' || source === 'ITEM_UPDATE') return 'default';
-  if (source === 'RECEIVE' || source === 'PURCHASE' || source === 'PRODUCTION') return 'success';
-  if (source === 'WASTAGE') return 'error';
-  return 'primary';
+function sourceVariant(source) {
+  if (source === 'BILL' || source === 'RECIPE') return 'pending';
+  if (source === 'CANCEL' || source === 'RETURN' || source === 'EXCHANGE') return 'info';
+  if (source === 'WASTAGE') return 'cancelled';
+  if (source === 'RECEIVE' || source === 'PURCHASE' || source === 'PRODUCTION') return 'active';
+  return 'info';
 }
 
 function formatDelta(value) {
@@ -150,8 +150,8 @@ export default function StockMovementsPage() {
             </Button>
           }
         >
-          <TextField
-            label="Search item"
+          <SearchInput
+            placeholder="Search items…"
             value={filters.q}
             onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
             sx={filterControlSx}
@@ -235,10 +235,9 @@ export default function StockMovementsPage() {
                       <TruncateText value={row.item_name || row.item_id} maxWidth={180} />
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
+                      <StatusBadge
                         label={SOURCE_LABEL[row.source] || row.source}
-                        color={sourceColor(row.source)}
+                        variant={sourceVariant(row.source)}
                       />
                     </TableCell>
                     <TableCell align="right">{formatDelta(row.delta)}</TableCell>

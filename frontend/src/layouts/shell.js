@@ -1,6 +1,8 @@
+import { layout } from '../theme/tokens';
+
 /** Shared app-shell dimensions for Owner + Billing layouts. */
-export const DRAWER_WIDTH = 248;
-export const MAIN_MAX_WIDTH = 1400;
+export const DRAWER_WIDTH = layout.drawerWidth;
+export const MAIN_MAX_WIDTH = layout.mainMaxWidth;
 
 export const mainContentSx = {
   px: { xs: 2, sm: 3, lg: 4 },

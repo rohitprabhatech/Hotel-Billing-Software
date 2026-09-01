@@ -3,7 +3,6 @@ import {
   Alert,
   Autocomplete,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -29,6 +28,8 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -36,10 +37,10 @@ import { filterControlSx } from '../../layouts/shell';
 import { listItems } from '../../services/itemService';
 import { listSerialUnits, receiveSerialUnit } from '../../services/serialService';
 
-function statusChip(status) {
-  if (status === 'SOLD') return <Chip size="small" color="default" label="Sold" />;
-  if (status === 'QUARANTINE') return <Chip size="small" color="warning" label="Quarantine" />;
-  return <Chip size="small" color="success" label="In stock" />;
+function statusBadge(status) {
+  if (status === 'SOLD') return <StatusBadge label="Sold" variant="cancelled" />;
+  if (status === 'QUARANTINE') return <StatusBadge label="Quarantine" variant="pending" />;
+  return <StatusBadge label="In stock" variant="active" />;
 }
 
 export default function SerialUnitsPage() {
@@ -163,9 +164,8 @@ export default function SerialUnitsPage() {
         </Alert>
       ) : null}
       <FilterBar>
-        <TextField
-          size="small"
-          label="Search IMEI"
+        <SearchInput
+          placeholder="Search IMEI…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           sx={filterControlSx}
@@ -214,7 +214,7 @@ export default function SerialUnitsPage() {
                   <TableCell>
                     <TruncateText value={row.item_name || '—'} maxWidth={220} />
                   </TableCell>
-                  <TableCell>{statusChip(row.status)}</TableCell>
+                  <TableCell>{statusBadge(row.status)}</TableCell>
                   <TableCell>{row.received_at ? row.received_at.slice(0, 10) : '—'}</TableCell>
                   <TableCell>{row.sold_at ? row.sold_at.slice(0, 10) : '—'}</TableCell>
                 </TableRow>

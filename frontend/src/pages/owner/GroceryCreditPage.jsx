@@ -2,13 +2,11 @@ import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalance
 import {
   Alert,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -21,7 +19,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
@@ -31,6 +28,8 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { useModuleGate } from '../../context/ModulesContext';
 import {
   fetchGroceryCredit,
@@ -191,19 +190,16 @@ export default function GroceryCreditPage() {
                     <TableCell>{party.phone_masked || '—'}</TableCell>
                     <TableCell align="right">{money(party.credit_limit)}</TableCell>
                     <TableCell align="right">
-                      <Chip size="small" color="warning" label={money(party.balance)} />
+                      <StatusBadge label={money(party.balance)} variant="pending" />
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="Ledger history">
-                          <IconButton
-                            size="small"
-                            aria-label={`History for ${party.name}`}
-                            onClick={() => openLedger(party)}
-                          >
-                            <AccountBalanceWalletOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <IconActionButton
+                          title="Ledger history"
+                          onClick={() => openLedger(party)}
+                        >
+                          <AccountBalanceWalletOutlinedIcon fontSize="small" />
+                        </IconActionButton>
                         <Button
                           size="small"
                           variant="contained"

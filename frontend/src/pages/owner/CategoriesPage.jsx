@@ -9,7 +9,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   Stack,
   Switch,
   Table,
@@ -18,7 +17,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
@@ -28,6 +26,9 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import {
   createCategory,
@@ -277,9 +278,7 @@ export default function CategoriesPage() {
                             onChange={() => toggleActive(category)}
                             inputProps={{ 'aria-label': `Toggle ${category.name}` }}
                           />
-                          <Typography variant="caption" color="text.secondary">
-                            {category.is_active ? 'Active' : 'Inactive'}
-                          </Typography>
+                          <StatusBadge label={category.is_active ? 'Active' : 'Unavailable'} />
                         </Stack>
                       </TableCell>
                       <TableCell>
@@ -295,26 +294,17 @@ export default function CategoriesPage() {
                       </TableCell>
                       <TableCell align="right">
                         <Stack direction="row" spacing={0.25} justifyContent="flex-end">
-                          <Tooltip title="Edit Category">
-                            <IconButton
-                              size="small"
-                              aria-label={`Edit ${category.name}`}
-                              onClick={() => openEdit(category)}
-                            >
-                              <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton title="Edit Category" onClick={() => openEdit(category)}>
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                           {category.is_active ? (
-                            <Tooltip title="Delete Category">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                aria-label={`Delete ${category.name}`}
-                                onClick={() => setDeleteTarget(category)}
-                              >
-                                <DeleteOutlineOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            <IconActionButton
+                              title="Delete Category"
+                              color="error"
+                              onClick={() => setDeleteTarget(category)}
+                            >
+                              <DeleteOutlineOutlinedIcon fontSize="small" />
+                            </IconActionButton>
                           ) : null}
                         </Stack>
                       </TableCell>
@@ -382,28 +372,15 @@ export default function CategoriesPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog
+      <ConfirmDialog
         open={Boolean(deleteTarget)}
-        onClose={() => !saving && setDeleteTarget(null)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Delete Category?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete “{deleteTarget?.name}”? Categories with items cannot
-            be deleted until items are moved or removed.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button disabled={saving} onClick={() => setDeleteTarget(null)}>
-            Cancel
-          </Button>
-          <Button color="error" variant="contained" disabled={saving} onClick={confirmDelete}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+        title="Delete Category?"
+        description={`Are you sure you want to delete “${deleteTarget?.name || ''}”? Categories with items cannot be deleted until items are moved or removed.`}
+        confirmLabel="Delete"
+        loading={saving}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

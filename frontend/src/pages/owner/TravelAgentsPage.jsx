@@ -5,7 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -27,6 +26,7 @@ import { useCallback, useEffect, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -274,11 +274,7 @@ export default function TravelAgentsPage() {
                       <Typography fontWeight={700}>
                         {agent.code} · {agent.name}
                       </Typography>
-                      <Chip
-                        size="small"
-                        label={agent.is_active ? 'Active' : 'Inactive'}
-                        color={agent.is_active ? 'success' : 'default'}
-                      />
+                      <StatusBadge label={agent.is_active ? 'Active' : 'Inactive'} />
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
                       Default commission {Number(agent.commission_percent).toFixed(2)}%
@@ -326,7 +322,10 @@ export default function TravelAgentsPage() {
                   <TableCell align="right">{Number(entry.commission_percent).toFixed(2)}</TableCell>
                   <TableCell align="right">{money(entry.commission_amount)}</TableCell>
                   <TableCell>
-                    <Chip size="small" label={entry.status} />
+                    <StatusBadge
+                      label={entry.status}
+                      variant={entry.status === 'PAID' ? 'active' : 'pending'}
+                    />
                   </TableCell>
                   <TableCell align="right">
                     {canWrite && entry.status === 'PENDING' ? (

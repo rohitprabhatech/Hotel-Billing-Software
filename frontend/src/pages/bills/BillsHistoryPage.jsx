@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -27,6 +26,8 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { filterControlSx } from '../../layouts/shell';
 import {
   cancelBill,
@@ -41,6 +42,22 @@ import BillPreview from '../../print/BillPreview';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { PAYMENT_CASH, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
+
+function waStatusLabel(status) {
+  if (status === 'READ') return 'Read';
+  if (status === 'DELIVERED') return 'Delivered';
+  if (status === 'SENT') return 'Sent';
+  if (status === 'FAILED') return 'Failed';
+  if (status === 'PENDING') return 'Pending';
+  return null;
+}
+
+function waStatusVariant(status) {
+  if (status === 'FAILED') return 'cancelled';
+  if (status === 'PENDING') return 'pending';
+  if (status === 'READ' || status === 'DELIVERED' || status === 'SENT') return 'paid';
+  return 'info';
+}
 
 const PAGE_SIZE = 25;
 
@@ -253,8 +270,9 @@ export default function BillsHistoryPage({ todayDefault = false }) {
           </Button>
         }
       >
-        <TextField
+        <SearchInput
           label="Search bill / reference"
+          placeholder="Search bill / reference"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
@@ -372,27 +390,21 @@ export default function BillsHistoryPage({ todayDefault = false }) {
                   </TableCell>
                   <TableCell>{bill.reference || bill.table_number || '—'}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      label={bill.status === 'CANCELLED' ? 'Cancelled' : 'Finalized'}
-                      color={bill.status === 'CANCELLED' ? 'warning' : 'success'}
-                      variant={bill.status === 'CANCELLED' ? 'filled' : 'outlined'}
+                    <StatusBadge
+                      label={bill.status === 'CANCELLED' ? 'Cancelled' : 'Paid'}
                     />
                   </TableCell>
                   <TableCell>{paymentMethodLabel(bill.payment_method)}</TableCell>
-                  <TableCell align="right">₹{Number(bill.grand_total).toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                    ₹{Number(bill.grand_total).toFixed(2)}
+                  </TableCell>
                   <TableCell>{bill.printed_count}</TableCell>
                   <TableCell>
-                    {bill.whatsapp_delivery_status === 'READ' ? (
-                      <Chip size="small" label="Read" color="success" variant="outlined" />
-                    ) : bill.whatsapp_delivery_status === 'DELIVERED' ? (
-                      <Chip size="small" label="Delivered" color="success" variant="outlined" />
-                    ) : bill.whatsapp_delivery_status === 'SENT' ? (
-                      <Chip size="small" label="Sent" color="success" variant="outlined" />
-                    ) : bill.whatsapp_delivery_status === 'FAILED' ? (
-                      <Chip size="small" label="Failed" color="error" variant="outlined" />
-                    ) : bill.whatsapp_delivery_status === 'PENDING' ? (
-                      <Chip size="small" label="Pending" color="warning" variant="outlined" />
+                    {waStatusLabel(bill.whatsapp_delivery_status) ? (
+                      <StatusBadge
+                        label={waStatusLabel(bill.whatsapp_delivery_status)}
+                        variant={waStatusVariant(bill.whatsapp_delivery_status)}
+                      />
                     ) : (
                       '—'
                     )}

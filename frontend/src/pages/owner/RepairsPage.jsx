@@ -9,7 +9,6 @@ import {
   Card,
   CardActions,
   CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -23,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -43,6 +43,14 @@ const NEXT_ACTIONS = {
   DELIVERED: [],
 };
 
+function workflowStatusVariant(status) {
+  const key = String(status || '').toUpperCase();
+  if (key === 'RECEIVED') return 'pending';
+  if (key === 'IN_PROGRESS') return 'info';
+  if (key === 'READY' || key === 'DELIVERED') return 'active';
+  return 'info';
+}
+
 function RepairCard({ repair, onStatusChange, updating, canWrite }) {
   const actions = NEXT_ACTIONS[repair.status] || [];
 
@@ -60,7 +68,10 @@ function RepairCard({ repair, onStatusChange, updating, canWrite }) {
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {repair.repair_number}
             </Typography>
-            <Chip size="small" label={repair.status.replace('_', ' ')} />
+            <StatusBadge
+              label={repair.status.replace('_', ' ')}
+              variant={workflowStatusVariant(repair.status)}
+            />
           </Stack>
           <Typography variant="body2" color="rgba(255,255,255,0.72)">
             {repair.item_name} · {repair.serial}

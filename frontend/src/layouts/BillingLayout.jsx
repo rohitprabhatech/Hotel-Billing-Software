@@ -20,7 +20,6 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
-import MenuIcon from '@mui/icons-material/Menu';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
@@ -29,42 +28,45 @@ import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined';
 import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined';
 import {
-  AppBar,
   Box,
-  Chip,
   Divider,
-  Drawer,
-  IconButton,
-  List,
-  ListItemButton,
   ListItemIcon,
-  ListItemText,
   Menu,
   MenuItem,
   Toolbar,
-  Tooltip,
   Typography,
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainContent from '../components/MainContent';
 import PageHeader from '../components/PageHeader';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
-import ThemeModeToggle from '../components/ThemeModeToggle';
+import AppNavDrawer from '../components/shell/AppNavDrawer';
+import AppShellDrawers from '../components/shell/AppShellDrawers';
+import AppTopBar from '../components/shell/AppTopBar';
 import NotificationBell from '../components/NotificationBell';
 import SubscriptionLockout from '../components/SubscriptionLockout';
 import { useAuth } from '../context/AuthContext';
 import { useModules } from '../context/ModulesContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
-import { DRAWER_WIDTH } from './shell';
 import { fetchMe, logoutRequest } from '../services/authService';
 import { PATHS } from '../routes/paths';
+import { layout } from '../theme/tokens';
 import { isAccountPath, subscriptionAllowsAccess } from '../utils/subscriptionAccess';
 
-const drawerWidth = DRAWER_WIDTH;
+function billingBrandSubtitle(user, { isOwner, isManager }) {
+  const type = user?.tenant?.business_type;
+  if (type === 'hotel_restaurant') return 'Hotel Billing';
+  if (type === 'cafe_tea') return 'Cafe Billing';
+  if (type === 'clothing') return 'Clothing Billing';
+  if (type === 'hardware' || type === 'building_material') return 'Hardware Billing';
+  if (isOwner) return 'Owner · Billing';
+  if (isManager) return 'Manager · Billing';
+  return 'Billing';
+}
 
 /**
  * Billing sidebar order — hotel groups follow desk workflow:
@@ -961,235 +963,101 @@ export default function BillingLayout() {
     navigate(PATHS.login, { replace: true });
   };
 
-  const drawer = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ px: 2 }}>
-        <Box sx={{ minWidth: 0, width: '100%' }}>
-          <Tooltip title={user?.tenant?.business_name || 'Billing'}>
-            <Typography variant="subtitle1" fontWeight={700} noWrap>
-              {user?.tenant?.business_name || 'Billing'}
-            </Typography>
-          </Tooltip>
-          <Typography variant="caption" color="text.secondary">
-            {user?.tenant?.business_type === 'hotel_restaurant'
-              ? 'Hotel Billing'
-              : user?.tenant?.business_type === 'cafe_tea'
-                ? 'Cafe Billing'
-                : user?.tenant?.business_type === 'clothing'
-                  ? 'Clothing Billing'
-                  : user?.tenant?.business_type === 'hardware' ||
-                      user?.tenant?.business_type === 'building_material'
-                    ? 'Hardware Billing'
-                      : isOwner
-                    ? 'Owner · Billing'
-                    : isManager
-                      ? 'Manager · Billing'
-                      : 'Billing'}
-          </Typography>
-        </Box>
-      </Toolbar>
-      <Divider />
-      <List
-        sx={{
-          px: 1,
-          pt: 0.75,
-          pb: 1.5,
-          flexGrow: 1,
-          overflowY: 'auto',
-        }}
-      >
-        {navItems.map((item, index) => {
-          if (item.type === 'section') {
-            return (
-              <Typography
-                key={`section-${item.label}-${index}`}
-                variant="caption"
-                color="text.secondary"
-                sx={{
-                  display: 'block',
-                  px: 1.5,
-                  pt: index === 0 ? 0.75 : 1.75,
-                  pb: 0.5,
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  fontSize: '0.65rem',
-                }}
-              >
-                {item.label}
-              </Typography>
-            );
-          }
-          return (
-            <ListItemButton
-              key={`${item.to}-${item.label}`}
-              component={NavLink}
-              to={item.to}
-              end={item.end}
-              onClick={() => setMobileOpen(false)}
-              sx={{
-                borderRadius: 1.25,
-                mb: 0.35,
-                minHeight: 42,
-                px: 1.25,
-                '&.active': {
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                  '& .MuiListItemIcon-root': { color: 'inherit' },
-                },
-                ...(item.emphasize
-                  ? {
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: 'action.hover',
-                      fontWeight: 650,
-                      '&.active': {
-                        bgcolor: 'primary.main',
-                        color: 'primary.contrastText',
-                        borderColor: 'primary.main',
-                        '& .MuiListItemIcon-root': { color: 'inherit' },
-                      },
-                    }
-                  : null),
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-              <ListItemText
-                primary={item.label}
-                primaryTypographyProps={{
-                  fontSize: '0.875rem',
-                  fontWeight: item.emphasize ? 650 : 550,
-                  noWrap: true,
-                }}
-              />
-            </ListItemButton>
-          );
-        })}
-      </List>
-    </Box>
-  );
+  const roleBadge = isOwner ? 'OWNER' : isManager ? 'MANAGER' : 'BILLING';
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
-        }}
-      >
-        <Toolbar sx={{ px: { xs: 1, sm: 2 }, gap: 0.5, minHeight: { xs: 56, sm: 64 } }}>
-          {isMobile ? (
-            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 0.5 }} aria-label="Open menu">
-              <MenuIcon />
-            </IconButton>
-          ) : null}
-          <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
-            <Tooltip title={user?.tenant?.business_name || 'Business Billing'}>
-              <Typography variant="subtitle1" fontWeight={700} noWrap>
-                {user?.tenant?.business_name || 'Business Billing'}
-              </Typography>
-            </Tooltip>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {user?.tenant?.business_type_label
-                ? `${user.tenant.business_type_label} · ${meta.title}`
-                : meta.title}
-            </Typography>
-          </Box>
-          <Chip
-            size="small"
-            label={isOwner ? 'OWNER' : isManager ? 'MANAGER' : 'BILLING'}
-            color={isOwner ? 'primary' : isManager ? 'secondary' : 'default'}
-            variant="outlined"
-            sx={{ mr: 0.5, display: { xs: 'none', sm: 'inline-flex' } }}
-          />
-          {entitled ? <NotificationBell /> : null}
-          <ThemeModeToggle sx={{ mr: 0.25 }} />
-          <Tooltip title="Account menu">
-            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu">
-              <PersonOutlinedIcon />
-            </IconButton>
-          </Tooltip>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-            <MenuItem disabled>
-              <Box>
-                <Typography variant="body2" fontWeight={600}>{user?.name}</Typography>
-                <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
-              </Box>
-            </MenuItem>
-            <Divider />
-            {isOwner ? (
+      <AppTopBar
+        isMobile={isMobile}
+        onMenuOpen={() => setMobileOpen(true)}
+        title={user?.tenant?.business_name || 'Business Billing'}
+        subtitle={
+          user?.tenant?.business_type_label
+            ? `${user.tenant.business_type_label} · ${meta.title}`
+            : meta.title
+        }
+        badge={roleBadge}
+        notificationSlot={entitled ? <NotificationBell /> : null}
+        accountMenu={{
+          onOpen: (e) => setAnchorEl(e.currentTarget),
+          menu: (
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+              <MenuItem disabled>
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    {user?.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {user?.email}
+                  </Typography>
+                </Box>
+              </MenuItem>
+              <Divider />
+              {isOwner ? (
+                <MenuItem
+                  onClick={() => {
+                    setAnchorEl(null);
+                    navigate(PATHS.ownerDashboard);
+                  }}
+                >
+                  <ListItemIcon>
+                    <DashboardOutlinedIcon fontSize="small" />
+                  </ListItemIcon>
+                  Owner Dashboard
+                </MenuItem>
+              ) : null}
               <MenuItem
                 onClick={() => {
                   setAnchorEl(null);
-                  navigate(PATHS.ownerDashboard);
+                  navigate(PATHS.billingProfile);
                 }}
               >
-                <ListItemIcon><DashboardOutlinedIcon fontSize="small" /></ListItemIcon>
-                Owner Dashboard
+                <ListItemIcon>
+                  <PersonOutlinedIcon fontSize="small" />
+                </ListItemIcon>
+                Profile
               </MenuItem>
-            ) : null}
-            <MenuItem
-              onClick={() => {
-                setAnchorEl(null);
-                navigate(PATHS.billingProfile);
-              }}
-            >
-              <ListItemIcon><PersonOutlinedIcon fontSize="small" /></ListItemIcon>
-              Profile
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setAnchorEl(null);
-                navigate(PATHS.billingChangePassword);
-              }}
-            >
-              <ListItemIcon><LockOutlinedIcon fontSize="small" /></ListItemIcon>
-              Change Password
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setAnchorEl(null);
-                onLogout();
-              }}
-            >
-              <ListItemIcon><LogoutOutlinedIcon fontSize="small" /></ListItemIcon>
-              Logout
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
+              <MenuItem
+                onClick={() => {
+                  setAnchorEl(null);
+                  navigate(PATHS.billingChangePassword);
+                }}
+              >
+                <ListItemIcon>
+                  <LockOutlinedIcon fontSize="small" />
+                </ListItemIcon>
+                Change Password
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setAnchorEl(null);
+                  onLogout();
+                }}
+              >
+                <ListItemIcon>
+                  <LogoutOutlinedIcon fontSize="small" />
+                </ListItemIcon>
+                Logout
+              </MenuItem>
+            </Menu>
+          ),
+        }}
+      />
 
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          open
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+      <AppShellDrawers mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)}>
+        <AppNavDrawer
+          brandTitle={user?.tenant?.business_name || 'Billing'}
+          brandSubtitle={billingBrandSubtitle(user, { isOwner, isManager })}
+          navItems={navItems}
+          onNavigate={() => setMobileOpen(false)}
+        />
+      </AppShellDrawers>
 
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
+          width: { md: `calc(100% - ${layout.drawerWidth}px)` },
           minWidth: 0,
           bgcolor: 'background.default',
         }}

@@ -9,7 +9,6 @@ import {
   Card,
   CardActions,
   CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -23,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -65,6 +65,14 @@ function dateKey(value) {
   });
 }
 
+function workflowStatusVariant(status) {
+  const key = String(status || '').toUpperCase();
+  if (key === 'SCHEDULED') return 'pending';
+  if (key === 'IN_PROGRESS') return 'info';
+  if (key === 'COMPLETED') return 'active';
+  return 'info';
+}
+
 function InstallationCard({ job, onStatusChange, updating, canWrite }) {
   const actions = NEXT_ACTIONS[job.status] || [];
 
@@ -82,7 +90,10 @@ function InstallationCard({ job, onStatusChange, updating, canWrite }) {
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {job.installation_number}
             </Typography>
-            <Chip size="small" label={job.status.replace('_', ' ')} />
+            <StatusBadge
+              label={job.status.replace('_', ' ')}
+              variant={workflowStatusVariant(job.status)}
+            />
           </Stack>
           <Typography variant="body2" color="rgba(255,255,255,0.72)">
             {job.item_name}

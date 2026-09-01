@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -30,7 +29,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -43,6 +41,10 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -548,8 +550,15 @@ export default function ItemsPage() {
             </Button>
           }
         >
-          <TextField
+          <SearchInput
             label={
+              bookMetadataEnabled
+                ? 'Search name, ISBN, author…'
+                : furnitureAttributesEnabled
+                  ? 'Search name, material, color…'
+                  : 'Search name or SKU'
+            }
+            placeholder={
               bookMetadataEnabled
                 ? 'Search name, ISBN, author…'
                 : furnitureAttributesEnabled
@@ -725,14 +734,10 @@ export default function ItemsPage() {
                             onChange={() => onToggleActive(item)}
                             inputProps={{ 'aria-label': `Toggle ${item.name}` }}
                           />
-                          <Typography variant="caption" color="text.secondary">
-                            {item.is_active ? 'Active' : 'Inactive'}
-                          </Typography>
+                          <StatusBadge label={item.is_active ? 'Active' : 'Unavailable'} />
                         </Stack>
                       ) : (
-                        <Typography variant="caption" color="text.secondary">
-                          {item.is_active ? 'Active' : 'Inactive'}
-                        </Typography>
+                        <StatusBadge label={item.is_active ? 'Active' : 'Unavailable'} />
                       )}
                     </TableCell>
                     <TableCell>
@@ -741,126 +746,87 @@ export default function ItemsPage() {
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                         {canStockItems && !item.tracks_variants ? (
-                          <Tooltip title="Receive stock">
-                            <IconButton
-                              size="small"
-                              aria-label={`Receive stock for ${item.name}`}
-                              onClick={() => {
-                                setReceiveTarget(item);
-                                setReceiveQty('');
-                                setReceiveReason('');
-                                setError('');
-                                setSuccess('');
-                              }}
-                            >
-                              <MoveToInboxOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="Receive stock"
+                            onClick={() => {
+                              setReceiveTarget(item);
+                              setReceiveQty('');
+                              setReceiveReason('');
+                              setError('');
+                              setSuccess('');
+                            }}
+                          >
+                            <MoveToInboxOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                         {canStockItems &&
                         !item.tracks_variants &&
                         item.stock_quantity !== null &&
                         item.stock_quantity !== undefined ? (
-                          <Tooltip title="Adjust stock">
-                            <IconButton
-                              size="small"
-                              aria-label={`Adjust stock for ${item.name}`}
-                              onClick={() => {
-                                setAdjustTarget(item);
-                                setAdjustDelta('');
-                                setAdjustReason('');
-                                setError('');
-                                setSuccess('');
-                              }}
-                            >
-                              <Inventory2OutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="Adjust stock"
+                            onClick={() => {
+                              setAdjustTarget(item);
+                              setAdjustDelta('');
+                              setAdjustReason('');
+                              setError('');
+                              setSuccess('');
+                            }}
+                          >
+                            <Inventory2OutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                         {canWriteItems && productImagesEnabled ? (
-                          <Tooltip title="Product images">
-                            <IconButton
-                              size="small"
-                              aria-label={`Images for ${item.name}`}
-                              onClick={() => openImages(item)}
-                            >
-                              <ImageOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton title="Product images" onClick={() => openImages(item)}>
+                            <ImageOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                         {canWriteItems && variantsEnabled ? (
-                          <Tooltip title="Size / color variants">
-                            <IconButton
-                              size="small"
-                              aria-label={`Variants for ${item.name}`}
-                              onClick={() => openVariants(item)}
-                            >
-                              <CheckroomOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton title="Size / color variants" onClick={() => openVariants(item)}>
+                            <CheckroomOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                         {canWriteItems && bulkPricingEnabled ? (
-                          <Tooltip title="Bulk price tiers">
-                            <IconButton
-                              size="small"
-                              aria-label={`Price tiers for ${item.name}`}
-                              onClick={() => openTiers(item)}
-                            >
-                              <LocalOfferOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton title="Bulk price tiers" onClick={() => openTiers(item)}>
+                            <LocalOfferOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                         {canWriteItems ? (
-                          <Tooltip title="Edit Item">
-                            <IconButton
-                              size="small"
-                              aria-label={`Edit ${item.name}`}
-                              onClick={() => openEdit(item)}
-                            >
-                              <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton title="Edit Item" onClick={() => openEdit(item)}>
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                         {canWriteItems && item.is_active ? (
-                          <Tooltip title="Delete Item">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              aria-label={`Delete ${item.name}`}
-                              onClick={() => {
-                                setDeactivateTarget(item);
-                                setDeactivateReason('');
-                                setError('');
-                                setSuccess('');
-                              }}
-                            >
-                              <DeleteOutlineOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="Delete Item"
+                            color="error"
+                            onClick={() => {
+                              setDeactivateTarget(item);
+                              setDeactivateReason('');
+                              setError('');
+                              setSuccess('');
+                            }}
+                          >
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                         {canStockMovements ? (
-                          <Tooltip title="View stock movements">
-                            <IconButton
-                              size="small"
-                              component={RouterLink}
-                              to={`${movementsPath}?item_id=${encodeURIComponent(item.id)}`}
-                              aria-label={`View stock movements for ${item.name}`}
-                            >
-                              <SwapVertOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="View stock movements"
+                            component={RouterLink}
+                            to={`${movementsPath}?item_id=${encodeURIComponent(item.id)}`}
+                          >
+                            <SwapVertOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                         {canAudit ? (
-                          <Tooltip title="View activity">
-                            <IconButton
-                              size="small"
-                              component={RouterLink}
-                              to={`${PATHS.ownerItemActivity}?q=${encodeURIComponent(item.name || '')}`}
-                              aria-label={`View activity for ${item.name}`}
-                            >
-                              <HistoryOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="View activity"
+                            component={RouterLink}
+                            to={`${PATHS.ownerItemActivity}?q=${encodeURIComponent(item.name || '')}`}
+                          >
+                            <HistoryOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                       </Stack>
                     </TableCell>
@@ -1184,32 +1150,25 @@ export default function ItemsPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(deactivateTarget)} onClose={() => setDeactivateTarget(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Delete Item?</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ mt: 1 }}>
-            <Typography variant="body2">
-              Are you sure you want to delete <strong>{deactivateTarget?.name}</strong>? It will be
-              marked inactive and hidden from new billing. Old bills stay unchanged.
-            </Typography>
-            <TextField
-              label="Reason (optional)"
-              value={deactivateReason}
-              onChange={(e) => setDeactivateReason(e.target.value)}
-              fullWidth
-              multiline
-              minRows={2}
-              placeholder="e.g. Temporarily unavailable"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeactivateTarget(null)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={confirmDeactivate} disabled={saving}>
-            {saving ? 'Saving...' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={Boolean(deactivateTarget)}
+        title="Delete Item?"
+        description={`Are you sure you want to delete “${deactivateTarget?.name || ''}”? It will be marked inactive and hidden from new billing. Old bills stay unchanged.`}
+        confirmLabel="Delete"
+        loading={saving}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={confirmDeactivate}
+      >
+        <TextField
+          label="Reason (optional)"
+          value={deactivateReason}
+          onChange={(e) => setDeactivateReason(e.target.value)}
+          fullWidth
+          multiline
+          minRows={2}
+          placeholder="e.g. Temporarily unavailable"
+        />
+      </ConfirmDialog>
 
       <Dialog
         open={Boolean(adjustTarget)}

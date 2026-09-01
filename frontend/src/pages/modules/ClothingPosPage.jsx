@@ -36,6 +36,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
 import VariantStockGrid from '../../components/VariantStockGrid';
+import IconActionButton from '../../components/ui/IconActionButton';
 import { useModuleGate } from '../../context/ModulesContext';
 import { PATHS } from '../../routes/paths';
 import {
@@ -561,10 +562,15 @@ export default function ClothingPosPage() {
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Card variant="outlined">
+            <Card
+              variant="outlined"
+              sx={{ position: { md: 'sticky' }, top: { md: 80 } }}
+            >
               <CardContent>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                  <Typography variant="h6">Cart</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 650, fontSize: '1.05rem' }}>
+                    Current Bill
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {cart.length} lines · {lineCount} units
                   </Typography>
@@ -589,15 +595,15 @@ export default function ClothingPosPage() {
                               {money(Number(line.price) * Number(line.quantity))}
                             </Typography>
                           </Box>
-                          <IconButton
-                            size="small"
-                            aria-label={`Remove ${line.name}`}
+                          <IconActionButton
+                            title="Remove"
+                            color="error"
                             onClick={() =>
                               setCart((prev) => prev.filter((row) => row.line_key !== line.line_key))
                             }
                           >
                             <DeleteOutlineOutlinedIcon fontSize="small" />
-                          </IconButton>
+                          </IconActionButton>
                         </Stack>
                         <Stack direction="row" alignItems="center" spacing={0.5} mt={0.5}>
                           <IconButton
@@ -687,7 +693,7 @@ export default function ClothingPosPage() {
                         ? 'Saving…'
                         : paymentMethod === PAYMENT_CREDIT
                           ? 'Charge to credit'
-                          : 'Generate bill'}
+                          : 'Generate Bill'}
                     </Button>
                   </Stack>
                 )}

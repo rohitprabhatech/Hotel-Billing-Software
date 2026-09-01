@@ -8,7 +8,6 @@ import {
   Box,
   Button,
   Card,
-  CardActionArea,
   CardContent,
   Chip,
   Dialog,
@@ -18,7 +17,6 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
-  IconButton,
   InputAdornment,
   Radio,
   RadioGroup,
@@ -34,8 +32,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomerPicker from '../../components/CustomerPicker';
+import EmptyState from '../../components/EmptyState';
 import PageShell from '../../components/PageShell';
-import TruncateText from '../../components/TruncateText';
+import PosCartPanel from '../../components/pos/PosCartPanel';
+import PosCatalogCard from '../../components/pos/PosCatalogCard';
+import IconActionButton from '../../components/ui/IconActionButton';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { useModuleGate } from '../../context/ModulesContext';
 import {
   billPrintPath,
@@ -437,7 +440,7 @@ export default function HardwarePosPage() {
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="stretch">
           <Box sx={{ flex: 1.2 }}>
-            <Card variant="outlined" sx={{ mb: 2, borderWidth: 2, borderColor: 'primary.main' }}>
+            <Card variant="outlined" sx={{ mb: 2, borderColor: 'primary.main' }}>
               <CardContent>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
                   <TextField
@@ -476,13 +479,12 @@ export default function HardwarePosPage() {
               </CardContent>
             </Card>
 
-            <TextField
+            <SearchInput
               label="Search items"
+              placeholder="Pipe, cement, tile, rod…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              fullWidth
               sx={{ mb: 2 }}
-              placeholder="Pipe, cement, tile, rod…"
             />
 
             {categories.length ? (
@@ -520,37 +522,28 @@ export default function HardwarePosPage() {
                 const saleUom = item.sale_uom || item.uom || 'pcs';
                 const tracked = item.stock_quantity !== null && item.stock_quantity !== undefined;
                 const outOfStock = tracked && Number(item.stock_quantity) <= 0;
+                const stockLabel = tracked
+                  ? `Stock ${Number(item.stock_quantity).toFixed(3).replace(/\.?0+$/, '')} ${(item.uom || 'pcs').toUpperCase()}`
+                  : null;
                 return (
-                  <Card key={item.id} variant="outlined" sx={{ opacity: outOfStock ? 0.55 : 1 }}>
-                    <CardActionArea onClick={() => !outOfStock && addItem(item)} disabled={outOfStock}>
-                      <CardContent sx={{ py: 1.5 }}>
-                        <TruncateText value={item.name} maxWidth="100%" />
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {uomLabel(saleUom)} · {money(item.price)}/{saleUom.toUpperCase()}
-                        </Typography>
-                        {item.category_name ? (
-                          <Typography variant="caption" color="text.secondary" display="block" noWrap>
-                            {item.category_name}
-                          </Typography>
-                        ) : null}
-                        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.75 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {money(item.price)}
-                          </Typography>
-                          {tracked ? (
-                            <Chip
-                              size="small"
-                              label={`Stock ${Number(item.stock_quantity).toFixed(3).replace(/\.?0+$/, '')} ${(item.uom || 'pcs').toUpperCase()}`}
-                              color={outOfStock ? 'error' : 'default'}
-                            />
-                          ) : null}
-                        </Stack>
-                      </CardContent>
-                    </CardActionArea>
-                  </Card>
+                  <PosCatalogCard
+                    key={item.id}
+                    title={item.name}
+                    subtitle={`${uomLabel(saleUom)} · ${money(item.price)}/${saleUom.toUpperCase()}${
+                      stockLabel ? ` · ${stockLabel}` : ''
+                    }`}
+                    disabled={outOfStock}
+                    onClick={() => addItem(item)}
+                  />
                 );
               })}
             </Box>
+            {!displayCatalog.length ? (
+              <EmptyState
+                title="No items found"
+                description="Try another search or category."
+              />
+            ) : null}
             {!displayCatalog.length ? (
               <Alert severity="info" sx={{ mt: 2 }}>
                 {categoryId
@@ -561,72 +554,15 @@ export default function HardwarePosPage() {
           </Box>
 
           <Box sx={{ flex: 1, minWidth: { md: 360 } }}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                  Cart
-                </Typography>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Item</TableCell>
-                      <TableCell align="right">Qty</TableCell>
-                      <TableCell align="right">Amount</TableCell>
-                      <TableCell />
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {cart.map((line) => (
-                      <TableRow key={line.item_id}>
-                        <TableCell>
-                          <Typography variant="body2">{line.name}</Typography>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {money(line.price)} / {(line.sale_uom || 'pcs').toUpperCase()}
-                          </Typography>
-                          {line.stock_uom && line.stock_uom !== line.sale_uom ? (
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              Deducts {line.stock_quantity_deducted ?? '—'} {line.stock_uom.toUpperCase()}
-                            </Typography>
-                          ) : null}
-                          {line.sufficient_stock === false ? (
-                            <Typography variant="caption" color="error" display="block">
-                              Insufficient stock
-                            </Typography>
-                          ) : null}
-                        </TableCell>
-                        <TableCell align="right">
-                          <TextField
-                            type="number"
-                            size="small"
-                            value={line.quantity}
-                            onChange={(e) => setLineQty(line.item_id, e.target.value)}
-                            inputProps={{
-                              min: qtyStepForUom(line.sale_uom),
-                              step: qtyStepForUom(line.sale_uom),
-                            }}
-                            sx={{ width: 96 }}
-                          />
-                          <Typography variant="caption" display="block">
-                            {(line.sale_uom || 'pcs').toUpperCase()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">{money(lineTotal(line))}</TableCell>
-                        <TableCell align="right">
-                          <IconButton size="small" onClick={() => removeLine(line.item_id)}>
-                            <DeleteOutlineOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {!cart.length ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                    Scan or tap a product, then set length / weight / area quantity.
-                  </Typography>
-                ) : null}
-
-                <Stack spacing={1.5} sx={{ mt: 2 }}>
+            <PosCartPanel
+              title="Current Bill"
+              empty={
+                !cart.length
+                  ? 'Scan or tap a product, then set length / weight / area quantity.'
+                  : null
+              }
+              footer={
+                <Stack spacing={1.5}>
                   <TextField
                     size="small"
                     label="Customer name (optional)"
@@ -649,7 +585,9 @@ export default function HardwarePosPage() {
                       ? ` + transport ${money(transportValue)} (non-GST)`
                       : ''}
                   </Typography>
-                  <Typography variant="h6">Total {money(displayTotal)}</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Total {money(displayTotal)}
+                  </Typography>
                   {transportEnabled ? (
                     <TextField
                       label="Transport charge"
@@ -678,14 +616,70 @@ export default function HardwarePosPage() {
                   <Button
                     variant="contained"
                     size="large"
+                    fullWidth
                     disabled={saving || !cart.length}
                     onClick={() => checkout()}
                   >
-                    {saving ? 'Saving…' : 'Create bill'}
+                    {saving ? 'Creating bill…' : 'Generate Bill'}
                   </Button>
                 </Stack>
-              </CardContent>
-            </Card>
+              }
+            >
+              {cart.length ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item</TableCell>
+                      <TableCell align="right">Qty</TableCell>
+                      <TableCell align="right">Amount</TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {cart.map((line) => (
+                      <TableRow key={line.item_id}>
+                        <TableCell>
+                          <Typography variant="body2">{line.name}</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {money(line.price)} / {(line.sale_uom || 'pcs').toUpperCase()}
+                          </Typography>
+                          {line.stock_uom && line.stock_uom !== line.sale_uom ? (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Deducts {line.stock_quantity_deducted ?? '—'} {line.stock_uom.toUpperCase()}
+                            </Typography>
+                          ) : null}
+                          {line.sufficient_stock === false ? (
+                            <StatusBadge label="Low Stock" sx={{ mt: 0.5 }} />
+                          ) : null}
+                        </TableCell>
+                        <TableCell align="right">
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={line.quantity}
+                            onChange={(e) => setLineQty(line.item_id, e.target.value)}
+                            inputProps={{
+                              min: qtyStepForUom(line.sale_uom),
+                              step: qtyStepForUom(line.sale_uom),
+                            }}
+                            sx={{ width: 96 }}
+                          />
+                          <Typography variant="caption" display="block">
+                            {(line.sale_uom || 'pcs').toUpperCase()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">{money(lineTotal(line))}</TableCell>
+                        <TableCell align="right">
+                          <IconActionButton title="Remove" onClick={() => removeLine(line.item_id)}>
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconActionButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : null}
+            </PosCartPanel>
           </Box>
         </Stack>
       </Stack>

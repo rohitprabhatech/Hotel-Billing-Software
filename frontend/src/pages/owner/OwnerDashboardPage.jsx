@@ -13,7 +13,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -41,6 +40,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import ChartPanel from '../../components/ChartPanel';
 import EmptyState from '../../components/EmptyState';
 import IndustryDashboardPanel from '../../components/IndustryDashboardPanel';
 import KpiCard from '../../components/KpiCard';
@@ -48,6 +48,8 @@ import PageShell from '../../components/PageShell';
 import Section from '../../components/Section';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
 import { PATHS } from '../../routes/paths';
 import { fetchAuditAlerts, listAuditLogs } from '../../services/auditService';
@@ -92,14 +94,10 @@ function billTableLabel(bill) {
   return bill?.dining_table_code || bill?.table_number || bill?.reference || '—';
 }
 
-function hotelBillStatus(bill) {
-  if (bill?.status === 'FINALIZED') {
-    return { label: 'Paid', color: 'success', variant: 'outlined' };
-  }
-  if (bill?.status === 'CANCELLED') {
-    return { label: 'Cancelled', color: 'warning', variant: 'filled' };
-  }
-  return { label: 'Pending', color: 'default', variant: 'outlined' };
+function hotelBillStatusLabel(bill) {
+  if (bill?.status === 'FINALIZED') return 'Paid';
+  if (bill?.status === 'CANCELLED') return 'Cancelled';
+  return 'Pending';
 }
 
 function formatDayLabel(dateStr, useWeekday) {
@@ -429,23 +427,24 @@ export default function OwnerDashboardPage() {
       <Card>
         <CardContent
           sx={{
-            p: { xs: 2.5, sm: 3 },
-            '&:last-child': { pb: { xs: 2.5, sm: 3 } },
+            p: { xs: 2.25, sm: 2.75 },
+            '&:last-child': { pb: { xs: 2.25, sm: 2.75 } },
             display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
             alignItems: { xs: 'stretch', sm: 'center' },
             justifyContent: 'space-between',
-            gap: 2.5,
+            gap: 2,
           }}
         >
           <Stack direction="row" spacing={2} alignItems="center" sx={{ minWidth: 0 }}>
             <Box
               sx={{
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 borderRadius: 2,
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
+                bgcolor: (t) =>
+                  t.palette.mode === 'dark' ? 'rgba(110,180,200,0.14)' : 'rgba(31, 78, 95, 0.1)',
+                color: 'primary.main',
                 display: 'grid',
                 placeItems: 'center',
                 flexShrink: 0,
@@ -459,22 +458,19 @@ export default function OwnerDashboardPage() {
                   variant="h5"
                   component="h1"
                   noWrap
-                  sx={{ fontSize: { xs: '1.35rem', md: '1.5rem' } }}
+                  sx={{ fontSize: { xs: '1.3rem', md: '1.45rem' }, fontWeight: 700 }}
                 >
                   {businessName}
                 </Typography>
               </Tooltip>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.75 }} useFlexGap flexWrap="wrap">
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }} useFlexGap flexWrap="wrap">
                 {businessTypeLabel ? (
                   <Chip label={businessTypeLabel} size="small" color="primary" variant="outlined" />
                 ) : null}
-                <Typography variant="subtitle2" color="text.secondary">
-                  Business Dashboard
+                <Typography variant="body2" color="text.secondary">
+                  {PERIOD_HINTS[period] || data?.label || 'Business overview'}
                 </Typography>
               </Stack>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {PERIOD_HINTS[period] || data?.label || 'Business overview'}
-              </Typography>
             </Box>
           </Stack>
           <PeriodSelect
@@ -924,12 +920,7 @@ export default function OwnerDashboardPage() {
                 gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
               }}
             >
-              <Card>
-                <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: { xs: 2, sm: 3 } } }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-                    Sales Trend
-                  </Typography>
-                  <Box sx={{ width: '100%', height: 280, position: 'relative' }}>
+              <ChartPanel title="Sales Trend">
                     {salesLoading ? (
                       <Stack alignItems="center" justifyContent="center" sx={{ height: '100%' }} spacing={1}>
                         <CircularProgress size={28} />
@@ -974,16 +965,9 @@ export default function OwnerDashboardPage() {
                         </LineChart>
                       </ResponsiveContainer>
                     )}
-                  </Box>
-                </CardContent>
-              </Card>
+              </ChartPanel>
 
-              <Card>
-                <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: { xs: 2, sm: 3 } } }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-                    Sales by Day
-                  </Typography>
-                  <Box sx={{ width: '100%', height: 280, position: 'relative' }}>
+              <ChartPanel title="Sales by Day">
                     {salesLoading ? (
                       <Stack alignItems="center" justifyContent="center" sx={{ height: '100%' }} spacing={1}>
                         <CircularProgress size={28} />
@@ -1026,9 +1010,7 @@ export default function OwnerDashboardPage() {
                         </BarChart>
                       </ResponsiveContainer>
                     )}
-                  </Box>
-                </CardContent>
-              </Card>
+              </ChartPanel>
             </Box>
           </Section>
 
@@ -1290,10 +1272,8 @@ export default function OwnerDashboardPage() {
           ) : null}
         </>
       ) : (
-        <Section title="Sales Overview">
-          <Card>
-            <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: { xs: 2, sm: 3 } } }}>
-              <Box sx={{ width: '100%', height: 300 }}>
+        <Section title="Sales Overview" description="Daily sales for the selected period.">
+          <ChartPanel title="Sales by Day" height={300}>
                 {(data?.day_wise || []).length ? (
                   <ResponsiveContainer>
                     <BarChart data={data.day_wise}>
@@ -1314,9 +1294,7 @@ export default function OwnerDashboardPage() {
                 ) : (
                   <EmptyState title="No sales data" description="Sales for this period will appear here." />
                 )}
-              </Box>
-            </CardContent>
-          </Card>
+          </ChartPanel>
         </Section>
       )}
 
@@ -1343,13 +1321,11 @@ export default function OwnerDashboardPage() {
             </TableHead>
             <TableBody>
               {recentBills.map((bill) => {
-                const statusProps = isHotel
-                  ? hotelBillStatus(bill)
-                  : {
-                      label: bill.status === 'CANCELLED' ? 'Cancelled' : 'Finalized',
-                      color: bill.status === 'CANCELLED' ? 'warning' : 'success',
-                      variant: bill.status === 'CANCELLED' ? 'filled' : 'outlined',
-                    };
+                const statusLabel = isHotel
+                  ? hotelBillStatusLabel(bill)
+                  : bill.status === 'CANCELLED'
+                    ? 'Cancelled'
+                    : 'Paid';
                 return (
                   <TableRow key={bill.id} hover>
                     <TableCell>
@@ -1366,32 +1342,25 @@ export default function OwnerDashboardPage() {
                       </TableCell>
                     ) : null}
                     <TableCell>
-                      <Chip
-                        size="small"
-                        label={statusProps.label}
-                        color={statusProps.color}
-                        variant={statusProps.variant}
-                      />
+                      <StatusBadge label={statusLabel} />
                     </TableCell>
                     <TableCell>{paymentMethodLabel(bill.payment_method)}</TableCell>
-                    <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                       {money(bill.grand_total)}
                     </TableCell>
                     {isHotel ? (
                       <TableCell align="center">
                         {bill.status === 'FINALIZED' ? (
-                          <Tooltip title="Remove Bill">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => {
-                                setCancelTarget(bill);
-                                setCancelReason('Removed from owner dashboard');
-                              }}
-                            >
-                              <DeleteOutlineOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="Remove Bill"
+                            color="error"
+                            onClick={() => {
+                              setCancelTarget(bill);
+                              setCancelReason('Removed from owner dashboard');
+                            }}
+                          >
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : (
                           '—'
                         )}
@@ -1430,7 +1399,7 @@ export default function OwnerDashboardPage() {
               {(itemActivity || []).slice(0, 5).map((log) => (
                 <TableRow key={log.id} hover>
                   <TableCell>
-                    <Chip size="small" label={log.action} variant="outlined" />
+                    <StatusBadge label={log.action} variant="info" />
                   </TableCell>
                   <TableCell>
                     <TruncateText

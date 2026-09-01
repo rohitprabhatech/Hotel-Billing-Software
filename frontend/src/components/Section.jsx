@@ -14,12 +14,20 @@ export default function Section({ title, description, actions = null, children, 
         >
           <Box sx={{ minWidth: 0 }}>
             {title ? (
-              <Typography variant="h6" component="h2">
+              <Typography
+                variant="h6"
+                component="h2"
+                sx={{ fontWeight: 650, letterSpacing: '-0.01em', lineHeight: 1.3 }}
+              >
                 {title}
               </Typography>
             ) : null}
             {description ? (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5, maxWidth: 640, lineHeight: 1.5 }}
+              >
                 {description}
               </Typography>
             ) : null}

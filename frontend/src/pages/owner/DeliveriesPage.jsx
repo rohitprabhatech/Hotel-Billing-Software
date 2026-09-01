@@ -9,7 +9,6 @@ import {
   Card,
   CardActions,
   CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -23,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -52,6 +52,13 @@ function formatWhen(value) {
   return date.toLocaleString();
 }
 
+function deliveryStatusVariant(status) {
+  if (status === 'SCHEDULED') return 'pending';
+  if (status === 'OUT_FOR_DELIVERY') return 'info';
+  if (status === 'DELIVERED') return 'active';
+  return 'info';
+}
+
 function DeliveryCard({ job, onStatusChange, updating, canWrite }) {
   const actions = NEXT_ACTIONS[job.status] || [];
 
@@ -69,7 +76,10 @@ function DeliveryCard({ job, onStatusChange, updating, canWrite }) {
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {job.delivery_number}
             </Typography>
-            <Chip size="small" label={job.status.replaceAll('_', ' ')} />
+            <StatusBadge
+              label={job.status.replaceAll('_', ' ')}
+              variant={deliveryStatusVariant(job.status)}
+            />
           </Stack>
           <Typography variant="body2" color="rgba(255,255,255,0.72)">
             {job.custom_order_number} · {job.custom_order_title}

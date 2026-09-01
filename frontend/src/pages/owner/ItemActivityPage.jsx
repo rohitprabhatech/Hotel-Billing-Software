@@ -1,16 +1,12 @@
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import {
   Alert,
-  Box,
   Button,
-  Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -21,7 +17,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -31,6 +26,10 @@ import FilterBar from '../../components/FilterBar';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { getAuditLog, listAuditLogs } from '../../services/auditService';
 import { listUsers } from '../../services/userService';
 
@@ -48,12 +47,12 @@ const ITEM_ACTIONS = [
   'STOCK_RESTORED',
 ];
 
-function actionChipColor(action) {
-  if (action?.includes('CREATED') || action === 'CREATE_ITEM') return 'success';
-  if (action?.includes('DEACTIVATED') || action === 'DEACTIVATE_ITEM') return 'warning';
+function actionBadgeVariant(action) {
+  if (action?.includes('CREATED')) return 'active';
+  if (action?.includes('DEACTIVATED')) return 'cancelled';
   if (action?.includes('REACTIVATED')) return 'info';
-  if (action?.includes('STOCK')) return 'secondary';
-  return 'default';
+  if (action?.includes('STOCK')) return 'pending';
+  return 'info';
 }
 
 function summarizeValues(data) {
@@ -138,8 +137,8 @@ export default function ItemActivityPage() {
             </Button>
           }
         >
-          <TextField
-            label="Item"
+          <SearchInput
+            placeholder="Search items…"
             value={filters.q}
             onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
             sx={{ minWidth: { xs: '100%', sm: 180 }, flex: 1 }}
@@ -195,9 +194,7 @@ export default function ItemActivityPage() {
 
         <TableCard>
           {loading ? (
-            <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}>
-              <CircularProgress size={28} />
-            </Box>
+            <LoadingSkeleton rows={8} height={56} />
           ) : (
             <Table size="small" sx={{ minWidth: 960 }}>
               <TableHead>
@@ -229,12 +226,7 @@ export default function ItemActivityPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        label={log.action}
-                        color={actionChipColor(log.action)}
-                        variant="outlined"
-                      />
+                      <StatusBadge label={log.action} variant={actionBadgeVariant(log.action)} />
                     </TableCell>
                     <TableCell>
                       <TruncateText value={summarizeValues(log.old_data)} maxWidth={160} />
@@ -243,15 +235,12 @@ export default function ItemActivityPage() {
                       <TruncateText value={summarizeValues(log.new_data)} maxWidth={160} />
                     </TableCell>
                     <TableCell align="right">
-                      <Tooltip title="View details">
-                        <IconButton
-                          size="small"
-                          aria-label="View item activity details"
-                          onClick={() => openDetail(log.id)}
-                        >
-                          <VisibilityOutlinedIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      <IconActionButton
+                        title="View details"
+                        onClick={() => openDetail(log.id)}
+                      >
+                        <VisibilityOutlinedIcon fontSize="small" />
+                      </IconActionButton>
                     </TableCell>
                   </TableRow>
                 ))}

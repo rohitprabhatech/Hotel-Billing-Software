@@ -4,7 +4,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -29,16 +28,17 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { adjustBatch, createBatch, fetchExpiryReport, listBatches } from '../../services/batchService';
 import { listItems } from '../../services/itemService';
 import { filterControlSx } from '../../layouts/shell';
-function statusChip(status) {
-  if (status === 'expired') return <Chip size="small" color="error" label="Expired" />;
-  if (status === 'expiring') return <Chip size="small" color="warning" label="Expiring" />;
-  return <Chip size="small" color="success" label="OK" />;
+function statusBadge(status) {
+  if (status === 'expired') return <StatusBadge label="Expired" variant="cancelled" />;
+  if (status === 'expiring') return <StatusBadge label="Expiring" variant="pending" />;
+  return <StatusBadge label="OK" variant="active" />;
 }
 
 export default function BatchesPage() {
@@ -256,7 +256,7 @@ export default function BatchesPage() {
                       </TableCell>
                       <TableCell>{row.batch_code || '—'}</TableCell>
                       <TableCell>{row.expiry_date || '—'}</TableCell>
-                      <TableCell>{statusChip(row.status)}</TableCell>
+                      <TableCell>{statusBadge(row.status)}</TableCell>
                       <TableCell align="right">{row.quantity}</TableCell>
                       <TableCell>
                         {canStockItems ? (

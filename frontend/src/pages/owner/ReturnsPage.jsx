@@ -31,6 +31,8 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import VariantStockGrid from '../../components/VariantStockGrid';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -296,7 +298,12 @@ export default function ReturnsPage() {
                 {rows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>{row.return_number}</TableCell>
-                    <TableCell>{row.kind}</TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        label={row.kind === 'EXCHANGE' ? 'Exchange' : 'Return'}
+                        variant={row.kind === 'EXCHANGE' ? 'info' : 'pending'}
+                      />
+                    </TableCell>
                     <TableCell>{row.bill_number}</TableCell>
                     <TableCell>
                       <TruncateText value={row.reason} maxWidth={220} />
@@ -331,8 +338,8 @@ export default function ReturnsPage() {
               <Typography variant="body2" color="text.secondary">
                 Enter the original bill number. Only finalized bills can be returned.
               </Typography>
-              <TextField
-                label="Bill number"
+              <SearchInput
+                placeholder="Bill number"
                 value={billNumber}
                 onChange={(e) => setBillNumber(e.target.value)}
                 onKeyDown={(e) => {

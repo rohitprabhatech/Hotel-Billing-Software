@@ -1,7 +1,6 @@
 import KitchenOutlinedIcon from '@mui/icons-material/KitchenOutlined';
 import {
   Alert,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -16,6 +15,7 @@ import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { listItems } from '../../services/itemService';
@@ -141,11 +141,11 @@ export default function IngredientStockPage() {
                     </TableCell>
                     <TableCell>
                       {item.stock_quantity == null ? (
-                        <Chip size="small" label="Untracked" variant="outlined" />
+                        <StatusBadge label="Untracked" variant="info" />
                       ) : isLow(item) ? (
-                        <Chip size="small" color="warning" label="Low" />
+                        <StatusBadge label="Low" variant="pending" />
                       ) : (
-                        <Chip size="small" color="success" variant="outlined" label="OK" />
+                        <StatusBadge label="OK" variant="active" />
                       )}
                     </TableCell>
                   </TableRow>

@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -15,7 +14,6 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
-  IconButton,
   List,
   ListItemButton,
   ListItemText,
@@ -34,6 +32,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { useModuleGate } from '../../context/ModulesContext';
 import { createBill } from '../../services/billService';
 import { getCustomer } from '../../services/customerService';
@@ -303,10 +304,9 @@ export default function StationeryPosPage() {
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'flex-start' }}>
               <SearchOutlinedIcon color="primary" sx={{ fontSize: 40, display: { xs: 'none', md: 'block' }, mt: 1 }} />
               <Box sx={{ flex: 1, width: '100%' }}>
-                <TextField
+                <SearchInput
                   inputRef={searchRef}
                   autoFocus
-                  fullWidth
                   label="Search name, SKU, or barcode"
                   placeholder="Type to search — Enter scans barcode if exact match"
                   value={query}
@@ -343,7 +343,9 @@ export default function StationeryPosPage() {
         <Card variant="outlined">
           <CardContent>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              <Typography variant="h6">Cart</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 650, fontSize: '1.05rem' }}>
+                Current Bill
+              </Typography>
               <Typography variant="body2" color="text.secondary">
                 {cart.length} lines · {lineCount} units
               </Typography>
@@ -393,9 +395,9 @@ export default function StationeryPosPage() {
                           <TableCell align="right">{money(line.price)}</TableCell>
                           <TableCell align="right">{money(lineTotal(line))}</TableCell>
                           <TableCell>
-                            <IconButton size="small" onClick={() => setLineQty(line.item_id, 0)}>
+                            <IconActionButton title="Remove" color="error" onClick={() => setLineQty(line.item_id, 0)}>
                               <DeleteOutlineOutlinedIcon fontSize="small" />
-                            </IconButton>
+                            </IconActionButton>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -415,15 +417,13 @@ export default function StationeryPosPage() {
                       }}
                     />
                     {selectedCustomer ? (
-                      <Chip
-                        size="small"
-                        color={Number(selectedCustomer.balance || 0) > 0 ? 'warning' : 'default'}
+                      <StatusBadge
                         label={
                           Number(selectedCustomer.balance || 0) > 0
                             ? `Outstanding ${money(selectedCustomer.balance)}`
                             : 'No outstanding'
                         }
-                        sx={{ alignSelf: 'flex-start' }}
+                        variant={Number(selectedCustomer.balance || 0) > 0 ? 'pending' : 'active'}
                       />
                     ) : null}
                     <FormControl>
@@ -455,10 +455,10 @@ export default function StationeryPosPage() {
                     disabled={saving}
                   >
                     {saving
-                      ? 'Billing…'
+                      ? 'Creating bill…'
                       : paymentMethod === PAYMENT_CREDIT
-                        ? 'Bill on credit'
-                        : `Bill now (${paymentMethodLabel(paymentMethod)})`}
+                        ? 'Generate Bill (Credit)'
+                        : 'Generate Bill'}
                   </Button>
                 </Stack>
               </>

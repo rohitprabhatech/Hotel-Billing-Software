@@ -57,6 +57,7 @@ export default function ChangePasswordPage() {
 
   return (
     <PageShell maxWidth={880}>
+      <Stack spacing={3}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
       <FormSection
@@ -110,6 +111,7 @@ export default function ChangePasswordPage() {
           </Stack>
         </Stack>
       </FormSection>
+      </Stack>
     </PageShell>
   );
 }

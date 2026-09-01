@@ -10,7 +10,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   Stack,
   Table,
   TableBody,
@@ -18,7 +17,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,6 +24,8 @@ import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -52,6 +52,7 @@ export default function RecipesPage() {
   const [success, setSuccess] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [menuItems, setMenuItems] = useState([]);
   const [ingredients, setIngredients] = useState([]);
@@ -186,15 +187,20 @@ export default function RecipesPage() {
     }
   };
 
-  const onDelete = async (id) => {
-    if (!window.confirm('Delete this recipe?')) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
     setError('');
     try {
-      await deleteRecipe(id);
+      await deleteRecipe(deleteTarget.id);
       setSuccess('Recipe deleted.');
+      setDeleteTarget(null);
       await load();
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to delete recipe.');
+      setDeleteTarget(null);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -260,25 +266,16 @@ export default function RecipesPage() {
                       {canManageRecipes ? (
                         <TableCell align="right">
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                            <Tooltip title="Edit Recipe">
-                              <IconButton
-                                size="small"
-                                aria-label={`Edit ${recipe.name}`}
-                                onClick={() => openEdit(recipe)}
-                              >
-                                <EditOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Delete Recipe">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                aria-label={`Delete ${recipe.name}`}
-                                onClick={() => onDelete(recipe.id)}
-                              >
-                                <DeleteOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            <IconActionButton title="Edit Recipe" onClick={() => openEdit(recipe)}>
+                              <EditOutlinedIcon fontSize="small" />
+                            </IconActionButton>
+                            <IconActionButton
+                              title="Delete Recipe"
+                              color="error"
+                              onClick={() => setDeleteTarget({ id: recipe.id, name: recipe.name })}
+                            >
+                              <DeleteOutlinedIcon fontSize="small" />
+                            </IconActionButton>
                           </Stack>
                         </TableCell>
                       ) : null}
@@ -368,7 +365,8 @@ export default function RecipesPage() {
                     }))
                   }
                 />
-                <IconButton
+                <IconActionButton
+                  title="Remove ingredient"
                   color="error"
                   disabled={form.lines.length <= 1}
                   onClick={() =>
@@ -378,8 +376,8 @@ export default function RecipesPage() {
                     }))
                   }
                 >
-                  <DeleteOutlinedIcon />
-                </IconButton>
+                  <DeleteOutlinedIcon fontSize="small" />
+                </IconActionButton>
               </Stack>
             ))}
             <Box>
@@ -403,6 +401,16 @@ export default function RecipesPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete recipe?"
+        description={`Delete “${deleteTarget?.name || ''}”? Ingredient mappings for this dish will be removed.`}
+        confirmLabel="Delete"
+        loading={saving}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

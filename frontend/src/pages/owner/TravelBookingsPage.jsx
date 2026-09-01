@@ -8,14 +8,12 @@ import {
   Card,
   CardActions,
   CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
   Grid,
-  IconButton,
   MenuItem,
   Stack,
   Tab,
@@ -23,11 +21,13 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -68,6 +68,13 @@ function money(v) {
   return `₹${Number(v || 0).toFixed(2)}`;
 }
 
+function bookingStatusVariant(status) {
+  if (status === 'COMPLETED') return 'active';
+  if (status === 'BOOKED' || status === 'IN_PROGRESS') return 'pending';
+  if (status === 'CONFIRMED') return 'info';
+  return 'info';
+}
+
 function BookingCard({ booking, onStatusChange, onPayment, onOpenDetail, updating, canManage, canPay }) {
   const actions = NEXT_ACTIONS[booking.status] || [];
   return (
@@ -78,7 +85,10 @@ function BookingCard({ booking, onStatusChange, onPayment, onOpenDetail, updatin
             <Typography variant="subtitle1" fontWeight={700}>
               {booking.booking_number}
             </Typography>
-            <Chip size="small" label={booking.status.replaceAll('_', ' ')} />
+            <StatusBadge
+              label={booking.status.replaceAll('_', ' ')}
+              variant={bookingStatusVariant(booking.status)}
+            />
           </Stack>
           <Typography variant="body1">{booking.package_name}</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -631,7 +641,7 @@ export default function TravelBookingsPage() {
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                       <Stack spacing={0.5}>
                         <Stack direction="row" spacing={1} alignItems="center">
-                          <Chip size="small" label={item.item_type} />
+                          <StatusBadge label={item.item_type} variant="info" />
                           {item.day_number ? (
                             <Typography variant="caption">Day {item.day_number}</Typography>
                           ) : null}
@@ -644,14 +654,14 @@ export default function TravelBookingsPage() {
                         </Typography>
                       </Stack>
                       {canManage ? (
-                        <IconButton
-                          size="small"
-                          aria-label="Delete itinerary item"
+                        <IconActionButton
+                          title="Delete itinerary item"
+                          color="error"
                           disabled={updating}
                           onClick={() => removeItinerary(item.id)}
                         >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
+                          <DeleteOutlinedIcon fontSize="small" />
+                        </IconActionButton>
                       ) : null}
                     </Stack>
                   </Box>
@@ -729,7 +739,7 @@ export default function TravelBookingsPage() {
                   <Box key={doc.id} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                       <Stack spacing={0.5}>
-                        <Chip size="small" label={doc.document_type} />
+                        <StatusBadge label={doc.document_type} variant="info" />
                         <Typography fontWeight={600}>
                           {doc.holder_name || 'Holder'} · {doc.document_number || '—'}
                         </Typography>
@@ -740,14 +750,14 @@ export default function TravelBookingsPage() {
                         </Typography>
                       </Stack>
                       {canManage ? (
-                        <IconButton
-                          size="small"
-                          aria-label="Delete document"
+                        <IconActionButton
+                          title="Delete document"
+                          color="error"
                           disabled={updating}
                           onClick={() => removeDocument(doc.id)}
                         >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
+                          <DeleteOutlinedIcon fontSize="small" />
+                        </IconActionButton>
                       ) : null}
                     </Stack>
                   </Box>

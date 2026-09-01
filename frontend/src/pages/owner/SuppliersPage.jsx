@@ -3,12 +3,10 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import {
   Alert,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   Stack,
   Switch,
   Table,
@@ -17,7 +15,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -29,6 +26,9 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -189,8 +189,9 @@ export default function SuppliersPage() {
             </Button>
           }
         >
-          <TextField
+          <SearchInput
             label="Search name, phone, GSTIN, or email"
+            placeholder="Search name, phone, GSTIN, or email"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -246,24 +247,14 @@ export default function SuppliersPage() {
                           disabled={!canManageSuppliers}
                           inputProps={{ 'aria-label': `Toggle ${supplier.name}` }}
                         />
-                        <Chip
-                          size="small"
-                          label={supplier.is_active ? 'Active' : 'Inactive'}
-                          variant="outlined"
-                        />
+                        <StatusBadge label={supplier.is_active ? 'Active' : 'Unavailable'} />
                       </Stack>
                     </TableCell>
                     <TableCell align="right">
                       {canManageSuppliers ? (
-                        <Tooltip title="Edit">
-                          <IconButton
-                            size="small"
-                            aria-label={`Edit ${supplier.name}`}
-                            onClick={() => openEdit(supplier)}
-                          >
-                            <EditOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <IconActionButton title="Edit" onClick={() => openEdit(supplier)}>
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconActionButton>
                       ) : (
                         <Typography variant="caption" color="text.secondary">
                           —

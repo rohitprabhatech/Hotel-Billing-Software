@@ -5,7 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   FormControl,
   InputLabel,
   MenuItem,
@@ -26,6 +25,7 @@ import PageShell from '../../components/PageShell';
 import Section from '../../components/Section';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { PATHS } from '../../routes/paths';
@@ -163,11 +163,11 @@ export default function MenuPage() {
                           ) : null}
                         </TableCell>
                         <TableCell>
-                          <Chip
-                            size="small"
+                          <StatusBadge
                             label={vegLabel(item.is_veg)}
-                            color={item.is_veg === true ? 'success' : item.is_veg === false ? 'warning' : 'default'}
-                            variant="outlined"
+                            variant={
+                              item.is_veg === true ? 'active' : item.is_veg === false ? 'pending' : 'info'
+                            }
                           />
                         </TableCell>
                         <TableCell align="right">{money(item.price)}</TableCell>

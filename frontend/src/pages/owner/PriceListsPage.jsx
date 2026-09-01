@@ -7,13 +7,11 @@ import {
   Box,
   Button,
   Checkbox,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
-  IconButton,
   MenuItem,
   Stack,
   Table,
@@ -30,6 +28,8 @@ import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -268,8 +268,10 @@ export default function PriceListsPage() {
                 <TableRow key={row.id}>
                   <TableCell>{row.name}</TableCell>
                   <TableCell>{row.list_type}</TableCell>
-                  <TableCell>{row.is_default ? <Chip size="small" label="Default" /> : '—'}</TableCell>
-                  <TableCell>{row.is_active ? 'Active' : 'Inactive'}</TableCell>
+                  <TableCell>{row.is_default ? <StatusBadge label="Default" variant="info" /> : '—'}</TableCell>
+                  <TableCell>
+                    <StatusBadge label={row.is_active ? 'Active' : 'Inactive'} />
+                  </TableCell>
                   <TableCell align="right">
                     {canWrite ? (
                       <Button size="small" onClick={() => openItemsEditor(row)}>
@@ -305,14 +307,14 @@ export default function PriceListsPage() {
                     <TableCell>{row.price_list_name}</TableCell>
                     {canWrite ? (
                       <TableCell align="right">
-                        <IconButton
-                          size="small"
+                        <IconActionButton
+                          title="Remove assignment"
                           color="error"
                           disabled={saving}
                           onClick={() => removeAssignment(row.customer_id)}
                         >
                           <DeleteOutlineOutlinedIcon fontSize="small" />
-                        </IconButton>
+                        </IconActionButton>
                       </TableCell>
                     ) : null}
                   </TableRow>
@@ -399,14 +401,15 @@ export default function PriceListsPage() {
                   }
                   sx={{ width: { sm: 160 } }}
                 />
-                <IconButton
+                <IconActionButton
+                  title="Remove line"
                   color="error"
                   onClick={() =>
                     setItemLines((rows) => (rows.length === 1 ? [emptyLine] : rows.filter((_, i) => i !== index)))
                   }
                 >
-                  <DeleteOutlineOutlinedIcon />
-                </IconButton>
+                  <DeleteOutlineOutlinedIcon fontSize="small" />
+                </IconActionButton>
               </Stack>
             ))}
             <Button onClick={() => setItemLines((rows) => [...rows, emptyLine])}>Add line</Button>

@@ -7,7 +7,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -24,7 +23,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
@@ -35,6 +33,9 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { filterControlWideSx } from '../../layouts/shell';
@@ -53,12 +54,12 @@ function formatMoney(value) {
 
 function statusChip(status) {
   if (status === 'FINALIZED') {
-    return <Chip size="small" label="Finalized" color="success" variant="outlined" />;
+    return <StatusBadge label="Finalized" variant="active" />;
   }
   if (status === 'CANCELLED') {
-    return <Chip size="small" label="Cancelled" color="default" variant="outlined" />;
+    return <StatusBadge label="Cancelled" variant="cancelled" />;
   }
-  return <Chip size="small" label={status || '—'} variant="outlined" />;
+  return <StatusBadge label={status || '—'} variant="info" />;
 }
 
 export default function PurchasesPage() {
@@ -260,8 +261,9 @@ export default function PurchasesPage() {
             </Button>
           }
         >
-          <TextField
+          <SearchInput
             label="Search PO number, supplier, or invoice"
+            placeholder="Search PO number, supplier, or invoice"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -323,25 +325,17 @@ export default function PurchasesPage() {
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="View">
-                          <IconButton
-                            size="small"
-                            aria-label={`View ${purchase.purchase_number}`}
-                            onClick={() => openDetail(purchase)}
-                          >
-                            <VisibilityOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <IconActionButton title="View" onClick={() => openDetail(purchase)}>
+                          <VisibilityOutlinedIcon fontSize="small" />
+                        </IconActionButton>
                         {canManagePurchases && purchase.status === 'FINALIZED' ? (
-                          <Tooltip title="Cancel purchase">
-                            <IconButton
-                              size="small"
-                              aria-label={`Cancel ${purchase.purchase_number}`}
-                              onClick={() => openCancel(purchase)}
-                            >
-                              <CancelOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="Cancel purchase"
+                            color="error"
+                            onClick={() => openCancel(purchase)}
+                          >
+                            <CancelOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                       </Stack>
                     </TableCell>

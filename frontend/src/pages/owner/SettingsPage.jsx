@@ -15,7 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import FormSection from '../../components/FormSection';
-import LoadingBlock from '../../components/LoadingBlock';
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 import PageShell from '../../components/PageShell';
 import SubscriptionPlanInfo from '../../components/SubscriptionPlanInfo';
 import ThemeModeToggle from '../../components/ThemeModeToggle';
@@ -306,13 +306,14 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <PageShell maxWidth={880}>
-        <LoadingBlock py={6} />
+        <LoadingSkeleton rows={6} height={88} />
       </PageShell>
     );
   }
 
   return (
     <PageShell maxWidth={880}>
+      <Stack spacing={3}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
@@ -869,6 +870,7 @@ export default function SettingsPage() {
           </Button>
         </Stack>
       </FormSection>
+      </Stack>
     </PageShell>
   );
 }

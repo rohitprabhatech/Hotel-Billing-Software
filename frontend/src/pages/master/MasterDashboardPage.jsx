@@ -1,9 +1,10 @@
-import { Alert, Box, Grid, Typography } from '@mui/material';
+import { Alert, Box, Grid } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import KpiCard from '../../components/KpiCard';
+import PageHeader from '../../components/PageHeader';
 import PageShell from '../../components/PageShell';
-import { COMPANY } from '../../constants/company';
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 import { PATHS, masterBusinessesPath } from '../../routes/paths';
 import { fetchMasterDashboardSummary } from '../../services/masterService';
 
@@ -29,21 +30,18 @@ export default function MasterDashboardPage() {
 
   return (
     <PageShell>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ mb: 0.75 }}>
-          Master Dashboard
-        </Typography>
-        <Typography color="text.secondary">
-          {COMPANY.legalName} · platform operations. Counts below are live tenant rows — not sample
-          data.
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Master Dashboard"
+        subtitle="Platform operations overview — live tenant counts, not sample data."
+      />
 
       {error ? (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       ) : null}
+
+      {!summary && !error ? <LoadingSkeleton rows={3} height={96} /> : null}
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>

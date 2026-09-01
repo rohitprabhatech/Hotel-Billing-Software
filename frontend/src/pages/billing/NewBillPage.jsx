@@ -27,7 +27,6 @@ import {
   Select,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -36,6 +35,8 @@ import EmptyState from '../../components/EmptyState';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import SearchInput from '../../components/ui/SearchInput';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { getApiErrorMessage } from '../../utils/apiError';
@@ -693,7 +694,7 @@ export default function NewBillPage() {
                   helperText="Press Enter after scan — adds item to bill"
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
+                  <SearchInput
                     label="Search items"
                     placeholder="Name, SKU, or barcode…"
                     value={q}
@@ -701,7 +702,6 @@ export default function NewBillPage() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') search(q, categoryId);
                     }}
-                    fullWidth
                   />
                   <Button variant="outlined" onClick={() => search(q, categoryId)} sx={{ flexShrink: 0 }}>
                     Search
@@ -842,7 +842,7 @@ export default function NewBillPage() {
 
           <Card sx={{ position: { lg: 'sticky' }, top: { lg: 96 } }}>
             <CardContent sx={{ p: { xs: 2.5, sm: 3 }, '&:last-child': { pb: { xs: 2.5, sm: 3 } } }}>
-              <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+              <Typography variant="h6" component="h2" sx={{ mb: 2, fontWeight: 650, fontSize: '1.05rem' }}>
                 Current Bill
               </Typography>
 
@@ -1041,19 +1041,17 @@ export default function NewBillPage() {
                     >
                       ₹{(line.price * line.quantity).toFixed(2)}
                     </Typography>
-                    <Tooltip title="Remove from bill (does not delete catalog item)">
-                      <IconButton
-                        size="small"
-                        aria-label={`Remove ${line.name} from bill`}
-                        onClick={() =>
-                          isHotel
-                            ? setRemoveConfirm({ lineKey: line.line_key, name: line.name })
-                            : removeLine(line.line_key)
-                        }
-                      >
-                        <DeleteOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <IconActionButton
+                      title="Remove from bill"
+                      color="error"
+                      onClick={() =>
+                        isHotel
+                          ? setRemoveConfirm({ lineKey: line.line_key, name: line.name })
+                          : removeLine(line.line_key)
+                      }
+                    >
+                      <DeleteOutlinedIcon fontSize="small" />
+                    </IconActionButton>
                   </Box>
                 ))}
                 {!cart.length ? (
@@ -1138,7 +1136,7 @@ export default function NewBillPage() {
                   startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
                   sx={{ flexGrow: 1 }}
                 >
-                  {saving ? 'Generating...' : 'Generate Bill'}
+                  {saving ? 'Creating bill…' : 'Generate Bill'}
                 </Button>
               </Stack>
             </CardContent>

@@ -10,7 +10,6 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -22,7 +21,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
@@ -30,6 +28,9 @@ import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import TableCard from '../../components/TableCard';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -68,6 +69,7 @@ export default function CouponsPage() {
   const [success, setSuccess] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm());
 
@@ -158,15 +160,20 @@ export default function CouponsPage() {
     }
   };
 
-  const onDeactivate = async (id) => {
-    if (!window.confirm('Deactivate this coupon?')) return;
+  const confirmDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setSaving(true);
     setError('');
     try {
-      await deactivateCoupon(id);
+      await deactivateCoupon(deactivateTarget.id);
       setSuccess('Coupon deactivated.');
+      setDeactivateTarget(null);
       await load();
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Unable to deactivate coupon.');
+      setDeactivateTarget(null);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -236,25 +243,25 @@ export default function CouponsPage() {
                         {coupon.usage_count}
                         {coupon.usage_limit != null ? ` / ${coupon.usage_limit}` : ''}
                       </TableCell>
-                      <TableCell>{coupon.is_active ? 'Yes' : 'No'}</TableCell>
+                      <TableCell>
+                        <StatusBadge label={coupon.is_active ? 'Active' : 'Inactive'} />
+                      </TableCell>
                       {canManageAddons ? (
                         <TableCell align="right">
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                            <Tooltip title="Edit">
-                              <IconButton size="small" onClick={() => openEdit(coupon)}>
-                                <EditOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            <IconActionButton title="Edit coupon" onClick={() => openEdit(coupon)}>
+                              <EditOutlinedIcon fontSize="small" />
+                            </IconActionButton>
                             {coupon.is_active ? (
-                              <Tooltip title="Deactivate">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => onDeactivate(coupon.id)}
-                                >
-                                  <DeleteOutlinedIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
+                              <IconActionButton
+                                title="Deactivate coupon"
+                                color="error"
+                                onClick={() =>
+                                  setDeactivateTarget({ id: coupon.id, code: coupon.code })
+                                }
+                              >
+                                <DeleteOutlinedIcon fontSize="small" />
+                              </IconActionButton>
                             ) : null}
                           </Stack>
                         </TableCell>
@@ -391,6 +398,16 @@ export default function CouponsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deactivateTarget)}
+        title="Deactivate coupon?"
+        description={`Deactivate code “${deactivateTarget?.code || ''}”? It will no longer apply on Cafe POS.`}
+        confirmLabel="Deactivate"
+        loading={saving}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={confirmDeactivate}
+      />
     </>
   );
 }

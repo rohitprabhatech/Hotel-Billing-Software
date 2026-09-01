@@ -4,7 +4,6 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import {
   Alert,
   Button,
-  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -21,7 +20,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -31,6 +29,10 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import {
   approveRegistrationRequest,
   getRegistrationRequest,
@@ -40,11 +42,11 @@ import {
 
 const STATUS_OPTIONS = ['', 'PENDING', 'APPROVED', 'REJECTED'];
 
-function statusColor(status) {
-  if (status === 'PENDING') return 'warning';
-  if (status === 'APPROVED') return 'success';
-  if (status === 'REJECTED') return 'error';
-  return 'default';
+function statusVariant(status) {
+  if (status === 'PENDING') return 'pending';
+  if (status === 'APPROVED') return 'active';
+  if (status === 'REJECTED') return 'cancelled';
+  return 'info';
 }
 
 function formatWhen(value) {
@@ -177,9 +179,9 @@ export default function MasterRegistrationRequestsPage() {
             ))}
           </Select>
         </FormControl>
-        <TextField
-          size="small"
+        <SearchInput
           label="Search"
+          placeholder="Search requests…"
           value={filters.q}
           onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
           onKeyDown={(event) => {
@@ -193,9 +195,7 @@ export default function MasterRegistrationRequestsPage() {
       </FilterBar>
 
       {loading ? (
-        <Stack alignItems="center" py={6}>
-          <CircularProgress size={28} />
-        </Stack>
+        <LoadingSkeleton rows={6} height={56} />
       ) : rows.length === 0 ? (
         <EmptyState
           title="No registration requests"
@@ -226,18 +226,12 @@ export default function MasterRegistrationRequestsPage() {
                   <TableCell>{row.business_type}</TableCell>
                   <TableCell>{formatWhen(row.requested_at)}</TableCell>
                   <TableCell>
-                    <Chip size="small" label={row.status} color={statusColor(row.status)} />
+                    <StatusBadge label={row.status} variant={statusVariant(row.status)} />
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title="View">
-                      <Button
-                        size="small"
-                        startIcon={<VisibilityOutlinedIcon />}
-                        onClick={() => openDetail(row)}
-                      >
-                        View
-                      </Button>
-                    </Tooltip>
+                    <IconActionButton title="View" onClick={() => openDetail(row)}>
+                      <VisibilityOutlinedIcon fontSize="small" />
+                    </IconActionButton>
                   </TableCell>
                 </TableRow>
               ))}

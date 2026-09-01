@@ -4,47 +4,29 @@ import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
-import MenuIcon from '@mui/icons-material/Menu';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
-import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import TimelapseOutlinedIcon from '@mui/icons-material/TimelapseOutlined';
-import {
-  AppBar,
-  Box,
-  Chip,
-  Divider,
-  Drawer,
-  IconButton,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  Toolbar,
-  Tooltip,
-  Typography,
-  useMediaQuery,
-} from '@mui/material';
+import { Box, Divider, ListItemIcon, Menu, MenuItem, Toolbar, Typography, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainContent from '../components/MainContent';
 import MasterNotificationBell from '../components/MasterNotificationBell';
 import PageHeader from '../components/PageHeader';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
-import ThemeModeToggle from '../components/ThemeModeToggle';
+import AppNavDrawer from '../components/shell/AppNavDrawer';
+import AppShellDrawers from '../components/shell/AppShellDrawers';
+import AppTopBar from '../components/shell/AppTopBar';
 import { COMPANY } from '../constants/company';
 import { useAuth } from '../context/AuthContext';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
 import { logoutRequest } from '../services/authService';
 import { PATHS } from '../routes/paths';
-import { DRAWER_WIDTH } from './shell';
+import { layout } from '../theme/tokens';
 
-const drawerWidth = DRAWER_WIDTH;
-
-const navItems = [
+const masterNav = [
+  { type: 'section', label: 'Platform' },
   { to: PATHS.masterDashboard, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
   {
     to: PATHS.masterRegistrationRequests,
@@ -54,6 +36,7 @@ const navItems = [
   { to: PATHS.masterTrials, label: 'Trials', icon: <TimelapseOutlinedIcon /> },
   { to: PATHS.masterPlans, label: 'Plans', icon: <PaymentsOutlinedIcon /> },
   { to: PATHS.masterBusinesses, label: 'Businesses', icon: <BusinessOutlinedIcon /> },
+  { type: 'section', label: 'Administration' },
   { to: PATHS.masterAudit, label: 'Audit log', icon: <HistoryOutlinedIcon /> },
   { to: PATHS.masterTrialSettings, label: 'Trial settings', icon: <SettingsOutlinedIcon /> },
 ];
@@ -77,7 +60,8 @@ const titles = {
   },
   [PATHS.masterBusinesses]: {
     title: 'Businesses',
-    subtitle: 'Assign plans, extend trials, record a manual renewal, or activate / deactivate / suspend a business. Data is never deleted.',
+    subtitle:
+      'Assign plans, extend trials, record a manual renewal, or activate / deactivate / suspend a business. Data is never deleted.',
   },
   [PATHS.masterAudit]: {
     title: 'Platform audit',
@@ -117,148 +101,71 @@ export default function MasterLayout() {
     navigate(PATHS.masterLogin, { replace: true });
   };
 
-  const drawer = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ px: 2 }}>
-        <Box sx={{ minWidth: 0, width: '100%' }}>
-          <Typography variant="subtitle1" fontWeight={700} noWrap>
-            {COMPANY.productName}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Master · {COMPANY.legalName}
-          </Typography>
-        </Box>
-      </Toolbar>
-      <Divider />
-      <List sx={{ px: 1, pt: 1, flexGrow: 1 }}>
-        {navItems.map((item) => (
-          <ListItemButton
-            key={item.to}
-            component={NavLink}
-            to={item.to}
-            end={item.end}
-            onClick={() => setMobileOpen(false)}
-            sx={{
-              '&.active': {
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                '& .MuiListItemIcon-root': { color: 'inherit' },
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
-      </List>
-    </Box>
-  );
-
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+      <AppTopBar
+        isMobile={isMobile}
+        onMenuOpen={() => setMobileOpen(true)}
+        title={COMPANY.legalName}
+        subtitle={`Master Admin · ${meta.title}`}
+        badge="MASTER"
+        notificationSlot={<MasterNotificationBell />}
+        accountMenu={{
+          onOpen: (e) => setAnchorEl(e.currentTarget),
+          menu: (
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+              <MenuItem disabled>
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    {user?.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {user?.email}
+                  </Typography>
+                </Box>
+              </MenuItem>
+              <Divider />
+              <MenuItem
+                onClick={() => {
+                  setAnchorEl(null);
+                  navigate(PATHS.masterChangePassword);
+                }}
+              >
+                <ListItemIcon>
+                  <LockOutlinedIcon fontSize="small" />
+                </ListItemIcon>
+                Change Password
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setAnchorEl(null);
+                  onLogout();
+                }}
+              >
+                <ListItemIcon>
+                  <LogoutOutlinedIcon fontSize="small" />
+                </ListItemIcon>
+                Logout
+              </MenuItem>
+            </Menu>
+          ),
         }}
-      >
-        <Toolbar sx={{ px: { xs: 1, sm: 2 }, gap: 0.5, minHeight: { xs: 56, sm: 64 } }}>
-          {isMobile ? (
-            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 0.5 }} aria-label="Open menu">
-              <MenuIcon />
-            </IconButton>
-          ) : null}
-          <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
-            <Typography variant="subtitle1" fontWeight={700} noWrap>
-              {COMPANY.legalName}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              Master Admin · {meta.title}
-            </Typography>
-          </Box>
-          <Chip
-            size="small"
-            label="MASTER"
-            color="primary"
-            variant="outlined"
-            sx={{ mr: 0.5, display: { xs: 'none', sm: 'inline-flex' } }}
-          />
-          <MasterNotificationBell />
-          <ThemeModeToggle sx={{ mr: 0.25 }} />
-          <Tooltip title="Account menu">
-            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Account menu">
-              <PersonOutlinedIcon />
-            </IconButton>
-          </Tooltip>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-            <MenuItem disabled>
-              <Box>
-                <Typography variant="body2" fontWeight={600}>
-                  {user?.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {user?.email}
-                </Typography>
-              </Box>
-            </MenuItem>
-            <Divider />
-            <MenuItem
-              onClick={() => {
-                setAnchorEl(null);
-                navigate(PATHS.masterChangePassword);
-              }}
-            >
-              <ListItemIcon>
-                <LockOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              Change Password
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setAnchorEl(null);
-                onLogout();
-              }}
-            >
-              <ListItemIcon>
-                <LogoutOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              Logout
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
+      />
 
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          open
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+      <AppShellDrawers mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)}>
+        <AppNavDrawer
+          brandTitle={COMPANY.productName}
+          brandSubtitle={`Master · ${COMPANY.legalName}`}
+          navItems={masterNav}
+          onNavigate={() => setMobileOpen(false)}
+        />
+      </AppShellDrawers>
 
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
+          width: { md: `calc(100% - ${layout.drawerWidth}px)` },
           minWidth: 0,
           bgcolor: 'background.default',
         }}

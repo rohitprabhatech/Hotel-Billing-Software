@@ -54,6 +54,62 @@ function moneyExact(value) {
   })}`;
 }
 
+function DeskActionCard({ primary = false, icon, title, description, onClick }) {
+  return (
+    <Box
+      component="button"
+      type="button"
+      onClick={onClick}
+      sx={{
+        textAlign: 'left',
+        border: '1px solid',
+        borderColor: primary ? 'primary.main' : 'divider',
+        borderRadius: 2,
+        p: { xs: 2.25, sm: 2.75 },
+        cursor: 'pointer',
+        bgcolor: 'background.paper',
+        font: 'inherit',
+        color: 'inherit',
+        minHeight: 112,
+        transition: 'border-color 0.15s ease, background-color 0.15s ease',
+        '&:hover': {
+          bgcolor: 'action.hover',
+          borderColor: 'primary.main',
+        },
+      }}
+    >
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: 2,
+            display: 'grid',
+            placeItems: 'center',
+            bgcolor: (t) =>
+              t.palette.mode === 'dark'
+                ? primary
+                  ? 'rgba(110,180,200,0.14)'
+                  : 'rgba(255,255,255,0.04)'
+                : primary
+                  ? 'rgba(31, 78, 95, 0.1)'
+                  : 'rgba(31, 78, 95, 0.06)',
+            color: 'primary.main',
+          }}
+        >
+          {icon}
+        </Box>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          {title}
+        </Typography>
+      </Stack>
+      <Typography variant="body2" color="text.secondary">
+        {description}
+      </Typography>
+    </Box>
+  );
+}
+
 /** Hotel-only simple desk home. Other business types keep the standard dashboard below. */
 function HotelBillingHome({
   businessName,
@@ -107,62 +163,19 @@ function HotelBillingHome({
             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
           }}
         >
-          <Box
-            component="button"
-            type="button"
+          <DeskActionCard
+            primary
             onClick={() => navigate(PATHS.billingRestaurantBilling)}
-            sx={{
-              textAlign: 'left',
-              border: '2px solid',
-              borderColor: 'primary.main',
-              borderRadius: 2,
-              p: { xs: 2.5, sm: 3 },
-              cursor: 'pointer',
-              bgcolor: 'background.paper',
-              font: 'inherit',
-              color: 'inherit',
-              minHeight: 120,
-              '&:hover': { bgcolor: 'action.hover' },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-              <TableRestaurantOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                TABLE BILL
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              Dining tables — add items, change qty, pay, print.
-            </Typography>
-          </Box>
-          <Box
-            component="button"
-            type="button"
+            icon={<TableRestaurantOutlinedIcon />}
+            title="Table Bill"
+            description="Dining tables — add items, change qty, pay, print."
+          />
+          <DeskActionCard
             onClick={() => navigate(PATHS.billingNew)}
-            sx={{
-              textAlign: 'left',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 2,
-              p: { xs: 2.5, sm: 3 },
-              cursor: 'pointer',
-              bgcolor: 'background.paper',
-              font: 'inherit',
-              color: 'inherit',
-              minHeight: 120,
-              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-              <PointOfSaleOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                QUICK BILL
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              No table — walk-in / takeaway bill.
-            </Typography>
-          </Box>
+            icon={<PointOfSaleOutlinedIcon />}
+            title="Quick Bill"
+            description="No table — walk-in / takeaway bill."
+          />
         </Box>
 
         <Box
@@ -360,62 +373,19 @@ function CafeBillingHome({
             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
           }}
         >
-          <Box
-            component="button"
-            type="button"
+          <DeskActionCard
+            primary
             onClick={() => navigate(PATHS.billingCafe)}
-            sx={{
-              textAlign: 'left',
-              border: '2px solid',
-              borderColor: 'primary.main',
-              borderRadius: 2,
-              p: { xs: 2.5, sm: 3 },
-              cursor: 'pointer',
-              bgcolor: 'background.paper',
-              font: 'inherit',
-              color: 'inherit',
-              minHeight: 120,
-              '&:hover': { bgcolor: 'action.hover' },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-              <LocalCafeOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                CAFE POS
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              Fast takeaway — menu, add-ons, combos, pay, print.
-            </Typography>
-          </Box>
-          <Box
-            component="button"
-            type="button"
+            icon={<LocalCafeOutlinedIcon />}
+            title="Cafe POS"
+            description="Fast takeaway — menu, add-ons, combos, pay, print."
+          />
+          <DeskActionCard
             onClick={() => navigate(PATHS.billingNew)}
-            sx={{
-              textAlign: 'left',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 2,
-              p: { xs: 2.5, sm: 3 },
-              cursor: 'pointer',
-              bgcolor: 'background.paper',
-              font: 'inherit',
-              color: 'inherit',
-              minHeight: 120,
-              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-              <PointOfSaleOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                QUICK BILL
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              Standard item bill without cafe add-ons.
-            </Typography>
-          </Box>
+            icon={<PointOfSaleOutlinedIcon />}
+            title="Quick Bill"
+            description="Standard item bill without cafe add-ons."
+          />
         </Box>
 
         <Box
@@ -594,64 +564,23 @@ function ClothingBillingHome({
             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
           }}
         >
-          <Box
-            component="button"
-            type="button"
+          <DeskActionCard
+            primary
             onClick={() => navigate(PATHS.billingClothing)}
-            sx={{
-              textAlign: 'left',
-              border: '2px solid',
-              borderColor: 'primary.main',
-              borderRadius: 2,
-              p: { xs: 2.5, sm: 3 },
-              cursor: 'pointer',
-              bgcolor: 'background.paper',
-              font: 'inherit',
-              color: 'inherit',
-              minHeight: 120,
-              '&:hover': { bgcolor: 'action.hover' },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-              <CheckroomOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                CLOTHING POS
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              Size×color grid — bill from live variant stock.
-            </Typography>
-          </Box>
-          <Box
-            component="button"
-            type="button"
+            icon={<CheckroomOutlinedIcon />}
+            title="Clothing POS"
+            description="Size×color grid — bill from live variant stock."
+          />
+          <DeskActionCard
             onClick={() => navigate(returnsEnabled ? PATHS.billingReturns : PATHS.billingBills)}
-            sx={{
-              textAlign: 'left',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 2,
-              p: { xs: 2.5, sm: 3 },
-              cursor: 'pointer',
-              bgcolor: 'background.paper',
-              font: 'inherit',
-              color: 'inherit',
-              minHeight: 120,
-              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-              <AssignmentReturnOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                {returnsEnabled ? 'RETURNS' : "TODAY'S BILLS"}
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              {returnsEnabled
+            icon={<AssignmentReturnOutlinedIcon />}
+            title={returnsEnabled ? 'Returns' : "Today's Bills"}
+            description={
+              returnsEnabled
                 ? 'Look up a bill to return or exchange a size/color.'
-                : 'Review bills generated from this desk today.'}
-            </Typography>
-          </Box>
+                : 'Review bills generated from this desk today.'
+            }
+          />
         </Box>
 
         <Box
@@ -854,62 +783,19 @@ function HardwareBillingHome({
             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
           }}
         >
-          <Box
-            component="button"
-            type="button"
+          <DeskActionCard
+            primary
             onClick={() => navigate(posPath)}
-            sx={{
-              textAlign: 'left',
-              border: '2px solid',
-              borderColor: 'primary.main',
-              borderRadius: 2,
-              p: { xs: 2.5, sm: 3 },
-              cursor: 'pointer',
-              bgcolor: 'background.paper',
-              font: 'inherit',
-              color: 'inherit',
-              minHeight: 120,
-              '&:hover': { bgcolor: 'action.hover' },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-              <StraightenOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                HARDWARE POS
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              Bill by measured quantity — price per metre, kg, sqft, and more.
-            </Typography>
-          </Box>
-          <Box
-            component="button"
-            type="button"
+            icon={<StraightenOutlinedIcon />}
+            title="Hardware POS"
+            description="Bill by measured quantity — price per metre, kg, sqft, and more."
+          />
+          <DeskActionCard
             onClick={() => navigate(PATHS.billingBills)}
-            sx={{
-              textAlign: 'left',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 2,
-              p: { xs: 2.5, sm: 3 },
-              cursor: 'pointer',
-              bgcolor: 'background.paper',
-              font: 'inherit',
-              color: 'inherit',
-              minHeight: 120,
-              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-              <ReceiptLongOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                TODAY&apos;S BILLS
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              Review bills, reprint, or share on WhatsApp.
-            </Typography>
-          </Box>
+            icon={<ReceiptLongOutlinedIcon />}
+            title="Today's Bills"
+            description="Review bills, reprint, or share on WhatsApp."
+          />
         </Box>
 
         <Box

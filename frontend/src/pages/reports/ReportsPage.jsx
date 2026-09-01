@@ -33,6 +33,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import ChartPanel from '../../components/ChartPanel';
 import EmptyState from '../../components/EmptyState';
 import FilterBar from '../../components/FilterBar';
 import KpiCard from '../../components/KpiCard';
@@ -783,16 +784,14 @@ export default function ReportsPage() {
             </Box>
           </Section>
 
-          <Section title="Sales by Channel">
-            <Card>
-              <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: { xs: 2, sm: 3 } } }}>
-                <Box sx={{ width: '100%', height: 280 }}>
+          <Section title="Sales by Channel" description="Settled order sales grouped by channel.">
+            <ChartPanel title="Channel sales" height={280}>
                   {(report.channel_wise || []).length ? (
                     <ResponsiveContainer>
                       <BarChart data={report.channel_wise || []}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="channel_label" />
-                        <YAxis tickFormatter={(v) => `₹${v}`} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
+                        <XAxis dataKey="channel_label" tick={{ fill: theme.palette.text.secondary, fontSize: 11 }} />
+                        <YAxis tickFormatter={(v) => `₹${v}`} tick={{ fill: theme.palette.text.secondary, fontSize: 11 }} />
                         <Tooltip formatter={(v) => money(v)} />
                         <Bar dataKey="total_sales" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
                       </BarChart>
@@ -800,9 +799,7 @@ export default function ReportsPage() {
                   ) : (
                     <EmptyState title="No channel data" description="No settled order bills in this period." />
                   )}
-                </Box>
-              </CardContent>
-            </Card>
+            </ChartPanel>
           </Section>
 
           <Section title="Sales by Table">

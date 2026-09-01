@@ -12,7 +12,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   Stack,
   Table,
   TableBody,
@@ -20,7 +19,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
@@ -31,6 +29,9 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import IconActionButton from '../../components/ui/IconActionButton';
+import SearchInput from '../../components/ui/SearchInput';
 import { PageActions } from '../../context/PageActionsContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { filterControlWideSx } from '../../layouts/shell';
@@ -87,6 +88,8 @@ export default function ExpensesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm());
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(
     async (nextPage = page, search = q, from = fromDate, to = toDate) => {
@@ -173,18 +176,19 @@ export default function ExpensesPage() {
     }
   };
 
-  const onDelete = async (expense) => {
-    if (!canManageExpenses) return;
-    if (!window.confirm(`Delete expense ${formatMoney(expense.amount)} on ${expense.expense_date}?`)) {
-      return;
-    }
+  const onDelete = async () => {
+    if (!canManageExpenses || !deleteTarget) return;
     setError('');
+    setDeleting(true);
     try {
-      await deleteExpense(expense.id);
+      await deleteExpense(deleteTarget.id);
       setSuccess('Expense deleted.');
+      setDeleteTarget(null);
       await load(page, q, fromDate, toDate);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to delete expense.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -214,8 +218,9 @@ export default function ExpensesPage() {
             </Button>
           }
         >
-          <TextField
+          <SearchInput
             label="Search category or notes"
+            placeholder="Search category or notes"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -301,24 +306,16 @@ export default function ExpensesPage() {
                     <TableCell align="right">
                       {canManageExpenses ? (
                         <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                          <Tooltip title="Edit">
-                            <IconButton
-                              size="small"
-                              aria-label="Edit expense"
-                              onClick={() => openEdit(expense)}
-                            >
-                              <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton
-                              size="small"
-                              aria-label="Delete expense"
-                              onClick={() => onDelete(expense)}
-                            >
-                              <DeleteOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton title="Edit" onClick={() => openEdit(expense)}>
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconActionButton>
+                          <IconActionButton
+                            title="Delete"
+                            color="error"
+                            onClick={() => setDeleteTarget(expense)}
+                          >
+                            <DeleteOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         </Stack>
                       ) : (
                         <Typography variant="caption" color="text.secondary">
@@ -402,6 +399,20 @@ export default function ExpensesPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete expense?"
+        description={
+          deleteTarget
+            ? `Delete expense ${formatMoney(deleteTarget.amount)} on ${deleteTarget.expense_date}?`
+            : ''
+        }
+        confirmLabel="Delete"
+        loading={deleting}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={onDelete}
+      />
     </>
   );
 }

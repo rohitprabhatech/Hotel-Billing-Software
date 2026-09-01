@@ -680,7 +680,7 @@ export default function RestaurantBillingPage() {
               <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" flexWrap="wrap">
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {selectedTable.code}
+                    Current Bill · {selectedTable.code}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {statusLabel(selectedTable.status)}

@@ -6,13 +6,11 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import {
   Alert,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -24,7 +22,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -35,6 +32,9 @@ import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import IconActionButton from '../../components/ui/IconActionButton';
+import SearchInput from '../../components/ui/SearchInput';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
@@ -296,8 +296,9 @@ export default function CustomersPage() {
             </Button>
           }
         >
-          <TextField
+          <SearchInput
             label="Search name, phone, or email"
+            placeholder="Search name, phone, or email"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -359,19 +360,14 @@ export default function CustomersPage() {
                     <TableCell align="right">{money(customer.credit_limit)}</TableCell>
                     <TableCell align="right">
                       {Number(customer.balance || 0) > 0 ? (
-                        <Chip size="small" color="warning" label={money(customer.balance)} />
+                        <StatusBadge label={money(customer.balance)} variant="pending" />
                       ) : (
                         money(customer.balance)
                       )}
                     </TableCell>
                     <TableCell>
                       {isHotel ? (
-                        <Chip
-                          size="small"
-                          label={customer.is_active ? 'Active' : 'Inactive'}
-                          variant="outlined"
-                          color={customer.is_active ? 'success' : 'default'}
-                        />
+                        <StatusBadge label={customer.is_active ? 'Active' : 'Unavailable'} />
                       ) : (
                         <Stack direction="row" alignItems="center" spacing={1}>
                           <Switch
@@ -380,59 +376,34 @@ export default function CustomersPage() {
                             onChange={() => toggleActive(customer)}
                             inputProps={{ 'aria-label': `Toggle ${customer.name}` }}
                           />
-                          <Chip
-                            size="small"
-                            label={customer.is_active ? 'Active' : 'Inactive'}
-                            variant="outlined"
-                          />
+                          <StatusBadge label={customer.is_active ? 'Active' : 'Unavailable'} />
                         </Stack>
                       )}
                     </TableCell>
                     <TableCell align="right">
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="Ledger">
-                          <IconButton
-                            size="small"
-                            aria-label={`Ledger for ${customer.name}`}
-                            onClick={() => openLedger(customer)}
-                          >
-                            <AccountBalanceWalletOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end" alignItems="center">
+                        <IconActionButton title="Ledger" onClick={() => openLedger(customer)}>
+                          <AccountBalanceWalletOutlinedIcon fontSize="small" />
+                        </IconActionButton>
                         {Number(customer.balance || 0) > 0 ? (
                           <Button size="small" variant="outlined" onClick={() => openPay(customer)}>
                             Pay
                           </Button>
                         ) : null}
-                        <Tooltip title="Purchase history">
-                          <IconButton
-                            size="small"
-                            aria-label={`View bills for ${customer.name}`}
-                            onClick={() => openHistory(customer)}
-                          >
-                            <ReceiptLongOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Edit Customer">
-                          <IconButton
-                            size="small"
-                            aria-label={`Edit ${customer.name}`}
-                            onClick={() => openEdit(customer)}
-                          >
-                            <EditOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <IconActionButton title="Purchase history" onClick={() => openHistory(customer)}>
+                          <ReceiptLongOutlinedIcon fontSize="small" />
+                        </IconActionButton>
+                        <IconActionButton title="Edit Customer" onClick={() => openEdit(customer)}>
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconActionButton>
                         {isHotel && customer.is_active ? (
-                          <Tooltip title="Delete Customer">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              aria-label={`Delete ${customer.name}`}
-                              onClick={() => setDeleteCustomer(customer)}
-                            >
-                              <DeleteOutlineOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconActionButton
+                            title="Delete Customer"
+                            color="error"
+                            onClick={() => setDeleteCustomer(customer)}
+                          >
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconActionButton>
                         ) : null}
                       </Stack>
                     </TableCell>

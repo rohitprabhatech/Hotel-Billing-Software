@@ -48,6 +48,15 @@ def test_available_reports_module_aware(client):
     assert "fb" not in travel_ids
     assert all(row["kind"] == "link" for row in travel["link_reports"])
 
+    _switch(client, owner, "stationery")
+    stationery = client.get("/api/v1/reports/available", headers=owner).get_json()["data"]
+    stationery_ids = {row["id"] for row in stationery["reports"]}
+    assert "sales" in stationery_ids
+    assert "kirana" not in stationery_ids
+    assert "outstanding" in stationery_ids
+    hub_views = {row["view"] for row in stationery["hub_reports"]}
+    assert hub_views == {"sales"}
+
 
 def test_custom_range_perf_budget_rejected(client):
     owner = login(client, "owner@hotela.com", "Owner@12345")

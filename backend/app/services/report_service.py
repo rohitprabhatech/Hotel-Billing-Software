@@ -113,7 +113,10 @@ class ReportService:
         if tenant is None:
             raise NotFoundError("Tenant not found")
         enabled = set(ModuleService.enabled_codes_for_tenant(tenant))
-        reports = filter_registry_for_modules(enabled)
+        reports = filter_registry_for_modules(
+            enabled,
+            business_type=tenant.business_type,
+        )
         return {
             "reports": reports,
             "hub_reports": [row for row in reports if row["kind"] == "hub"],

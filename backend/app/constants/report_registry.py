@@ -49,6 +49,7 @@ REPORT_REGISTRY: tuple[dict[str, Any], ...] = (
         "kind": "hub",
         "view": "kirana",
         "modules": frozenset({"customer_credit"}),
+        "business_types": frozenset({"grocery_kirana", "wholesale"}),
         "api_path": "/grocery/sales",
         "sort_order": 30,
     },
@@ -136,11 +137,20 @@ def serialize_registry_entry(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def filter_registry_for_modules(enabled_modules: set[str] | frozenset[str]) -> list[dict[str, Any]]:
+def filter_registry_for_modules(
+    enabled_modules: set[str] | frozenset[str],
+    *,
+    business_type: str | None = None,
+) -> list[dict[str, Any]]:
     enabled = {str(code).strip().lower() for code in enabled_modules}
+    tenant_type = (business_type or "").strip().lower()
     rows = []
     for entry in REPORT_REGISTRY:
-        if entry["modules"] & enabled:
-            rows.append(serialize_registry_entry(entry))
+        if not (entry["modules"] & enabled):
+            continue
+        allowed_types = entry.get("business_types")
+        if allowed_types is not None and tenant_type not in allowed_types:
+            continue
+        rows.append(serialize_registry_entry(entry))
     rows.sort(key=lambda row: (row["sort_order"], row["label"]))
     return rows

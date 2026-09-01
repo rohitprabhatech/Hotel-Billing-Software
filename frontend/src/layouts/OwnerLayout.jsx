@@ -782,6 +782,20 @@ export default function OwnerLayout() {
         subtitle: 'View, add, edit, and deactivate billing counter users.',
       };
     }
+    if (location.pathname === PATHS.ownerReports) {
+      if (user?.tenant?.business_type === 'stationery') {
+        return {
+          title: 'Sales Reports',
+          subtitle: 'Stationery shop sales — daily, weekly, monthly, or custom range with cash, online, and udhari.',
+        };
+      }
+      if (user?.tenant?.business_type === 'grocery_kirana') {
+        return {
+          title: 'Sales Reports',
+          subtitle: 'Kirana sales summaries plus grocery-specific udhari snapshot when enabled.',
+        };
+      }
+    }
     return base;
   }, [location.pathname, user?.tenant?.business_type]);
 

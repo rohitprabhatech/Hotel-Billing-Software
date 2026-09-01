@@ -1,4 +1,7 @@
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import QrCodeScannerOutlinedIcon from '@mui/icons-material/QrCodeScannerOutlined';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import {
   Alert,
@@ -6,20 +9,21 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   FormControlLabel,
   FormLabel,
-  List,
-  ListItemButton,
-  ListItemText,
+  InputAdornment,
   Radio,
   RadioGroup,
   Stack,
+  Step,
+  StepLabel,
+  Stepper,
   Table,
   TableBody,
   TableCell,
@@ -29,19 +33,21 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CustomerPicker from '../../components/CustomerPicker';
 import PageShell from '../../components/PageShell';
+import PosCartPanel from '../../components/pos/PosCartPanel';
+import PosCatalogCard from '../../components/pos/PosCatalogCard';
 import TruncateText from '../../components/TruncateText';
 import IconActionButton from '../../components/ui/IconActionButton';
 import SearchInput from '../../components/ui/SearchInput';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useModuleGate } from '../../context/ModulesContext';
-import { createBill } from '../../services/billService';
+import { billPrintPath, createBill, openBillPrint } from '../../services/billService';
 import { getCustomer } from '../../services/customerService';
 import {
   fetchStationeryPosCatalog,
   getStationeryByBarcode,
-  searchStationeryProducts,
 } from '../../services/stationeryService';
 import {
   DEFAULT_PAYMENT_METHOD,
@@ -52,6 +58,8 @@ import {
 } from '../../utils/paymentMethod';
 import { resolveTierUnitPrice } from '../../utils/bulkPricing';
 import { qtyStepForUom, uomLabel } from '../../utils/uom';
+
+const BILL_STEPS = ['Add products', 'Review bill', 'Generate & print'];
 
 function money(value) {
   return `₹${Number(value || 0).toFixed(2)}`;
@@ -67,51 +75,76 @@ function applyTierPrice(line) {
 }
 
 export default function StationeryPosPage() {
+  const navigate = useNavigate();
   const moduleEnabled = useModuleGate('barcode_pos');
   const creditEnabled = useModuleGate('customer_credit');
-  const searchRef = useRef(null);
-  const [query, setQuery] = useState('');
-  const [hits, setHits] = useState([]);
-  const [searching, setSearching] = useState(false);
+  const barcodeRef = useRef(null);
+  const [catalogItems, setCatalogItems] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [productFilter, setProductFilter] = useState('');
+  const [barcode, setBarcode] = useState('');
+  const [scanning, setScanning] = useState(false);
   const [cart, setCart] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [bulkEnabled, setBulkEnabled] = useState(false);
+  const [createdBill, setCreatedBill] = useState(null);
+  const [activeStep, setActiveStep] = useState(0);
+
+  const focusBarcode = useCallback(() => {
+    window.requestAnimationFrame(() => barcodeRef.current?.focus());
+  }, []);
+
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    try {
+      const res = await fetchStationeryPosCatalog({ limit: 120 });
+      setCatalogItems(res.data?.items || []);
+      setBulkEnabled(Boolean(res.data?.bulk_pricing_enabled));
+    } catch {
+      setCatalogItems([]);
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!moduleEnabled) return;
-    fetchStationeryPosCatalog({ limit: 1 })
-      .then((res) => setBulkEnabled(Boolean(res.data?.bulk_pricing_enabled)))
-      .catch(() => {});
-    window.requestAnimationFrame(() => searchRef.current?.focus());
-  }, [moduleEnabled]);
+    loadCatalog();
+    focusBarcode();
+  }, [moduleEnabled, loadCatalog, focusBarcode]);
 
   useEffect(() => {
-    if (!moduleEnabled) return undefined;
-    const q = query.trim();
-    if (q.length < 1) {
-      setHits([]);
-      return undefined;
-    }
-    const handle = window.setTimeout(() => {
-      setSearching(true);
-      searchStationeryProducts({ q, limit: 25 })
-        .then((res) => setHits(res.data?.items || []))
-        .catch(() => setHits([]))
-        .finally(() => setSearching(false));
-    }, 220);
-    return () => window.clearTimeout(handle);
-  }, [query, moduleEnabled]);
+    if (!cart.length) setActiveStep(0);
+    else if (cart.length && !success) setActiveStep(1);
+  }, [cart.length, success]);
+
+  const filteredCatalog = useMemo(() => {
+    const q = productFilter.trim().toLowerCase();
+    if (!q) return catalogItems;
+    return catalogItems.filter((item) => {
+      const hay = [item.name, item.sku, item.barcode, item.category_name]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [catalogItems, productFilter]);
 
   const cartTotal = useMemo(() => cart.reduce((sum, line) => sum + lineTotal(line), 0), [cart]);
-  const lineCount = useMemo(
-    () => cart.reduce((sum, line) => sum + Number(line.quantity || 0), 0),
-    [cart],
-  );
+  const lineCount = useMemo(() => cart.reduce((sum, line) => sum + Number(line.quantity || 0), 0), [cart]);
+
+  const resolvedCustomerName = () => {
+    const picked = selectedCustomer?.name?.trim();
+    if (picked) return picked;
+    const manual = customerName.trim();
+    return manual || null;
+  };
 
   const addToCart = useCallback((item, quantityOverride = 1) => {
     const tracked = item.stock_quantity !== null && item.stock_quantity !== undefined;
@@ -139,7 +172,7 @@ export default function StationeryPosPage() {
                 ...line,
                 quantity: nextQty,
                 price_tiers: item.price_tiers || line.price_tiers || [],
-                base_price: Number(item.price ?? line.base_price),
+                base_price: Number(item.price ?? item.base_price ?? line.base_price),
               })
             : line,
         );
@@ -151,8 +184,8 @@ export default function StationeryPosPage() {
           name: item.name,
           barcode: item.barcode,
           sku: item.sku,
-          base_price: Number(item.price),
-          price: Number(item.price),
+          base_price: Number(item.price ?? item.base_price),
+          price: Number(item.price ?? item.base_price),
           gst_percentage: Number(item.gst_percentage || 0),
           quantity: increment,
           uom,
@@ -171,33 +204,21 @@ export default function StationeryPosPage() {
     return true;
   }, []);
 
-  const pickHit = (item) => {
-    if (addToCart(item)) {
-      setQuery('');
-      setHits([]);
-      searchRef.current?.focus();
-    }
-  };
-
-  const tryBarcodeEnter = async () => {
-    const code = query.trim();
-    if (!code) return;
-    // Prefer exact barcode when Enter pressed and no hit selected.
-    setSearching(true);
+  const scanBarcode = async () => {
+    const code = barcode.trim();
+    if (!code || scanning) return;
+    setScanning(true);
+    setSuccess('');
     try {
       const res = await getStationeryByBarcode(code);
       if (addToCart(res.data)) {
-        setQuery('');
-        setHits([]);
+        setBarcode('');
+        focusBarcode();
       }
     } catch {
-      if (hits.length === 1) {
-        pickHit(hits[0]);
-      } else if (!hits.length) {
-        setError('No product matched that search or barcode.');
-      }
+      setError('No product found for this barcode. Check the code or pick from the list below.');
     } finally {
-      setSearching(false);
+      setScanning(false);
     }
   };
 
@@ -220,9 +241,16 @@ export default function StationeryPosPage() {
     });
   };
 
+  const resetAfterBill = () => {
+    setCart([]);
+    setPaymentMethod(DEFAULT_PAYMENT_METHOD);
+    setSelectedCustomer(null);
+    setCustomerName('');
+  };
+
   const checkout = async ({ confirmed = false } = {}) => {
     if (!cart.length) {
-      setError('Search or scan products to build the bill.');
+      setError('Add at least one product to the bill.');
       return;
     }
     if (paymentMethod === PAYMENT_CREDIT) {
@@ -231,7 +259,7 @@ export default function StationeryPosPage() {
         return;
       }
       if (!selectedCustomer?.id) {
-        setError('Select a customer for credit bills.');
+        setError('Select a customer for credit (udhari) bills.');
         return;
       }
       if (!confirmed) {
@@ -246,6 +274,7 @@ export default function StationeryPosPage() {
       const res = await createBill({
         payment_method: paymentMethod,
         customer_id: selectedCustomer?.id || null,
+        customer_name: resolvedCustomerName(),
         items: cart.map((line) => ({
           item_id: line.item_id,
           quantity: line.quantity,
@@ -263,13 +292,15 @@ export default function StationeryPosPage() {
           extra = ' · Credit posted';
         }
       }
+      setCreatedBill(bill);
+      setActiveStep(2);
       setSuccess(
         `Bill ${bill.bill_number} — ${money(bill.grand_total)} (${paymentMethodLabel(bill.payment_method)})${extra}`,
       );
-      setCart([]);
-      setPaymentMethod(DEFAULT_PAYMENT_METHOD);
+      resetAfterBill();
       setConfirmOpen(false);
-      searchRef.current?.focus();
+      openBillPrint(bill.id, { auto: true });
+      focusBarcode();
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Could not create bill.');
       setConfirmOpen(false);
@@ -289,190 +320,335 @@ export default function StationeryPosPage() {
   return (
     <PageShell>
       <Stack spacing={2}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <MenuBookOutlinedIcon color="primary" />
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            Stationery POS
+          </Typography>
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          Scan a barcode or tap a product to add it. Change quantity in the cart, then generate the bill and print.
+        </Typography>
+
+        <Card variant="outlined" sx={{ bgcolor: 'background.paper' }}>
+          <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+            <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 0 }}>
+              {BILL_STEPS.map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </CardContent>
+        </Card>
+
         {error ? (
           <Alert severity="error" onClose={() => setError('')}>
             {error}
           </Alert>
         ) : null}
-        {success ? <Alert severity="success">{success}</Alert> : null}
-        {bulkEnabled ? (
-          <Alert severity="info">Bulk price tiers apply automatically when quantity qualifies.</Alert>
+        {success ? (
+          <Alert
+            severity="success"
+            action={
+              createdBill ? (
+                <Button
+                  color="inherit"
+                  size="small"
+                  startIcon={<PrintOutlinedIcon />}
+                  onClick={() => navigate(billPrintPath(createdBill.id))}
+                >
+                  Print again
+                </Button>
+              ) : null
+            }
+          >
+            {success}
+          </Alert>
         ) : null}
 
-        <Card variant="outlined" sx={{ borderWidth: 2, borderColor: 'primary.main' }}>
-          <CardContent>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'flex-start' }}>
-              <SearchOutlinedIcon color="primary" sx={{ fontSize: 40, display: { xs: 'none', md: 'block' }, mt: 1 }} />
-              <Box sx={{ flex: 1, width: '100%' }}>
-                <SearchInput
-                  inputRef={searchRef}
-                  autoFocus
-                  label="Search name, SKU, or barcode"
-                  placeholder="Type to search — Enter scans barcode if exact match"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      tryBarcodeEnter();
-                    }
-                  }}
-                  disabled={searching}
-                  size="medium"
-                  sx={{ '& .MuiInputBase-root': { fontSize: '1.1rem' } }}
-                />
-                {hits.length ? (
-                  <List dense sx={{ mt: 1, maxHeight: 240, overflow: 'auto', border: 1, borderColor: 'divider', borderRadius: 1 }}>
-                    {hits.map((item) => (
-                      <ListItemButton key={item.id} onClick={() => pickHit(item)}>
-                        <ListItemText
-                          primary={item.name}
-                          secondary={[item.sku, item.barcode, money(item.price), item.stock_quantity != null ? `Stock ${item.stock_quantity}` : null]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        />
-                      </ListItemButton>
-                    ))}
-                  </List>
-                ) : null}
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2} alignItems="stretch">
+          <Box sx={{ flex: 1.25, minWidth: 0 }}>
+            <Card variant="outlined" sx={{ mb: 2, borderColor: 'primary.main' }}>
+              <CardContent>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                  Step 1 — Scan barcode
+                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+                  <TextField
+                    inputRef={barcodeRef}
+                    autoFocus
+                    fullWidth
+                    label="Barcode scanner"
+                    placeholder="Scan here — product adds automatically"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        scanBarcode();
+                      }
+                    }}
+                    disabled={scanning}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <QrCodeScannerOutlinedIcon fontSize="small" color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                    helperText="Use your barcode gun in this box, or type the code and press Enter"
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={scanBarcode}
+                    disabled={scanning || !barcode.trim()}
+                    sx={{ minWidth: { sm: 100 }, width: { xs: '100%', sm: 'auto' }, flexShrink: 0 }}
+                  >
+                    {scanning ? '…' : 'Add'}
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
 
-        <Card variant="outlined">
-          <CardContent>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 650, fontSize: '1.05rem' }}>
-                Current Bill
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+              Or pick from catalog
+            </Typography>
+            <SearchInput
+              label="Find product"
+              placeholder="Type name, SKU, or barcode…"
+              value={productFilter}
+              onChange={(e) => setProductFilter(e.target.value)}
+              sx={{ mb: 1.5 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchOutlinedIcon fontSize="small" color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            {bulkEnabled ? (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                Bulk pack rates apply automatically when you increase quantity (e.g. 12 pens = lower per-piece rate).
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {cart.length} lines · {lineCount} units
-              </Typography>
-            </Stack>
+            ) : null}
 
-            {!cart.length ? (
-              <Typography variant="body2" color="text.secondary">
-                Search products by name or scan a barcode to add lines.
+            {catalogLoading ? (
+              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                Loading products…
               </Typography>
+            ) : !filteredCatalog.length ? (
+              <Alert severity="info">
+                {productFilter.trim()
+                  ? 'No products match your search. Try another name or SKU.'
+                  : 'No products in catalog. Add items under Items first.'}
+              </Alert>
             ) : (
-              <>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 1.25,
+                  gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+                  maxHeight: { xs: 360, md: 420 },
+                  overflowY: 'auto',
+                  pr: 0.5,
+                }}
+              >
+                {filteredCatalog.map((item) => {
+                  const outOfStock =
+                    item.stock_quantity !== null &&
+                    item.stock_quantity !== undefined &&
+                    Number(item.stock_quantity) <= 0;
+                  const inCart = cart.some((line) => line.item_id === item.id);
+                  return (
+                    <PosCatalogCard
+                      key={item.id}
+                      title={item.name}
+                      subtitle={`${money(item.price ?? item.base_price)}${inCart ? ' · In cart' : ''}`}
+                      disabled={outOfStock}
+                      selected={inCart}
+                      onClick={() => addToCart(item)}
+                    />
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
+
+          <Box sx={{ flex: 1, minWidth: { lg: 360 } }}>
+            <PosCartPanel
+              title="Step 2 — Current bill"
+              actions={
+                cart.length ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {cart.length} lines · {lineCount} pcs
+                  </Typography>
+                ) : null
+              }
+              empty={
+                !cart.length ? (
+                  <Stack spacing={1} alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Cart is empty
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" textAlign="center">
+                      Scan a barcode or tap a product on the left to start the bill.
+                    </Typography>
+                  </Stack>
+                ) : null
+              }
+              footer={
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Step 3 — Customer & payment
+                  </Typography>
+                  <TextField
+                    size="small"
+                    label="Customer name (optional)"
+                    placeholder="Walk-in or type name on bill"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    fullWidth
+                  />
+                  {creditEnabled ? (
+                    <>
+                      <CustomerPicker
+                        label="Customer (required for udhari)"
+                        value={selectedCustomer}
+                        onChange={setSelectedCustomer}
+                        onClear={() => {
+                          setSelectedCustomer(null);
+                          if (paymentMethod === PAYMENT_CREDIT) setPaymentMethod(PAYMENT_CASH);
+                        }}
+                      />
+                      {selectedCustomer ? (
+                        <StatusBadge
+                          label={
+                            Number(selectedCustomer.balance || 0) > 0
+                              ? `Outstanding ${money(selectedCustomer.balance)}`
+                              : 'No outstanding'
+                          }
+                          variant={Number(selectedCustomer.balance || 0) > 0 ? 'pending' : 'active'}
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      Total {money(cartTotal)}
+                    </Typography>
+                    {bulkEnabled && cart.some((line) => line.price < line.base_price) ? (
+                      <Chip size="small" label="Bulk rate applied" color="success" variant="outlined" />
+                    ) : null}
+                  </Stack>
+                  <FormControl>
+                    <FormLabel>Payment</FormLabel>
+                    <RadioGroup
+                      row
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    >
+                      <FormControlLabel value={PAYMENT_CASH} control={<Radio size="small" />} label="Cash" />
+                      <FormControlLabel value={PAYMENT_ONLINE} control={<Radio size="small" />} label="Online" />
+                      {creditEnabled ? (
+                        <FormControlLabel
+                          value={PAYMENT_CREDIT}
+                          control={<Radio size="small" />}
+                          label="Credit (Udhari)"
+                          disabled={!selectedCustomer}
+                        />
+                      ) : null}
+                    </RadioGroup>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    startIcon={<PrintOutlinedIcon />}
+                    color={paymentMethod === PAYMENT_CREDIT ? 'warning' : 'primary'}
+                    onClick={() => checkout()}
+                    disabled={saving || !cart.length}
+                  >
+                    {saving
+                      ? 'Creating bill…'
+                      : paymentMethod === PAYMENT_CREDIT
+                        ? 'Generate Bill & Print (Credit)'
+                        : 'Generate Bill & Print'}
+                  </Button>
+                </Stack>
+              }
+            >
+              {cart.length ? (
                 <Box sx={{ overflowX: 'auto' }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>Item</TableCell>
-                        <TableCell>Code</TableCell>
+                        <TableCell>Product</TableCell>
                         <TableCell align="right">Qty</TableCell>
-                        <TableCell>UoM</TableCell>
                         <TableCell align="right">Rate</TableCell>
                         <TableCell align="right">Amount</TableCell>
                         <TableCell width={48} />
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {cart.map((line) => (
-                        <TableRow key={line.item_id} hover>
-                          <TableCell>
-                            <TruncateText value={line.name} maxWidth={180} />
-                          </TableCell>
-                          <TableCell>{line.sku || line.barcode || '—'}</TableCell>
-                          <TableCell align="right" sx={{ minWidth: 100 }}>
-                            <TextField
-                              type="number"
-                              size="small"
-                              value={line.quantity}
-                              onChange={(e) => setLineQty(line.item_id, e.target.value)}
-                              inputProps={{
-                                min: qtyStepForUom(line.uom),
-                                step: qtyStepForUom(line.uom),
-                                style: { textAlign: 'right' },
-                              }}
-                              sx={{ width: 96 }}
-                            />
-                          </TableCell>
-                          <TableCell>{uomLabel(line.uom)}</TableCell>
-                          <TableCell align="right">{money(line.price)}</TableCell>
-                          <TableCell align="right">{money(lineTotal(line))}</TableCell>
-                          <TableCell>
-                            <IconActionButton title="Remove" color="error" onClick={() => setLineQty(line.item_id, 0)}>
-                              <DeleteOutlineOutlinedIcon fontSize="small" />
-                            </IconActionButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {cart.map((line) => {
+                        const bulkApplied = bulkEnabled && line.price < line.base_price;
+                        return (
+                          <TableRow key={line.item_id} hover>
+                            <TableCell>
+                              <TruncateText value={line.name} maxWidth={130} />
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {line.sku || line.barcode || uomLabel(line.uom)}
+                              </Typography>
+                              {bulkApplied ? (
+                                <Typography variant="caption" color="success.main" display="block">
+                                  Bulk {money(line.price)} (was {money(line.base_price)})
+                                </Typography>
+                              ) : null}
+                            </TableCell>
+                            <TableCell align="right" sx={{ minWidth: 80 }}>
+                              <TextField
+                                type="number"
+                                size="small"
+                                value={line.quantity}
+                                onChange={(e) => setLineQty(line.item_id, e.target.value)}
+                                inputProps={{
+                                  min: qtyStepForUom(line.uom),
+                                  step: qtyStepForUom(line.uom),
+                                  style: { textAlign: 'right' },
+                                }}
+                                sx={{ width: 72 }}
+                              />
+                            </TableCell>
+                            <TableCell align="right">{money(line.price)}</TableCell>
+                            <TableCell align="right">{money(lineTotal(line))}</TableCell>
+                            <TableCell>
+                              <IconActionButton
+                                title="Remove"
+                                color="error"
+                                onClick={() => setLineQty(line.item_id, 0)}
+                              >
+                                <DeleteOutlineOutlinedIcon fontSize="small" />
+                              </IconActionButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </Box>
-                <Divider sx={{ my: 2 }} />
-                {creditEnabled ? (
-                  <Stack spacing={1.5} sx={{ mb: 2 }}>
-                    <CustomerPicker
-                      label="Customer (required for credit)"
-                      value={selectedCustomer}
-                      onChange={(customer) => setSelectedCustomer(customer)}
-                      onClear={() => {
-                        setSelectedCustomer(null);
-                        if (paymentMethod === PAYMENT_CREDIT) setPaymentMethod(PAYMENT_CASH);
-                      }}
-                    />
-                    {selectedCustomer ? (
-                      <StatusBadge
-                        label={
-                          Number(selectedCustomer.balance || 0) > 0
-                            ? `Outstanding ${money(selectedCustomer.balance)}`
-                            : 'No outstanding'
-                        }
-                        variant={Number(selectedCustomer.balance || 0) > 0 ? 'pending' : 'active'}
-                      />
-                    ) : null}
-                    <FormControl>
-                      <FormLabel>Payment</FormLabel>
-                      <RadioGroup
-                        row
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      >
-                        <FormControlLabel value={PAYMENT_CASH} control={<Radio size="small" />} label="Cash" />
-                        <FormControlLabel value={PAYMENT_ONLINE} control={<Radio size="small" />} label="Online" />
-                        <FormControlLabel
-                          value={PAYMENT_CREDIT}
-                          control={<Radio size="small" />}
-                          label="Credit"
-                          disabled={!selectedCustomer}
-                        />
-                      </RadioGroup>
-                    </FormControl>
-                  </Stack>
-                ) : null}
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="h6">{money(cartTotal)}</Typography>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    color={paymentMethod === PAYMENT_CREDIT ? 'warning' : 'primary'}
-                    onClick={() => checkout()}
-                    disabled={saving}
-                  >
-                    {saving
-                      ? 'Creating bill…'
-                      : paymentMethod === PAYMENT_CREDIT
-                        ? 'Generate Bill (Credit)'
-                        : 'Generate Bill'}
-                  </Button>
-                </Stack>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              ) : null}
+            </PosCartPanel>
+          </Box>
+        </Stack>
       </Stack>
 
       <Dialog open={confirmOpen} onClose={() => !saving && setConfirmOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Confirm credit sale</DialogTitle>
+        <DialogTitle>Confirm credit (udhari)</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mt: 1 }}>
-            This adds {money(cartTotal)} to {selectedCustomer?.name || 'the customer'}&apos;s outstanding
-            balance.
+            This adds {money(cartTotal)} to {selectedCustomer?.name || 'the customer'}&apos;s outstanding balance.
           </Alert>
         </DialogContent>
         <DialogActions>
@@ -480,7 +656,7 @@ export default function StationeryPosPage() {
             Cancel
           </Button>
           <Button variant="contained" color="warning" onClick={() => checkout({ confirmed: true })} disabled={saving}>
-            {saving ? 'Billing…' : 'Confirm credit'}
+            {saving ? 'Billing…' : 'Confirm & print'}
           </Button>
         </DialogActions>
       </Dialog>

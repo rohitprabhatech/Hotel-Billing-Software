@@ -12,12 +12,14 @@ import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainContent from '../components/MainContent';
+import BrandLogo from '../components/BrandLogo';
 import MasterNotificationBell from '../components/MasterNotificationBell';
 import PageHeader from '../components/PageHeader';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import AppNavDrawer from '../components/shell/AppNavDrawer';
 import AppShellDrawers from '../components/shell/AppShellDrawers';
 import AppTopBar from '../components/shell/AppTopBar';
+import { sidebarTokens } from '../components/shell/navStyles';
 import { COMPANY } from '../constants/company';
 import { useAuth } from '../context/AuthContext';
 import { PageActionsProvider, PageActionsSlot } from '../context/PageActionsContext';
@@ -43,7 +45,7 @@ const masterNav = [
 
 const titles = {
   [PATHS.masterDashboard]: {
-    title: 'Master Dashboard',
+    title: 'Platform Dashboard',
     hidePageHeader: true,
   },
   [PATHS.masterRegistrationRequests]: {
@@ -106,9 +108,10 @@ export default function MasterLayout() {
       <AppTopBar
         isMobile={isMobile}
         onMenuOpen={() => setMobileOpen(true)}
-        title={COMPANY.legalName}
+        title={COMPANY.shortName}
         subtitle={`Master Admin · ${meta.title}`}
         badge="MASTER"
+        brandLogo={<BrandLogo size={32} showText={false} href={null} />}
         notificationSlot={<MasterNotificationBell />}
         accountMenu={{
           onOpen: (e) => setAnchorEl(e.currentTarget),
@@ -154,8 +157,16 @@ export default function MasterLayout() {
 
       <AppShellDrawers mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)}>
         <AppNavDrawer
-          brandTitle={COMPANY.productName}
-          brandSubtitle={`Master · ${COMPANY.legalName}`}
+          brandLogo={
+            <BrandLogo
+              size={36}
+              title={COMPANY.shortName}
+              subtitle={`Master · ${COMPANY.productName}`}
+              textColor={sidebarTokens(theme.palette.mode).text}
+              mutedColor={sidebarTokens(theme.palette.mode).textMuted}
+              href={null}
+            />
+          }
           navItems={masterNav}
           onNavigate={() => setMobileOpen(false)}
         />

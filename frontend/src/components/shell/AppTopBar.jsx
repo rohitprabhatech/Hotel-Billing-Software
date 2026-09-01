@@ -18,6 +18,7 @@ export default function AppTopBar({
   title,
   subtitle,
   badge = null,
+  brandLogo = null,
   notificationSlot = null,
   accountMenu,
 }) {
@@ -34,6 +35,8 @@ export default function AppTopBar({
           <IconButton edge="start" onClick={onMenuOpen} sx={{ mr: 0.5 }} aria-label="Open menu">
             <MenuIcon />
           </IconButton>
+        ) : brandLogo ? (
+          <Box sx={{ mr: 1, flexShrink: 0, display: { xs: 'none', sm: 'block' } }}>{brandLogo}</Box>
         ) : null}
         <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
           <Tooltip title={title || ''}>

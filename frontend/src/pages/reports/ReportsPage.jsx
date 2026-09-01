@@ -1,3 +1,5 @@
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined';
 import {
   Alert,
   Box,
@@ -5,6 +7,7 @@ import {
   Card,
   CardActionArea,
   CardContent,
+  Chip,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -41,6 +44,8 @@ import PageShell from '../../components/PageShell';
 import Section from '../../components/Section';
 import TableCard from '../../components/TableCard';
 import TruncateText from '../../components/TruncateText';
+import { useAuth } from '../../context/AuthContext';
+import { PATHS } from '../../routes/paths';
 import {
   downloadReport,
   fetchAvailableReports,
@@ -125,8 +130,20 @@ function ItemSalesTable({ rows, emptyTitle, emptyDescription }) {
   );
 }
 
+function reportIntro(businessType) {
+  if (businessType === 'stationery' || businessType === 'book_store') {
+    return 'Generate sales for your stationery counter — filter by date range and payment method (cash, online, or udhari).';
+  }
+  if (businessType === 'grocery_kirana') {
+    return 'Use Sales for full exports, or switch to Kirana for a quick daily udhari snapshot.';
+  }
+  return 'Choose a report type and period, then click Generate to view totals, charts, and bill lists.';
+}
+
 export default function ReportsPage() {
   const theme = useTheme();
+  const { user } = useAuth();
+  const businessType = user?.tenant?.business_type || '';
   const [hubReports, setHubReports] = useState([{ id: 'sales', view: 'sales', label: 'Sales' }]);
   const [linkReports, setLinkReports] = useState([]);
   const [maxRangeDays, setMaxRangeDays] = useState(366);
@@ -290,46 +307,100 @@ export default function ReportsPage() {
   const metrics = report?.metrics || {};
   const billsMeta = report?.bills_meta;
   const showIndustryTabs = hubReports.length > 1;
+  const activeHub = hubReports.find((row) => row.view === view);
+
+  const filterHints = [];
+  if (type === 'daily') {
+    filterHints.push('Leave date empty to use today.');
+  }
+  if (view === 'sales' && type === 'weekly') {
+    filterHints.push('Uses the current calendar week (business timezone).');
+  }
+  if (type === 'custom' && view === 'sales') {
+    filterHints.push(`Custom range is limited to ${maxRangeDays} days.`);
+  }
 
   return (
     <PageShell>
+      <Card variant="outlined" sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+          <Stack direction="row" spacing={1.25} alignItems="flex-start">
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 1.5,
+                bgcolor: (t) =>
+                  t.palette.mode === 'dark' ? 'rgba(110,180,200,0.14)' : 'rgba(31, 78, 95, 0.1)',
+                color: 'primary.main',
+                display: 'grid',
+                placeItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <AssessmentOutlinedIcon fontSize="small" />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  {activeHub?.label || 'Sales'} report
+                </Typography>
+                {view === 'sales' ? (
+                  <Chip size="small" label="Export Excel / PDF" variant="outlined" />
+                ) : null}
+              </Stack>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35, lineHeight: 1.45 }}>
+                {reportIntro(businessType)}
+              </Typography>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
+
       {showIndustryTabs ? (
-        <Tabs
-          value={view}
-          onChange={(_, value) => {
-            setView(value);
-            setReport(null);
-            setBillsPage(1);
-            if (value === 'kirana' || value === 'apparel' || value === 'mobile') setType('daily');
-          }}
-          sx={{ mb: 2 }}
-          variant="scrollable"
-          allowScrollButtonsMobile
-        >
-          {hubReports.map((row) => (
-            <Tab key={row.id} value={row.view} label={row.label} />
-          ))}
-        </Tabs>
+        <Card variant="outlined" sx={{ mb: 2 }}>
+          <Tabs
+            value={view}
+            onChange={(_, value) => {
+              setView(value);
+              setReport(null);
+              setBillsPage(1);
+              if (value === 'kirana' || value === 'apparel' || value === 'mobile') setType('daily');
+            }}
+            variant="scrollable"
+            allowScrollButtonsMobile
+            sx={{ px: 1, minHeight: 44, '& .MuiTab-root': { minHeight: 44, textTransform: 'none', fontWeight: 600 } }}
+          >
+            {hubReports.map((row) => (
+              <Tab key={row.id} value={row.view} label={row.label} />
+            ))}
+          </Tabs>
+        </Card>
       ) : null}
 
       {linkReports.length ? (
-        <Section title="More reports" description="Module-enabled reports outside this hub">
+        <Section title="Related reports" description="Open module-specific reports in a separate view">
           <Box
             sx={{
               display: 'grid',
-              gap: 2,
+              gap: 1.5,
               gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' },
               mb: 2,
             }}
           >
             {linkReports.map((row) => (
               <Card key={row.id} variant="outlined">
-                <CardActionArea component={RouterLink} to={row.ui_path || '/owner/reports'}>
-                  <CardContent>
-                    <Typography fontWeight={700}>{row.label}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {row.description}
-                    </Typography>
+                <CardActionArea component={RouterLink} to={row.ui_path || PATHS.ownerReports}>
+                  <CardContent sx={{ py: 1.75, '&:last-child': { pb: 1.75 } }}>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography fontWeight={700}>{row.label}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {row.description}
+                        </Typography>
+                      </Box>
+                      <OpenInNewOutlinedIcon fontSize="small" color="action" sx={{ flexShrink: 0 }} />
+                    </Stack>
                   </CardContent>
                 </CardActionArea>
               </Card>
@@ -338,18 +409,21 @@ export default function ReportsPage() {
         </Section>
       ) : null}
 
-      <FilterBar
-        actions={
-          <Button
-            variant="contained"
-            onClick={() => load(1)}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
-          >
-            {loading ? 'Generating...' : 'Generate'}
-          </Button>
-        }
-      >
+      <Box sx={{ mb: 2 }}>
+        <FilterBar
+          actionsInline
+          actions={
+            <Button
+              variant="contained"
+              onClick={() => load(1)}
+              disabled={loading}
+              sx={{ minHeight: 40, whiteSpace: 'nowrap', width: { xs: '100%', sm: 'auto' } }}
+              startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              {loading ? 'Generating...' : 'Generate'}
+            </Button>
+          }
+        >
         {view === 'sales' ? (
           <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
             <InputLabel>Report Type</InputLabel>
@@ -381,27 +455,20 @@ export default function ReportsPage() {
             </Select>
           </FormControl>
         ) : (
-          <Alert severity="info" sx={{ py: 0, alignItems: 'center' }}>
-            Daily grocery sales plus outstanding udhari
+          <Alert severity="info" sx={{ py: 0.5, alignItems: 'center' }}>
+            Kirana daily sales with udhari outstanding snapshot
           </Alert>
         )}
 
         {type === 'daily' ? (
           <TextField
-            label="Date"
+            label="Date (optional)"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
-            helperText="Leave empty for today"
             sx={{ minWidth: { xs: '100%', sm: 180 } }}
           />
-        ) : null}
-
-        {view === 'sales' && type === 'weekly' ? (
-          <Alert severity="info" sx={{ py: 0, alignItems: 'center' }}>
-            Current calendar week (business timezone)
-          </Alert>
         ) : null}
 
         {view === 'sales' && type === 'monthly' ? (
@@ -440,7 +507,6 @@ export default function ReportsPage() {
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
-              helperText={view === 'sales' ? `Max ${maxRangeDays} days` : undefined}
               sx={{ minWidth: { xs: '100%', sm: 160 } }}
             />
           </>
@@ -536,9 +602,15 @@ export default function ReportsPage() {
             </Select>
           </FormControl>
         ) : null}
-      </FilterBar>
+        </FilterBar>
+        {filterHints.length ? (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block', lineHeight: 1.4 }}>
+            {filterHints.join(' ')}
+          </Typography>
+        ) : null}
+      </Box>
 
-      {error ? <Alert severity="error">{error}</Alert> : null}
+      {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
 
       {report && view === 'kirana' ? (
         <>
@@ -1089,7 +1161,11 @@ export default function ReportsPage() {
       ) : !loading ? (
         <EmptyState
           title="No report generated yet"
-          description="Choose daily, weekly, monthly, or a custom range, then click Generate."
+          description={
+            businessType === 'stationery' || businessType === 'book_store'
+              ? 'Pick daily, weekly, monthly, or custom dates, then click Generate to see sales totals and top items.'
+              : 'Choose daily, weekly, monthly, or a custom range, then click Generate.'
+          }
           actionLabel="Generate"
           onAction={() => load(1)}
         />

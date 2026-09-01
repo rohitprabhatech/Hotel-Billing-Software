@@ -1,7 +1,9 @@
 import { Box, Container, Paper, Typography } from '@mui/material';
 import { Outlet, useLocation } from 'react-router-dom';
+import BrandLogo from '../components/BrandLogo';
 import ThemeModeToggle from '../components/ThemeModeToggle';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
+import { COMPANY } from '../constants/company';
 import { useColorMode } from '../context/ColorModeContext';
 
 const pages = {
@@ -11,9 +13,10 @@ const pages = {
     subtitle: 'Access your business billing workspace',
   },
   '/master/login': {
-    overline: 'Prabha Technology',
-    title: 'Administration',
-    subtitle: '',
+    overline: 'Master Admin Console',
+    title: 'Sign in',
+    subtitle: 'Prabha Technology platform administration — manage businesses, plans, and subscriptions.',
+    showBrandLogo: true,
   },
   '/register': {
     title: 'Register Business',
@@ -42,6 +45,7 @@ export default function AuthLayout() {
     subtitle: '',
   };
   const wide = pathname === '/register';
+  const isMasterLogin = pathname === '/master/login';
 
   return (
     <Box
@@ -52,9 +56,13 @@ export default function AuthLayout() {
         position: 'relative',
         py: { xs: 3, sm: 4 },
         px: { xs: 2, sm: 0 },
-        background: isDark
-          ? 'linear-gradient(160deg, #0B1218 0%, #0F161C 45%, #152028 100%)'
-          : 'linear-gradient(160deg, #E8EEF2 0%, #F3F5F7 45%, #E4EBE7 100%)',
+        background: isMasterLogin
+          ? isDark
+            ? `linear-gradient(160deg, ${COMPANY.brandColor} 0%, #0F161C 55%, #152028 100%)`
+            : `linear-gradient(160deg, #E8EEF2 0%, #DDE8F0 45%, #E4EBE7 100%)`
+          : isDark
+            ? 'linear-gradient(160deg, #0B1218 0%, #0F161C 45%, #152028 100%)'
+            : 'linear-gradient(160deg, #E8EEF2 0%, #F3F5F7 45%, #E4EBE7 100%)',
       }}
     >
       <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2 }}>
@@ -73,9 +81,20 @@ export default function AuthLayout() {
               : '0 1px 2px rgba(26, 35, 48, 0.04)',
           }}
         >
-          <Typography variant="overline" color="primary" letterSpacing={1.2}>
-            {meta.overline || 'Business Billing Software'}
-          </Typography>
+          {meta.showBrandLogo ? (
+            <Box sx={{ mb: 2 }}>
+              <BrandLogo size={52} title={COMPANY.legalName} subtitle={null} />
+            </Box>
+          ) : (
+            <Typography variant="overline" color="primary" letterSpacing={1.2}>
+              {meta.overline || 'Business Billing Software'}
+            </Typography>
+          )}
+          {meta.showBrandLogo ? (
+            <Typography variant="overline" color="primary" letterSpacing={1.2} sx={{ display: 'block' }}>
+              {meta.overline}
+            </Typography>
+          ) : null}
           <Typography
             variant="h5"
             component="h1"

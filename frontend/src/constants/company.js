@@ -2,8 +2,14 @@
 
 export const COMPANY = {
   legalName: 'Prabha Technology Pvt. Ltd.',
+  shortName: 'Prabha Technology',
   productName: 'Business Billing',
   tagline: 'Smart billing and business management for every kind of shop.',
+  masterTagline: 'Platform control center — manage tenants, plans, and subscriptions.',
+  website: 'https://prabhatechnology.com/',
+  logoPath: '/brand/prabha-logo.png',
+  brandColor: '#0C1A2E',
+  brandAccent: '#1F4E5F',
   addressLines: [
     'B-05, First Floor, Shreya Business Hub',
     'Pari Chowk, Mokarwadi',

@@ -19,6 +19,7 @@ import { navItemSx, navSectionSx, sidebarTokens } from './navStyles';
 export default function AppNavDrawer({
   brandTitle,
   brandSubtitle,
+  brandLogo = null,
   navItems = [],
   onNavigate,
   resolveLabel,
@@ -37,18 +38,22 @@ export default function AppNavDrawer({
       }}
     >
       <Toolbar sx={{ px: 2, minHeight: { xs: 56, sm: 64 } }}>
-        <Box sx={{ minWidth: 0, width: '100%' }}>
-          <Tooltip title={brandTitle || ''}>
-            <Typography variant="subtitle1" fontWeight={700} noWrap sx={{ color: tokens.text }}>
-              {brandTitle}
-            </Typography>
-          </Tooltip>
-          {brandSubtitle ? (
-            <Typography variant="caption" sx={{ color: tokens.textMuted }}>
-              {brandSubtitle}
-            </Typography>
-          ) : null}
-        </Box>
+        {brandLogo ? (
+          <Box sx={{ minWidth: 0, width: '100%' }}>{brandLogo}</Box>
+        ) : (
+          <Box sx={{ minWidth: 0, width: '100%' }}>
+            <Tooltip title={brandTitle || ''}>
+              <Typography variant="subtitle1" fontWeight={700} noWrap sx={{ color: tokens.text }}>
+                {brandTitle}
+              </Typography>
+            </Tooltip>
+            {brandSubtitle ? (
+              <Typography variant="caption" sx={{ color: tokens.textMuted }}>
+                {brandSubtitle}
+              </Typography>
+            ) : null}
+          </Box>
+        )}
       </Toolbar>
       <Divider sx={{ borderColor: tokens.border }} />
       <List

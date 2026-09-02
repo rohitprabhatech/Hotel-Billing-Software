@@ -15,6 +15,11 @@ export async function createPurchase(payload) {
   return data;
 }
 
+export async function updatePurchase(purchaseId, payload) {
+  const { data } = await apiClient.patch(`/purchases/${purchaseId}`, payload);
+  return data;
+}
+
 export async function cancelPurchase(purchaseId, reason) {
   const { data } = await apiClient.post(`/purchases/${purchaseId}/cancel`, { reason });
   return data;

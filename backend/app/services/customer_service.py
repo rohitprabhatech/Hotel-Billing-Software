@@ -206,6 +206,9 @@ class CustomerService:
 
     @staticmethod
     def deactivate_customer(customer_id: str):
+        from app.utils.owner_access import require_owner
+
+        require_owner()
         require_permission(PERM_CUSTOMERS_WRITE)
         ctx = require_request_context()
         customer = CustomerRepository.get_by_id_and_tenant(customer_id, ctx.tenant_id)

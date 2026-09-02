@@ -1,4 +1,6 @@
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import RemoveOutlinedIcon from '@mui/icons-material/RemoveOutlined';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import QrCodeScannerOutlinedIcon from '@mui/icons-material/QrCodeScannerOutlined';
 import ShoppingBasketOutlinedIcon from '@mui/icons-material/ShoppingBasketOutlined';
@@ -17,6 +19,7 @@ import {
   FormLabel,
   InputAdornment,
   InputLabel,
+  IconButton,
   MenuItem,
   Radio,
   RadioGroup,
@@ -38,12 +41,13 @@ import PosCartPanel from '../../components/pos/PosCartPanel';
 import TruncateText from '../../components/TruncateText';
 import IconActionButton from '../../components/ui/IconActionButton';
 import StatusBadge from '../../components/ui/StatusBadge';
+import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
+import { useBillWarehouse } from '../../hooks/useBillWarehouse';
 import { billPrintPath, createBill, openBillPrint } from '../../services/billService';
 import { getCustomer } from '../../services/customerService';
 import { fetchGroceryPosCatalog } from '../../services/groceryService';
 import { getItemByBarcode } from '../../services/itemService';
-import { listWarehouses } from '../../services/warehouseService';
 import {
   DEFAULT_PAYMENT_METHOD,
   PAYMENT_CASH,
@@ -69,6 +73,8 @@ function applyTierPrice(line) {
 
 export default function GroceryPosPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isWholesale = user?.tenant?.business_type === 'wholesale';
   const moduleEnabled = useModuleGate('barcode_pos');
   const creditEnabled = useModuleGate('customer_credit');
   const priceListsEnabled = useModuleGate('price_lists');
@@ -85,25 +91,19 @@ export default function GroceryPosPage() {
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [warehouses, setWarehouses] = useState([]);
-  const [warehouseId, setWarehouseId] = useState('');
+  const {
+    warehouses,
+    warehouseId,
+    setWarehouseId,
+    resolvedWarehouseId,
+    loading: warehousesLoading,
+    loadError: warehouseLoadError,
+  } = useBillWarehouse(warehouseEnabled);
   const [createdBill, setCreatedBill] = useState(null);
 
   const focusScan = useCallback(() => {
     window.requestAnimationFrame(() => barcodeRef.current?.focus());
   }, []);
-
-  useEffect(() => {
-    if (!moduleEnabled || !warehouseEnabled) return;
-    listWarehouses()
-      .then((res) => {
-        const rows = res.data || [];
-        setWarehouses(rows);
-        const def = rows.find((w) => w.is_default) || rows[0];
-        if (def) setWarehouseId((prev) => prev || def.id);
-      })
-      .catch(() => {});
-  }, [moduleEnabled, warehouseEnabled]);
 
   useEffect(() => {
     if (!moduleEnabled) return;
@@ -274,7 +274,7 @@ export default function GroceryPosPage() {
         payment_method: paymentMethod,
         customer_id: selectedCustomer?.id || null,
         customer_name: resolvedCustomerName(),
-        warehouse_id: warehouseEnabled && warehouseId ? warehouseId : undefined,
+        warehouse_id: resolvedWarehouseId,
         items: cart.map((line) => ({
           item_id: line.item_id,
           quantity: line.quantity,
@@ -322,12 +322,16 @@ export default function GroceryPosPage() {
         <Stack direction="row" spacing={1} alignItems="center">
           <ShoppingBasketOutlinedIcon color="primary" />
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            Grocery POS
+            {isWholesale ? 'Wholesale POS' : 'Grocery POS'}
           </Typography>
         </Stack>
         <Typography variant="body2" color="text.secondary">
-          Scan barcodes for fast checkout. Weight items (kg, g, l) support decimal quantities.
+          {isWholesale
+            ? 'Scan barcodes for fast trade billing. Select a customer for VIP / price-list rates. Credit (udhari) needs a linked customer.'
+            : 'Scan barcodes for fast checkout. Weight items (kg, g, l) support decimal quantities.'}
         </Typography>
+
+        {warehouseLoadError ? <Alert severity="warning">{warehouseLoadError}</Alert> : null}
 
         {error ? <Alert severity="error">{error}</Alert> : null}
         {success ? (
@@ -350,13 +354,13 @@ export default function GroceryPosPage() {
           </Alert>
         ) : null}
 
-        {warehouseEnabled && warehouses.length ? (
-          <FormControl size="small" sx={{ maxWidth: 360 }}>
+        {warehouseEnabled ? (
+          <FormControl size="small" sx={{ maxWidth: 420 }} disabled={warehousesLoading}>
             <InputLabel id="pos-warehouse">Sell from warehouse</InputLabel>
             <Select
               labelId="pos-warehouse"
               label="Sell from warehouse"
-              value={warehouseId}
+              value={warehouseId || ''}
               onChange={(e) => setWarehouseId(e.target.value)}
             >
               {warehouses.map((w) => (
@@ -450,10 +454,10 @@ export default function GroceryPosPage() {
                     onChange={(e) => setCustomerName(e.target.value)}
                     fullWidth
                   />
-                  {creditEnabled ? (
+                  {creditEnabled || priceListsEnabled ? (
                     <>
                       <CustomerPicker
-                        label="Customer (required for udhari)"
+                        label={isWholesale ? 'Customer (for trade price & udhari)' : 'Customer (required for udhari)'}
                         value={selectedCustomer}
                         onChange={(customer) => setSelectedCustomer(customer)}
                         onClear={() => {
@@ -463,6 +467,13 @@ export default function GroceryPosPage() {
                           }
                         }}
                       />
+                      {isWholesale && priceListsEnabled ? (
+                        <Typography variant="caption" color="text.secondary">
+                          {selectedCustomer
+                            ? 'VIP / customer price list applies to cart rates when assigned.'
+                            : 'No customer = default wholesale list price (if set by owner).'}
+                        </Typography>
+                      ) : null}
                       {selectedCustomer ? (
                         <StatusBadge
                           label={
@@ -535,24 +546,46 @@ export default function GroceryPosPage() {
                               {line.barcode || uomLabel(line.uom)}
                             </Typography>
                           </TableCell>
-                          <TableCell align="right" sx={{ minWidth: 88 }}>
-                            <TextField
-                              type="number"
-                              size="small"
-                              value={line.quantity}
-                              onChange={(e) => setLineQty(line.item_id, e.target.value)}
-                              inputProps={{
-                                min: qtyStepForUom(line.uom),
-                                step: qtyStepForUom(line.uom),
-                                style: { textAlign: 'right' },
-                              }}
-                              sx={{ width: 80 }}
-                            />
+                          <TableCell align="right" sx={{ minWidth: 120 }}>
+                            <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
+                              <IconButton
+                                size="small"
+                                aria-label="Decrease quantity"
+                                onClick={() => {
+                                  const step = qtyStepForUom(line.uom);
+                                  setLineQty(line.item_id, Number(line.quantity) - step);
+                                }}
+                              >
+                                <RemoveOutlinedIcon fontSize="small" />
+                              </IconButton>
+                              <TextField
+                                type="number"
+                                size="small"
+                                value={line.quantity}
+                                onChange={(e) => setLineQty(line.item_id, e.target.value)}
+                                inputProps={{
+                                  min: qtyStepForUom(line.uom),
+                                  step: qtyStepForUom(line.uom),
+                                  style: { textAlign: 'right' },
+                                }}
+                                sx={{ width: 72 }}
+                              />
+                              <IconButton
+                                size="small"
+                                aria-label="Increase quantity"
+                                onClick={() => {
+                                  const step = qtyStepForUom(line.uom);
+                                  setLineQty(line.item_id, Number(line.quantity) + step);
+                                }}
+                              >
+                                <AddOutlinedIcon fontSize="small" />
+                              </IconButton>
+                            </Stack>
                           </TableCell>
                           <TableCell align="right">{money(line.price)}</TableCell>
                           <TableCell align="right">{money(lineTotal(line))}</TableCell>
                           <TableCell>
-                            <IconActionButton title="Remove" color="error" onClick={() => setLineQty(line.item_id, 0)}>
+                            <IconActionButton title="Remove item" color="error" onClick={() => setLineQty(line.item_id, 0)}>
                               <DeleteOutlineOutlinedIcon fontSize="small" />
                             </IconActionButton>
                           </TableCell>

@@ -370,3 +370,74 @@ class TravelBookingService:
         )
         db.session.commit()
         return TravelBookingService.serialize(booking)
+
+    @staticmethod
+    def update_booking(booking_id: str, **fields):
+        from app.utils.owner_access import require_owner
+
+        require_owner()
+        ctx, _ = TravelBookingService._require(write=True)
+        booking = TravelBookingRepository.get_by_id(ctx.tenant_id, booking_id)
+        if booking is None:
+            raise NotFoundError("Travel booking not found")
+        if booking.status in (STATUS_COMPLETED, STATUS_CANCELLED):
+            raise ValidationError("Cannot edit a completed or cancelled booking")
+
+        if "customer_name" in fields:
+            booking.customer_name = (fields.get("customer_name") or "").strip() or None
+        if "customer_phone" in fields:
+            booking.customer_phone = (fields.get("customer_phone") or "").strip() or None
+        if "pax_count" in fields and fields.get("pax_count") is not None:
+            pax = int(fields["pax_count"])
+            if pax < 1:
+                raise ValidationError("pax_count must be at least 1")
+            package = TourPackageRepository.get_by_id(ctx.tenant_id, booking.package_id)
+            if package is None:
+                raise ValidationError("Linked package not found")
+            booking.pax_count = pax
+            new_total = money(package.base_price) * pax
+            if new_total < money(booking.advance_paid):
+                raise ValidationError("New total cannot be less than advance already paid")
+            booking.total_amount = new_total
+        if "notes" in fields:
+            booking.notes = (fields.get("notes") or "").strip() or None
+        if "travel_start_at" in fields:
+            booking.travel_start_at = TravelBookingService._parse_dt(
+                fields.get("travel_start_at"), field="travel_start_at"
+            )
+        if "travel_end_at" in fields:
+            booking.travel_end_at = TravelBookingService._parse_dt(
+                fields.get("travel_end_at"), field="travel_end_at"
+            )
+        if booking.travel_start_at and booking.travel_end_at and booking.travel_end_at < booking.travel_start_at:
+            raise ValidationError("travel_end_at must be on or after travel_start_at")
+        if "agent_id" in fields:
+            agent_id = (fields.get("agent_id") or "").strip() or None
+            booking.agent_id = agent_id
+            if agent_id:
+                from app.services.travel_agent_service import TravelAgentService
+
+                TravelAgentService.ensure_commission_for_booking(
+                    tenant_id=ctx.tenant_id,
+                    booking=booking,
+                    agent_id=agent_id,
+                    user_id=ctx.user_id,
+                    commit=False,
+                )
+
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="UPDATE_TRAVEL_BOOKING",
+            entity_type="TRAVEL_BOOKING",
+            entity_id=booking.id,
+            new_data={"booking_number": booking.booking_number},
+        )
+        db.session.commit()
+        return TravelBookingService.serialize(booking)
+
+    @staticmethod
+    def delete_booking(booking_id: str):
+        from app.utils.owner_access import require_owner
+
+        require_owner()
+        return TravelBookingService.update_status(booking_id, status=STATUS_CANCELLED)

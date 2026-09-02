@@ -13,7 +13,7 @@ travel_agents_bp = Blueprint("travel_agents", __name__, url_prefix="/travel-agen
 commissions_bp = Blueprint("commissions", __name__, url_prefix="/commissions")
 
 _READ = (ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
-_WRITE = (ROLE_OWNER, ROLE_MANAGER)
+_WRITE = (ROLE_OWNER,)
 
 
 @travel_agents_bp.get("")
@@ -46,6 +46,14 @@ def get_agent(agent_id):
 @permission_required(PERM_BILLING)
 def update_agent(agent_id):
     return travel_agent_controller.update_agent(agent_id)
+
+
+@travel_agents_bp.delete("/<agent_id>")
+@roles_required(ROLE_OWNER)
+@module_required("travel_commission")
+@permission_required(PERM_BILLING)
+def delete_agent(agent_id):
+    return travel_agent_controller.delete_agent(agent_id)
 
 
 @commissions_bp.get("")

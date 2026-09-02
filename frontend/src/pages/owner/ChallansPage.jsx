@@ -199,6 +199,12 @@ export default function ChallansPage() {
       </PageActions>
 
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+      {!canWrite ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          View only — you can open and print challan PDFs. Ask the owner or manager to create or
+          convert challans.
+        </Alert>
+      ) : null}
       {success ? <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert> : null}
 
       {loading ? (

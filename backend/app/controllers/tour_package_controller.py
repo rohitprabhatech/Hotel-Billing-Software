@@ -38,6 +38,11 @@ def update_package(package_id: str):
     return success_response(data=data)
 
 
+def delete_package(package_id: str):
+    data = TourPackageService.delete_package(package_id)
+    return success_response(data=data)
+
+
 def bill_package(package_id: str):
     payload = bill_tour_package_schema.load(request.get_json() or {})
     data = TourPackageService.bill_package(package_id, **payload)

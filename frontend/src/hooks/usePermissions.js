@@ -8,6 +8,7 @@ export function usePermissions() {
   return useMemo(
     () => ({
       user,
+      isOwner: user?.role === 'OWNER',
       hasPermission: (permission) => hasPermission(user, permission),
       canWriteItems: hasPermission(user, 'items.write'),
       canWriteCategories: hasPermission(user, 'categories.write'),

@@ -2,6 +2,9 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardContent,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -18,7 +21,9 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
@@ -32,9 +37,8 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import PaginationBar from '../../components/PaginationBar';
 import TableCard from '../../components/TableCard';
-import IconActionButton from '../../components/ui/IconActionButton';
-import SearchInput from '../../components/ui/SearchInput';
 import StatusBadge from '../../components/ui/StatusBadge';
+import SearchInput from '../../components/ui/SearchInput';
 import { filterControlSx } from '../../layouts/shell';
 import {
   cancelBill,
@@ -46,27 +50,13 @@ import {
   sendBillEmail,
 } from '../../services/billService';
 import BillPreview from '../../print/BillPreview';
-import { PAYMENT_CASH, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
-
-function waStatusLabel(status) {
-  if (status === 'READ') return 'Read';
-  if (status === 'DELIVERED') return 'Delivered';
-  if (status === 'SENT') return 'Sent';
-  if (status === 'FAILED') return 'Failed';
-  if (status === 'PENDING') return 'Pending';
-  return null;
-}
-
-function waStatusVariant(status) {
-  if (status === 'FAILED') return 'cancelled';
-  if (status === 'PENDING') return 'pending';
-  if (status === 'READ' || status === 'DELIVERED' || status === 'SENT') return 'paid';
-  return 'info';
-}
+import { PAYMENT_CASH, PAYMENT_CREDIT, PAYMENT_ONLINE, paymentMethodLabel } from '../../utils/paymentMethod';
 
 const PAGE_SIZE = 25;
 
 export default function BillsHistoryPage({ todayDefault = false, allowBillCancel = false }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [searchParams] = useSearchParams();
   const initialWa = (searchParams.get('whatsapp_status') || '').toUpperCase();
   const initialEmail = (searchParams.get('email_status') || '').toUpperCase();
@@ -272,6 +262,88 @@ export default function BillsHistoryPage({ todayDefault = false, allowBillCancel
     }
   };
 
+  const renderBillActions = (bill, { compact = false } = {}) => (
+    <Stack
+      direction={compact ? 'column' : 'row'}
+      spacing={0.75}
+      useFlexGap
+      flexWrap="wrap"
+      justifyContent={compact ? 'stretch' : 'flex-end'}
+    >
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<VisibilityOutlinedIcon />}
+        onClick={() => openDetails(bill)}
+        fullWidth={compact}
+      >
+        View
+      </Button>
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<PrintOutlinedIcon />}
+        onClick={() => openBillPrint(bill.id)}
+        fullWidth={compact}
+      >
+        Print
+      </Button>
+      {bill.status === 'FINALIZED' ? (
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={async () => {
+            try {
+              await downloadBillPdf(bill.id, bill.bill_number);
+            } catch (err) {
+              setError(err.response?.data?.error?.message || 'Unable to download bill PDF.');
+            }
+          }}
+          fullWidth={compact}
+        >
+          PDF
+        </Button>
+      ) : null}
+      {bill.status === 'FINALIZED' ? (
+        <Button
+          size="small"
+          variant="outlined"
+          color="success"
+          startIcon={<WhatsAppIcon />}
+          disabled={waSending || Boolean(emailBusyId)}
+          onClick={() => startWhatsapp(bill)}
+          fullWidth={compact}
+        >
+          {waBusyId === bill.id ? 'Sending…' : 'WhatsApp'}
+        </Button>
+      ) : null}
+      {bill.status === 'FINALIZED' ? (
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<EmailOutlinedIcon />}
+          disabled={Boolean(emailBusyId) || waSending}
+          onClick={() => startEmail(bill)}
+          fullWidth={compact}
+        >
+          {emailBusyId === bill.id ? 'Sending…' : 'Email'}
+        </Button>
+      ) : null}
+      {allowBillCancel && bill.status === 'FINALIZED' ? (
+        <Button
+          size="small"
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteOutlineOutlinedIcon />}
+          onClick={() => openCancelForBill(bill)}
+          fullWidth={compact}
+        >
+          Remove
+        </Button>
+      ) : null}
+    </Stack>
+  );
+
   return (
     <PageShell>
       <Stack spacing={0.5}>
@@ -279,7 +351,7 @@ export default function BillsHistoryPage({ todayDefault = false, allowBillCancel
           Bills
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Search, print, and manage finalized bills{allowBillCancel ? '. Owners can remove bills from here.' : '.'}
+          Search, view, print, and share bills. Use filters to find credit sales or delivery status.
         </Typography>
       </Stack>
 
@@ -341,6 +413,7 @@ export default function BillsHistoryPage({ todayDefault = false, allowBillCancel
             <MenuItem value="">All</MenuItem>
             <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
             <MenuItem value={PAYMENT_ONLINE}>Online</MenuItem>
+            <MenuItem value={PAYMENT_CREDIT}>Credit (Udhari)</MenuItem>
           </Select>
         </FormControl>
         <FormControl sx={filterControlSx}>
@@ -399,8 +472,51 @@ export default function BillsHistoryPage({ todayDefault = false, allowBillCancel
       <TableCard>
         {loading ? (
           <LoadingBlock />
+        ) : isMobile ? (
+          <Stack spacing={1.5} sx={{ p: { xs: 1.5, sm: 2 } }}>
+            {bills.map((bill) => (
+              <Card key={bill.id} variant="outlined">
+                <CardContent sx={{ '&:last-child': { pb: 2 } }}>
+                  <Stack spacing={1.25}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                      <Box>
+                        <Typography fontWeight={700} sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                          #{bill.bill_number}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {bill.customer_name || 'Walk-in'}
+                          {bill.reference || bill.table_number
+                            ? ` · ${bill.reference || bill.table_number}`
+                            : ''}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {bill.created_at ? new Date(bill.created_at).toLocaleString() : '—'}
+                        </Typography>
+                      </Box>
+                      <Stack spacing={0.75} alignItems="flex-end">
+                        <Typography fontWeight={700} sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                          ₹{Number(bill.grand_total).toFixed(2)}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={paymentMethodLabel(bill.payment_method)}
+                          variant="outlined"
+                        />
+                        <StatusBadge
+                          label={bill.status === 'CANCELLED' ? 'Cancelled' : 'Paid'}
+                          variant={bill.status === 'CANCELLED' ? 'cancelled' : 'paid'}
+                        />
+                      </Stack>
+                    </Stack>
+                    {renderBillActions(bill, { compact: true })}
+                  </Stack>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
         ) : (
-          <Table size="small" sx={{ minWidth: 960 }}>
+          <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small" sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
                 <TableCell>Bill No</TableCell>
@@ -409,10 +525,10 @@ export default function BillsHistoryPage({ todayDefault = false, allowBillCancel
                 <TableCell>Status</TableCell>
                 <TableCell>Payment</TableCell>
                 <TableCell align="right">Total</TableCell>
-                <TableCell>WhatsApp</TableCell>
-                <TableCell>Created By</TableCell>
                 <TableCell>Time</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell align="right" sx={{ minWidth: 320 }}>
+                  Actions
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -421,7 +537,7 @@ export default function BillsHistoryPage({ todayDefault = false, allowBillCancel
                   <TableCell sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                     {bill.bill_number}
                   </TableCell>
-                  <TableCell>{bill.customer_name || '—'}</TableCell>
+                  <TableCell>{bill.customer_name || 'Walk-in'}</TableCell>
                   <TableCell>{bill.reference || bill.table_number || '—'}</TableCell>
                   <TableCell>
                     <StatusBadge
@@ -429,66 +545,21 @@ export default function BillsHistoryPage({ todayDefault = false, allowBillCancel
                       variant={bill.status === 'CANCELLED' ? 'cancelled' : 'paid'}
                     />
                   </TableCell>
-                  <TableCell>{paymentMethodLabel(bill.payment_method)}</TableCell>
+                  <TableCell>
+                    <Chip size="small" label={paymentMethodLabel(bill.payment_method)} variant="outlined" />
+                  </TableCell>
                   <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                     ₹{Number(bill.grand_total).toFixed(2)}
                   </TableCell>
-                  <TableCell>
-                    {waStatusLabel(bill.whatsapp_delivery_status) ? (
-                      <StatusBadge
-                        label={waStatusLabel(bill.whatsapp_delivery_status)}
-                        variant={waStatusVariant(bill.whatsapp_delivery_status)}
-                      />
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>{bill.created_by_name || '—'}</TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>
                     {bill.created_at ? new Date(bill.created_at).toLocaleString() : '—'}
                   </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={0.25} justifyContent="flex-end" useFlexGap flexWrap="wrap">
-                      <IconActionButton title="View bill" onClick={() => openDetails(bill)}>
-                        <VisibilityOutlinedIcon fontSize="small" />
-                      </IconActionButton>
-                      <IconActionButton title="Print bill" onClick={() => openBillPrint(bill.id)}>
-                        <PrintOutlinedIcon fontSize="small" />
-                      </IconActionButton>
-                      {bill.status === 'FINALIZED' ? (
-                        <IconActionButton
-                          title={waLabel(bill.whatsapp_delivery_status)}
-                          color="success"
-                          disabled={waSending || Boolean(emailBusyId)}
-                          onClick={() => startWhatsapp(bill)}
-                        >
-                          <WhatsAppIcon fontSize="small" />
-                        </IconActionButton>
-                      ) : null}
-                      {bill.status === 'FINALIZED' ? (
-                        <IconActionButton
-                          title={emailLabel(bill.email_delivery_status)}
-                          disabled={Boolean(emailBusyId) || waSending}
-                          onClick={() => startEmail(bill)}
-                        >
-                          <EmailOutlinedIcon fontSize="small" />
-                        </IconActionButton>
-                      ) : null}
-                      {allowBillCancel && bill.status === 'FINALIZED' ? (
-                        <IconActionButton
-                          title="Remove bill"
-                          color="error"
-                          onClick={() => openCancelForBill(bill)}
-                        >
-                          <DeleteOutlineOutlinedIcon fontSize="small" />
-                        </IconActionButton>
-                      ) : null}
-                    </Stack>
-                  </TableCell>
+                  <TableCell align="right">{renderBillActions(bill)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          </Box>
         )}
         {!loading && !bills.length ? (
           <EmptyState

@@ -1,4 +1,5 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import {
   Alert,
@@ -56,7 +57,7 @@ const PAGE_SIZE = 25;
 
 export default function SuppliersPage() {
   const { user } = useAuth();
-  const { canManageSuppliers } = usePermissions();
+  const { canManageSuppliers, isOwner } = usePermissions();
   const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
   const [suppliers, setSuppliers] = useState([]);
   const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
@@ -69,6 +70,8 @@ export default function SuppliersPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async (nextPage = page, search = q) => {
     if (isHotel) return;
@@ -152,6 +155,7 @@ export default function SuppliersPage() {
 
   const toggleActive = async (supplier) => {
     if (!canManageSuppliers) return;
+    if (supplier.is_active && !isOwner) return;
     setError('');
     try {
       if (supplier.is_active) {
@@ -162,6 +166,22 @@ export default function SuppliersPage() {
       await load(page, q);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to update supplier status');
+    }
+  };
+
+  const onDeleteSupplier = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await deactivateSupplier(deleteTarget.id);
+      setSuccess(`${deleteTarget.name} removed from active suppliers.`);
+      setDeleteTarget(null);
+      await load(page, q);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Failed to delete supplier');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -251,15 +271,22 @@ export default function SuppliersPage() {
                       </Stack>
                     </TableCell>
                     <TableCell align="right">
-                      {canManageSuppliers ? (
-                        <IconActionButton title="Edit" onClick={() => openEdit(supplier)}>
-                          <EditOutlinedIcon fontSize="small" />
-                        </IconActionButton>
-                      ) : (
-                        <Typography variant="caption" color="text.secondary">
-                          —
-                        </Typography>
-                      )}
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        {canManageSuppliers ? (
+                          <IconActionButton title="Edit" onClick={() => openEdit(supplier)}>
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconActionButton>
+                        ) : null}
+                        {isOwner && supplier.is_active ? (
+                          <IconActionButton
+                            title="Delete Supplier"
+                            color="error"
+                            onClick={() => setDeleteTarget(supplier)}
+                          >
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconActionButton>
+                        ) : null}
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -355,6 +382,23 @@ export default function SuppliersPage() {
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={onSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteTarget)} onClose={() => !deleting && setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete supplier?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Remove <strong>{deleteTarget?.name}</strong> from active suppliers?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={onDeleteSupplier} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

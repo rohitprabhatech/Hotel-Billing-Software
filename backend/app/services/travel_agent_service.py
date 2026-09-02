@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 
 from app.constants.permissions import PERM_BILLING
 from app.extensions import db
-from app.models.role import ROLE_BILLING_USER
+from app.models.role import ROLE_BILLING_USER, ROLE_OWNER
 from app.models.travel_agent import (
     COMMISSION_CANCELLED,
     COMMISSION_PAID,
@@ -41,8 +41,8 @@ class TravelAgentService:
         if tenant is None:
             raise NotFoundError("Tenant not found")
         ModuleService.require_enabled(tenant, MODULE)
-        if write and ctx.role == ROLE_BILLING_USER:
-            raise ForbiddenError("Only the owner or manager can manage travel agents")
+        if write and ctx.role != ROLE_OWNER:
+            raise ForbiddenError("Only the owner can manage travel agents")
         return ctx, tenant
 
     @staticmethod
@@ -194,6 +194,28 @@ class TravelAgentService:
         AuditService.log(
             tenant_id=ctx.tenant_id,
             action="UPDATE_TRAVEL_AGENT",
+            entity_type="TRAVEL_AGENT",
+            entity_id=row.id,
+            old_data=old,
+            new_data=TravelAgentService.serialize_agent(row),
+        )
+        db.session.commit()
+        return TravelAgentService.serialize_agent(row)
+
+    @staticmethod
+    def delete_agent(agent_id: str):
+        from app.utils.owner_access import require_owner
+
+        require_owner()
+        ctx, _ = TravelAgentService._require(write=True)
+        row = TravelAgentRepository.get_by_id(ctx.tenant_id, agent_id)
+        if row is None:
+            raise NotFoundError("Travel agent not found")
+        old = TravelAgentService.serialize_agent(row)
+        row.is_active = False
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="DELETE_TRAVEL_AGENT",
             entity_type="TRAVEL_AGENT",
             entity_id=row.id,
             old_data=old,

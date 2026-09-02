@@ -5,6 +5,7 @@ import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
+import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined';
 import TableRestaurantOutlinedIcon from '@mui/icons-material/TableRestaurantOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
@@ -716,6 +717,174 @@ function ClothingBillingHome({
   );
 }
 
+/** Wholesale desk home — barcode POS first, credit and bills secondary. */
+function WholesaleBillingHome({
+  businessName,
+  loading,
+  error,
+  summary,
+  lowStockCount,
+  recent,
+  navigate,
+  billCount,
+  creditEnabled,
+}) {
+  const posPath = PATHS.billingGrocery;
+
+  return (
+    <>
+      <PageActions>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            component={RouterLink}
+            to={posPath}
+            variant="contained"
+            startIcon={<ShoppingCartOutlinedIcon />}
+          >
+            Wholesale POS
+          </Button>
+          <Button
+            component={RouterLink}
+            to={PATHS.billingNew}
+            variant="outlined"
+            startIcon={<PointOfSaleOutlinedIcon />}
+          >
+            Manual Bill
+          </Button>
+          {creditEnabled ? (
+            <Button
+              component={RouterLink}
+              to={PATHS.billingCredit}
+              variant="outlined"
+              startIcon={<ReceiptLongOutlinedIcon />}
+            >
+              Credit / Udhari
+            </Button>
+          ) : null}
+        </Stack>
+      </PageActions>
+
+      <PageShell spacing={2.5}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+            {businessName}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Scan barcodes, pick customers for trade prices, and bill with cash, online, or udhari.
+          </Typography>
+        </Box>
+
+        {error ? <Alert severity="error">{error}</Alert> : null}
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          }}
+        >
+          <DeskActionCard
+            primary
+            onClick={() => navigate(posPath)}
+            icon={<ShoppingCartOutlinedIcon />}
+            title="Wholesale POS"
+            description="Fast counter billing — scan barcode, set qty, choose customer for VIP rates."
+          />
+          <DeskActionCard
+            onClick={() => navigate(PATHS.billingBills)}
+            icon={<ReceiptLongOutlinedIcon />}
+            title="Today's Bills"
+            description="View, print, PDF, or WhatsApp share finalized bills."
+          />
+        </Box>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            gridTemplateColumns: {
+              xs: '1fr 1fr',
+              md: 'repeat(3, 1fr)',
+            },
+          }}
+        >
+          <KpiCard
+            title="Today's Sales"
+            value={loading ? '—' : money(summary.total_sales)}
+            icon={<ShoppingCartOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Bills Today"
+            value={loading ? '—' : billCount ?? summary.bill_count ?? 0}
+            icon={<ReceiptLongOutlinedIcon fontSize="small" />}
+          />
+          <KpiCard
+            title="Low Stock Items"
+            value={loading ? '—' : lowStockCount}
+            icon={<WarningAmberOutlinedIcon fontSize="small" />}
+            hint="At or below minimum level"
+          />
+        </Box>
+
+        <Section
+          title="Today's Bills"
+          description="Latest wholesale bills from this desk."
+          actions={
+            <Button component={RouterLink} to={PATHS.billingBills} size="small">
+              View all
+            </Button>
+          }
+        >
+          <TableCard>
+            {loading ? (
+              <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
+                <CircularProgress size={28} />
+              </Box>
+            ) : (
+              <Table size="small" sx={{ minWidth: 360 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Bill</TableCell>
+                    <TableCell>Customer</TableCell>
+                    <TableCell>Payment</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recent.map((bill) => (
+                    <TableRow key={bill.id} hover>
+                      <TableCell sx={{ fontWeight: 600 }}>#{bill.bill_number}</TableCell>
+                      <TableCell>{bill.customer_name || 'Walk-in'}</TableCell>
+                      <TableCell>
+                        {bill.payment_method_label || paymentMethodLabel(bill.payment_method)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 650 }}>
+                        {moneyExact(bill.grand_total)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!recent.length ? (
+                    <TableRow>
+                      <TableCell colSpan={4} sx={{ p: 0, border: 0 }}>
+                        <EmptyState
+                          title="No bills yet today"
+                          description="Open Wholesale POS and scan your first item."
+                          actionLabel="Wholesale POS"
+                          onAction={() => navigate(posPath)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            )}
+          </TableCard>
+        </Section>
+      </PageShell>
+    </>
+  );
+}
+
 /** Hardware / building material desk home — UoM POS first, not generic New Bill. */
 function HardwareBillingHome({
   businessName,
@@ -930,10 +1099,12 @@ export default function BillingHomePage() {
   const isCafe = businessType === 'cafe_tea';
   const isClothing = businessType === 'clothing';
   const isHardware = businessType === 'hardware' || businessType === 'building_material';
+  const isWholesale = businessType === 'wholesale';
   const tablesEnabled = useModuleGate('table_management');
   const cafePosEnabled = useModuleGate('addons_combos');
   const clothingPosEnabled = useModuleGate('variants');
   const hardwarePosEnabled = useModuleGate('uom_measurement');
+  const wholesalePosEnabled = useModuleGate('barcode_pos');
   const creditEnabled = useModuleGate('customer_credit');
   const returnsEnabled = useModuleGate('returns_exchange');
   const [summary, setSummary] = useState({ total_sales: 0, bill_count: 0 });
@@ -973,6 +1144,11 @@ export default function BillingHomePage() {
       tasks.push(
         listItems({ is_active: true, per_page: 200 }).catch(() => ({ data: [] })),
       );
+    } else if (isWholesale && wholesalePosEnabled) {
+      tasks.push(Promise.resolve(null));
+      tasks.push(
+        listItems({ is_active: true, per_page: 200 }).catch(() => ({ data: [] })),
+      );
     }
     Promise.all(tasks)
       .then((results) => {
@@ -1008,7 +1184,7 @@ export default function BillingHomePage() {
         setError(err.response?.data?.error?.message || 'Failed to load billing dashboard');
       })
       .finally(() => setLoading(false));
-  }, [isHotel, isCafe, isClothing, isHardware, tablesEnabled, clothingPosEnabled, hardwarePosEnabled]);
+  }, [isHotel, isCafe, isClothing, isHardware, isWholesale, tablesEnabled, clothingPosEnabled, hardwarePosEnabled, wholesalePosEnabled]);
 
   const tableStats = useMemo(() => {
     const stats = {
@@ -1073,6 +1249,22 @@ export default function BillingHomePage() {
   if (isHardware && hardwarePosEnabled) {
     return (
       <HardwareBillingHome
+        businessName={businessName}
+        loading={loading}
+        error={error}
+        summary={summary}
+        lowStockCount={lowStockCount}
+        recent={recent}
+        navigate={navigate}
+        billCount={summary.bill_count}
+        creditEnabled={creditEnabled}
+      />
+    );
+  }
+
+  if (isWholesale && wholesalePosEnabled) {
+    return (
+      <WholesaleBillingHome
         businessName={businessName}
         loading={loading}
         error={error}

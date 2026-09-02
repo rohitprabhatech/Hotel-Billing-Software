@@ -63,7 +63,7 @@ def update_supplier(supplier_id):
 
 
 @suppliers_bp.delete("/<supplier_id>")
-@roles_required(ROLE_OWNER, ROLE_MANAGER)
+@roles_required(ROLE_OWNER)
 @permission_required(PERM_SUPPLIERS_WRITE)
 def deactivate_supplier(supplier_id):
     return supplier_controller.deactivate_supplier(supplier_id)

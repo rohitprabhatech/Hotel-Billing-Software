@@ -15,6 +15,16 @@ export async function createTravelBooking(payload) {
   return data;
 }
 
+export async function updateTravelBooking(bookingId, payload) {
+  const { data } = await apiClient.patch(`/travel/bookings/${bookingId}`, payload);
+  return data;
+}
+
+export async function deleteTravelBooking(bookingId) {
+  const { data } = await apiClient.delete(`/travel/bookings/${bookingId}`);
+  return data;
+}
+
 export async function updateTravelBookingStatus(bookingId, status) {
   const { data } = await apiClient.patch(`/travel/bookings/${bookingId}/status`, { status });
   return data;

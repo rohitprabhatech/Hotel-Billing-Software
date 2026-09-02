@@ -77,6 +77,9 @@ export default function PrintableReceipt({ bill, width = '80', billingSettings =
         <span>Bill No. : {bill.bill_number}</span>
       </div>
       <div className="receipt__row">
+        <span>Customer : {bill.customer_name || 'Walk-in'}</span>
+      </div>
+      <div className="receipt__row">
         <span>Ref.: {bill.reference || bill.table_number || '-'}</span>
         <span>Emp. : {bill.created_by_name || '-'}</span>
       </div>

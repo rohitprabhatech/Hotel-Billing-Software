@@ -11,6 +11,7 @@ from app.utils.permission_access import permission_required
 purchases_bp = Blueprint("purchases", __name__, url_prefix="/purchases")
 
 _OPS = (ROLE_OWNER, ROLE_MANAGER)
+_OWNER = (ROLE_OWNER,)
 
 
 @purchases_bp.get("")
@@ -34,8 +35,15 @@ def get_purchase(purchase_id):
     return purchase_controller.get_purchase(purchase_id)
 
 
+@purchases_bp.patch("/<purchase_id>")
+@roles_required(*_OWNER)
+@permission_required(PERM_PURCHASES_WRITE)
+def update_purchase(purchase_id):
+    return purchase_controller.update_purchase(purchase_id)
+
+
 @purchases_bp.post("/<purchase_id>/cancel")
-@roles_required(*_OPS)
+@roles_required(*_OWNER)
 @permission_required(PERM_PURCHASES_WRITE)
 def cancel_purchase(purchase_id):
     return purchase_controller.cancel_purchase(purchase_id)

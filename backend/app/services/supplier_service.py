@@ -207,6 +207,9 @@ class SupplierService:
 
     @staticmethod
     def deactivate_supplier(supplier_id: str):
+        from app.utils.owner_access import require_owner
+
+        require_owner()
         require_permission(PERM_SUPPLIERS_WRITE)
         ctx = require_request_context()
         supplier = SupplierRepository.get_by_id_and_tenant(supplier_id, ctx.tenant_id)

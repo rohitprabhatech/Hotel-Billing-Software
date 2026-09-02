@@ -31,18 +31,21 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { listTourPackages } from '../../services/tourPackageService';
 import { listTravelAgents } from '../../services/travelAgentService';
 import {
   createTravelBooking,
   createTravelDocument,
   createTravelItineraryItem,
+  deleteTravelBooking,
   deleteTravelDocument,
   deleteTravelItineraryItem,
   listTravelBookings,
   listTravelDocuments,
   listTravelItinerary,
   recordTravelBookingPayment,
+  updateTravelBooking,
   updateTravelBookingStatus,
 } from '../../services/travelBookingService';
 import { PAYMENT_CASH, PAYMENT_ONLINE } from '../../utils/paymentMethod';
@@ -75,7 +78,7 @@ function bookingStatusVariant(status) {
   return 'info';
 }
 
-function BookingCard({ booking, onStatusChange, onPayment, onOpenDetail, updating, canManage, canPay }) {
+function BookingCard({ booking, onStatusChange, onPayment, onOpenDetail, onEdit, onDelete, updating, canManage, canPay, isOwner }) {
   const actions = NEXT_ACTIONS[booking.status] || [];
   return (
     <Card variant="outlined">
@@ -141,6 +144,16 @@ function BookingCard({ booking, onStatusChange, onPayment, onOpenDetail, updatin
             Record payment
           </Button>
         ) : null}
+        {isOwner && booking.status !== 'COMPLETED' && booking.status !== 'CANCELLED' ? (
+          <>
+            <Button size="small" variant="outlined" disabled={updating} onClick={() => onEdit(booking)}>
+              Edit
+            </Button>
+            <Button size="small" color="error" variant="outlined" disabled={updating} onClick={() => onDelete(booking)}>
+              Remove
+            </Button>
+          </>
+        ) : null}
       </CardActions>
     </Card>
   );
@@ -149,6 +162,7 @@ function BookingCard({ booking, onStatusChange, onPayment, onOpenDetail, updatin
 export default function TravelBookingsPage() {
   const moduleEnabled = useModuleGate('travel_bookings');
   const { role } = useAuth();
+  const { isOwner } = usePermissions();
   const canManage = role === 'OWNER' || role === 'MANAGER';
   const canPay = role === 'OWNER' || role === 'MANAGER' || role === 'BILLING_USER';
 
@@ -161,11 +175,14 @@ export default function TravelBookingsPage() {
   const [updating, setUpdating] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editBooking, setEditBooking] = useState(null);
+  const [deleteBooking, setDeleteBooking] = useState(null);
   const [packageId, setPackageId] = useState('');
   const [agentId, setAgentId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [paxCount, setPaxCount] = useState('1');
   const [advanceAmount, setAdvanceAmount] = useState('');
+  const [createPayMethod, setCreatePayMethod] = useState(PAYMENT_CASH);
   const [travelStart, setTravelStart] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -253,35 +270,79 @@ export default function TravelBookingsPage() {
   }, [rows]);
 
   const onCreate = async () => {
-    if (!packageId) {
+    if (!packageId && !editBooking) {
       setError('Select a package.');
       return;
     }
     setUpdating(true);
     setError('');
     try {
-      await createTravelBooking({
-        package_id: packageId,
-        agent_id: agentId || null,
-        customer_name: customerName.trim() || null,
-        pax_count: Number(paxCount || 1),
-        advance_amount: advanceAmount === '' ? 0 : Number(advanceAmount),
-        payment_method: PAYMENT_CASH,
-        travel_start_at: travelStart || null,
-        notes: notes.trim() || null,
-      });
-      setCreateOpen(false);
-      setSuccess('Booking created');
+      if (editBooking) {
+        await updateTravelBooking(editBooking.id, {
+          customer_name: customerName.trim() || null,
+          pax_count: Number(paxCount || 1),
+          travel_start_at: travelStart ? `${travelStart}T00:00:00` : null,
+          notes: notes.trim() || null,
+          agent_id: agentId || null,
+        });
+        setCreateOpen(false);
+        setEditBooking(null);
+        setSuccess('Booking updated');
+      } else {
+        await createTravelBooking({
+          package_id: packageId,
+          agent_id: agentId || null,
+          customer_name: customerName.trim() || null,
+          pax_count: Number(paxCount || 1),
+          advance_amount: advanceAmount === '' ? 0 : Number(advanceAmount),
+          payment_method: createPayMethod,
+          travel_start_at: travelStart ? `${travelStart}T00:00:00` : null,
+          notes: notes.trim() || null,
+        });
+        setCreateOpen(false);
+        setSuccess('Booking created');
+      }
       setPackageId('');
       setAgentId('');
       setCustomerName('');
       setPaxCount('1');
       setAdvanceAmount('');
+      setCreatePayMethod(PAYMENT_CASH);
       setTravelStart('');
       setNotes('');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Could not create booking');
+      setError(err.response?.data?.error?.message || 'Could not save booking');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const openEditBooking = (booking) => {
+    setEditBooking(booking);
+    setPackageId(booking.package_id || '');
+    setAgentId(booking.agent_id || '');
+    setCustomerName(booking.customer_name || '');
+    setPaxCount(String(booking.pax_count || 1));
+    setAdvanceAmount('');
+    setTravelStart(
+      booking.travel_start_at ? String(booking.travel_start_at).slice(0, 10) : '',
+    );
+    setNotes(booking.notes || '');
+    setCreateOpen(true);
+  };
+
+  const onDeleteBooking = async () => {
+    if (!deleteBooking) return;
+    setUpdating(true);
+    setError('');
+    try {
+      await deleteTravelBooking(deleteBooking.id);
+      setDeleteBooking(null);
+      setSuccess('Booking cancelled');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not remove booking');
     } finally {
       setUpdating(false);
     }
@@ -440,7 +501,10 @@ export default function TravelBookingsPage() {
             <Button
               variant="contained"
               startIcon={<AddOutlinedIcon />}
-              onClick={() => setCreateOpen(true)}
+              onClick={() => {
+                setCreatePayMethod(PAYMENT_CASH);
+                setCreateOpen(true);
+              }}
             >
               Booking
             </Button>
@@ -450,6 +514,12 @@ export default function TravelBookingsPage() {
 
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
       {success ? <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert> : null}
+      {!canManage ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Billing users can create bookings and record payments. Owner/manager confirms trips and
+          manages itinerary/documents.
+        </Alert>
+      ) : null}
 
       {loading ? (
         <LoadingBlock />
@@ -483,9 +553,12 @@ export default function TravelBookingsPage() {
                       onStatusChange={onStatusChange}
                       onPayment={onPayment}
                       onOpenDetail={openDetail}
+                      onEdit={openEditBooking}
+                      onDelete={setDeleteBooking}
                       updating={updating}
                       canManage={canManage}
                       canPay={canPay}
+                      isOwner={isOwner}
                     />
                   ))}
                 </Stack>
@@ -495,23 +568,33 @@ export default function TravelBookingsPage() {
         </Grid>
       )}
 
-      <Dialog open={createOpen} onClose={() => !updating && setCreateOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>New travel booking</DialogTitle>
+      <Dialog
+        open={createOpen}
+        onClose={() => !updating && (setCreateOpen(false), setEditBooking(null))}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>{editBooking ? 'Edit travel booking' : 'New travel booking'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              select
-              label="Package"
-              value={packageId}
-              onChange={(e) => setPackageId(e.target.value)}
-              fullWidth
-            >
-              {packages.map((pkg) => (
-                <MenuItem key={pkg.id} value={pkg.id}>
-                  {pkg.code} · {pkg.name} ({money(pkg.base_price)})
-                </MenuItem>
-              ))}
-            </TextField>
+            {!editBooking ? (
+              <TextField
+                select
+                label="Package"
+                value={packageId}
+                onChange={(e) => setPackageId(e.target.value)}
+                fullWidth
+              >
+                {packages.map((pkg) => (
+                  <MenuItem key={pkg.id} value={pkg.id}>
+                    {pkg.code} · {pkg.name}
+                    {pkg.transport_type_label ? ` · ${pkg.transport_type_label}` : ''} ({money(pkg.base_price)})
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : (
+              <TextField label="Package" value={editBooking.package_name || ''} fullWidth disabled />
+            )}
             <TextField
               select
               label="Agent (optional)"
@@ -534,27 +617,50 @@ export default function TravelBookingsPage() {
             />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
-                label="Pax"
+                label="Pax count"
                 type="number"
                 value={paxCount}
                 onChange={(e) => setPaxCount(e.target.value)}
                 fullWidth
+                inputProps={{ min: 1 }}
               />
-              <TextField
-                label="Advance"
-                type="number"
-                value={advanceAmount}
-                onChange={(e) => setAdvanceAmount(e.target.value)}
-                fullWidth
-              />
+              {!editBooking ? (
+                <TextField
+                  label="Advance (₹)"
+                  type="number"
+                  value={advanceAmount}
+                  onChange={(e) => setAdvanceAmount(e.target.value)}
+                  fullWidth
+                  inputProps={{ min: 0, step: '0.01' }}
+                />
+              ) : null}
             </Stack>
+            {!editBooking ? (
+              <TextField
+                select
+                label="Payment method"
+                value={createPayMethod}
+                onChange={(e) => setCreatePayMethod(e.target.value)}
+                fullWidth
+                helperText={
+                  Number(advanceAmount || 0) > 0
+                    ? 'Method used when collecting the advance payment'
+                    : 'Used if an advance amount is entered'
+                }
+              >
+                <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
+                <MenuItem value={PAYMENT_ONLINE}>Online</MenuItem>
+              </TextField>
+            ) : null}
             <TextField
-              label="Travel start"
-              type="datetime-local"
+              label="Travel start date"
+              type="date"
               value={travelStart}
               onChange={(e) => setTravelStart(e.target.value)}
               fullWidth
-              InputLabelProps={{ shrink: true }}
+              slotProps={{
+                inputLabel: { shrink: true },
+              }}
             />
             <TextField
               label="Notes"
@@ -567,11 +673,28 @@ export default function TravelBookingsPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)} disabled={updating}>
+          <Button onClick={() => !updating && (setCreateOpen(false), setEditBooking(null))} disabled={updating}>
             Cancel
           </Button>
           <Button variant="contained" onClick={onCreate} disabled={updating}>
-            Create
+            {updating ? 'Saving…' : editBooking ? 'Save' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteBooking)} onClose={() => !updating && setDeleteBooking(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Remove booking?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Cancel booking <strong>{deleteBooking?.booking_number}</strong>? This marks it as cancelled.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteBooking(null)} disabled={updating}>
+            Back
+          </Button>
+          <Button color="error" variant="contained" onClick={onDeleteBooking} disabled={updating}>
+            {updating ? 'Removing…' : 'Remove'}
           </Button>
         </DialogActions>
       </Dialog>

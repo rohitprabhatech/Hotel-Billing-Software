@@ -38,6 +38,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { filterControlWideSx } from '../../layouts/shell';
 import {
   createCustomer,
@@ -72,6 +73,7 @@ function money(value) {
 
 export default function CustomersPage() {
   const { user } = useAuth();
+  const { isOwner } = usePermissions();
   const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
   const clothingEnabled = useModuleGate('variants');
   const mobileEnabled = useModuleGate('serial_imei');
@@ -396,7 +398,7 @@ export default function CustomersPage() {
                         <IconActionButton title="Edit Customer" onClick={() => openEdit(customer)}>
                           <EditOutlinedIcon fontSize="small" />
                         </IconActionButton>
-                        {isHotel && customer.is_active ? (
+                        {isOwner && customer.is_active ? (
                           <IconActionButton
                             title="Delete Customer"
                             color="error"

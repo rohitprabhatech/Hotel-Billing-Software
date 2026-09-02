@@ -79,12 +79,14 @@ class BillService:
 
             warehouse_module_on = WarehouseService.module_enabled(tenant_early)
             if warehouse_module_on:
-                if sale_warehouse_id:
-                    from app.repositories.warehouse_repository import WarehouseRepository
+                from app.repositories.warehouse_repository import WarehouseRepository
 
+                if sale_warehouse_id:
                     wh = WarehouseRepository.get_by_id(ctx.tenant_id, sale_warehouse_id)
                     if wh is None or not wh.is_active:
-                        raise ValidationError("Warehouse not found or inactive")
+                        sale_warehouse_id = WarehouseService.ensure_default_warehouse(
+                            ctx.tenant_id
+                        ).id
                 else:
                     sale_warehouse_id = WarehouseService.ensure_default_warehouse(
                         ctx.tenant_id

@@ -24,6 +24,7 @@ class TourPackage(db.Model, TimestampMixin):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     destination: Mapped[str | None] = mapped_column(String(160))
+    transport_type: Mapped[str | None] = mapped_column(String(60))
     duration_days: Mapped[int | None] = mapped_column(Integer)
     base_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     gst_percentage: Mapped[Decimal] = mapped_column(

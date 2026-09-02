@@ -20,6 +20,11 @@ export async function updateTourPackage(packageId, payload) {
   return data;
 }
 
+export async function deleteTourPackage(packageId) {
+  const { data } = await apiClient.delete(`/travel/packages/${packageId}`);
+  return data;
+}
+
 export async function billTourPackage(packageId, payload = {}) {
   const { data } = await apiClient.post(`/travel/packages/${packageId}/bill`, payload);
   return data;

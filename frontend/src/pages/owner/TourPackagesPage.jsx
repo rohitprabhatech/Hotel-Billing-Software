@@ -1,4 +1,5 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import FlightTakeoffOutlinedIcon from '@mui/icons-material/FlightTakeoffOutlined';
 import {
   Alert,
@@ -12,12 +13,17 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
   Stack,
   Switch,
   TextField,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import EmptyState from '../../components/EmptyState';
 import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
@@ -25,9 +31,25 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
+import { usePermissions } from '../../hooks/usePermissions';
+import { billPrintPath } from '../../services/billService';
+import {
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_CASH,
+  PAYMENT_ONLINE,
+  isAllowedPaymentMethod,
+} from '../../utils/paymentMethod';
+import {
+  TOUR_TRANSPORT_OPTIONS,
+  TOUR_TRANSPORT_OTHER,
+  resolveTourTransportPayload,
+  splitTourTransportValue,
+  tourTransportLabel,
+} from '../../utils/tourTransport';
 import {
   billTourPackage,
   createTourPackage,
+  deleteTourPackage,
   listTourPackages,
   updateTourPackage,
 } from '../../services/tourPackageService';
@@ -43,6 +65,8 @@ const emptyForm = {
   code: '',
   name: '',
   destination: '',
+  transport_type: '',
+  transport_type_other: '',
   duration_days: '',
   base_price: '',
   gst_percentage: '0',
@@ -52,9 +76,13 @@ const emptyForm = {
 };
 
 export default function TourPackagesPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const moduleEnabled = useModuleGate('tour_packages');
   const { role } = useAuth();
+  const { isOwner } = usePermissions();
   const canWrite = role === 'OWNER' || role === 'MANAGER';
+  const canRemove = isOwner && location.pathname.startsWith('/owner');
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +93,13 @@ export default function TourPackagesPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [billingId, setBillingId] = useState(null);
+  const [billDialogOpen, setBillDialogOpen] = useState(false);
+  const [billTarget, setBillTarget] = useState(null);
+  const [billCustomerName, setBillCustomerName] = useState('');
+  const [billPaymentMethod, setBillPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
+  const [createdBill, setCreatedBill] = useState(null);
+  const [removeTarget, setRemoveTarget] = useState(null);
+  const [removing, setRemoving] = useState(false);
 
   const load = useCallback(async () => {
     if (!moduleEnabled) return;
@@ -91,11 +126,14 @@ export default function TourPackagesPage() {
   };
 
   const openEdit = (row) => {
+    const transport = splitTourTransportValue(row.transport_type);
     setEditId(row.id);
     setForm({
       code: row.code || '',
       name: row.name || '',
       destination: row.destination || '',
+      transport_type: transport.transport_type,
+      transport_type_other: transport.transport_type_other,
       duration_days: row.duration_days != null ? String(row.duration_days) : '',
       base_price: String(row.base_price ?? ''),
       gst_percentage: String(row.gst_percentage ?? '0'),
@@ -111,6 +149,15 @@ export default function TourPackagesPage() {
       setError('Code, name, and price are required.');
       return;
     }
+    const transportType = resolveTourTransportPayload(form.transport_type, form.transport_type_other);
+    if (!transportType) {
+      setError('Select a transport type (Bus, Car, etc.).');
+      return;
+    }
+    if (form.transport_type === TOUR_TRANSPORT_OTHER && !form.transport_type_other.trim()) {
+      setError('Enter the transport type when Other is selected.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -118,6 +165,7 @@ export default function TourPackagesPage() {
         code: form.code.trim(),
         name: form.name.trim(),
         destination: form.destination.trim() || null,
+        transport_type: transportType,
         duration_days: form.duration_days ? Number(form.duration_days) : null,
         base_price: Number(form.base_price),
         gst_percentage: Number(form.gst_percentage || 0),
@@ -141,19 +189,56 @@ export default function TourPackagesPage() {
     }
   };
 
-  const onBill = async (row) => {
-    setBillingId(row.id);
+  const openBillDialog = (row) => {
+    setBillTarget(row);
+    setBillCustomerName('');
+    setBillPaymentMethod(DEFAULT_PAYMENT_METHOD);
+    setBillDialogOpen(true);
+    setError('');
+  };
+
+  const onBill = async () => {
+    if (!billTarget) return;
+    const customerName = billCustomerName.trim();
+    if (!customerName) {
+      setError('Customer name is required for the bill.');
+      return;
+    }
+    if (!isAllowedPaymentMethod(billPaymentMethod)) {
+      setError('Please select a payment method.');
+      return;
+    }
+    setBillingId(billTarget.id);
     setError('');
     try {
-      const res = await billTourPackage(row.id, {
+      const res = await billTourPackage(billTarget.id, {
         quantity: 1,
-        payment_method: 'cash',
+        payment_method: billPaymentMethod,
+        customer_name: customerName,
       });
-      setSuccess(`Bill ${res.data?.bill?.bill_number} created for ${row.name}`);
+      setBillDialogOpen(false);
+      setCreatedBill(res.data?.bill || null);
+      setSuccess(`Bill ${res.data?.bill?.bill_number} created for ${customerName}`);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Could not create bill');
     } finally {
       setBillingId(null);
+    }
+  };
+
+  const onRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    setError('');
+    try {
+      await deleteTourPackage(removeTarget.id);
+      setSuccess(`Package ${removeTarget.name} removed`);
+      setRemoveTarget(null);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not remove package');
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -181,6 +266,11 @@ export default function TourPackagesPage() {
 
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
       {success ? <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert> : null}
+      {!canWrite ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Billing users can view packages and create bills. Owner/manager creates and edits packages.
+        </Alert>
+      ) : null}
 
       {loading ? (
         <LoadingBlock />
@@ -210,6 +300,9 @@ export default function TourPackagesPage() {
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   {row.code}
                   {row.destination ? ` · ${row.destination}` : ''}
+                  {row.transport_type_label || row.transport_type
+                    ? ` · ${row.transport_type_label || tourTransportLabel(row.transport_type)}`
+                    : ''}
                   {row.duration_days ? ` · ${row.duration_days} days` : ''}
                 </Typography>
                 <Typography variant="h5" sx={{ mt: 1.5 }}>
@@ -233,11 +326,20 @@ export default function TourPackagesPage() {
                     Edit
                   </Button>
                 ) : null}
+                {canRemove && row.is_active ? (
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => setRemoveTarget(row)}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
                 <Button
                   size="small"
                   variant="contained"
                   disabled={!row.is_active || billingId === row.id}
-                  onClick={() => onBill(row)}
+                  onClick={() => openBillDialog(row)}
                 >
                   {billingId === row.id ? 'Billing…' : 'Create bill'}
                 </Button>
@@ -270,6 +372,42 @@ export default function TourPackagesPage() {
               onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))}
               fullWidth
             />
+            <TextField
+              select
+              label="Transport type"
+              value={form.transport_type}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  transport_type: e.target.value,
+                  transport_type_other:
+                    e.target.value === TOUR_TRANSPORT_OTHER ? f.transport_type_other : '',
+                }))
+              }
+              fullWidth
+              required
+              helperText="How travellers go — bus, car, train, flight, etc."
+            >
+              <MenuItem value="">
+                <em>Select transport</em>
+              </MenuItem>
+              {TOUR_TRANSPORT_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            {form.transport_type === TOUR_TRANSPORT_OTHER ? (
+              <TextField
+                label="Other transport"
+                value={form.transport_type_other}
+                onChange={(e) => setForm((f) => ({ ...f, transport_type_other: e.target.value }))}
+                fullWidth
+                required
+                placeholder="e.g. Luxury coach, Helicopter"
+                inputProps={{ maxLength: 60 }}
+              />
+            ) : null}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
                 label="Duration (days)"
@@ -325,6 +463,107 @@ export default function TourPackagesPage() {
           </Button>
           <Button variant="contained" onClick={onSave} disabled={saving}>
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={billDialogOpen}
+        onClose={() => !billingId && setBillDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Create bill — {billTarget?.name}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Customer name"
+              value={billCustomerName}
+              onChange={(e) => setBillCustomerName(e.target.value)}
+              fullWidth
+              required
+              autoFocus
+              placeholder="Walk-in Traveler"
+              helperText="Printed on the bill receipt"
+              inputProps={{ maxLength: 120 }}
+            />
+            <FormControl fullWidth size="small">
+              <InputLabel id="pkg-bill-payment">Payment method</InputLabel>
+              <Select
+                labelId="pkg-bill-payment"
+                label="Payment method"
+                value={billPaymentMethod}
+                onChange={(e) => setBillPaymentMethod(e.target.value)}
+              >
+                <MenuItem value={PAYMENT_CASH}>Cash</MenuItem>
+                <MenuItem value={PAYMENT_ONLINE}>Online</MenuItem>
+              </Select>
+            </FormControl>
+            {billTarget ? (
+              <Typography variant="body2" color="text.secondary">
+                Package total: {money(billTarget.base_price)}
+                {Number(billTarget.gst_percentage) > 0
+                  ? ` + GST ${billTarget.gst_percentage}%`
+                  : ''}
+              </Typography>
+            ) : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBillDialogOpen(false)} disabled={Boolean(billingId)}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={onBill} disabled={Boolean(billingId)}>
+            {billingId ? 'Creating…' : 'Create bill'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(createdBill)} onClose={() => setCreatedBill(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Bill created</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            <Typography>
+              Bill <strong>#{createdBill?.bill_number}</strong> saved.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Customer: {createdBill?.customer_name || '—'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total: {money(createdBill?.grand_total)}
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreatedBill(null)}>Close</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const billId = createdBill?.id;
+              setCreatedBill(null);
+              if (billId) {
+                navigate(billPrintPath(billId, { auto: true }));
+              }
+            }}
+          >
+            Print bill
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(removeTarget)} onClose={() => !removing && setRemoveTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Remove tour package?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Deactivate <strong>{removeTarget?.name}</strong>? It will no longer appear for new bookings or bills.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemoveTarget(null)} disabled={removing}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={onRemove} disabled={removing}>
+            {removing ? 'Removing…' : 'Remove'}
           </Button>
         </DialogActions>
       </Dialog>

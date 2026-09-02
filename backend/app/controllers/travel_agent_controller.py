@@ -40,6 +40,11 @@ def update_agent(agent_id: str):
     return success_response(data=data)
 
 
+def delete_agent(agent_id: str):
+    data = TravelAgentService.delete_agent(agent_id)
+    return success_response(data=data)
+
+
 def list_commissions():
     data, meta = TravelAgentService.list_commissions(
         agent_id=request.args.get("agent_id"),

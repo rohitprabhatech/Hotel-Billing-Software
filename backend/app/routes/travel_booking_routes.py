@@ -40,6 +40,22 @@ def get_booking(booking_id):
     return travel_booking_controller.get_booking(booking_id)
 
 
+@travel_bookings_bp.patch("/<booking_id>")
+@roles_required(ROLE_OWNER)
+@module_required("travel_bookings")
+@permission_required(PERM_BILLING)
+def update_booking(booking_id):
+    return travel_booking_controller.update_booking(booking_id)
+
+
+@travel_bookings_bp.delete("/<booking_id>")
+@roles_required(ROLE_OWNER)
+@module_required("travel_bookings")
+@permission_required(PERM_BILLING)
+def delete_booking(booking_id):
+    return travel_booking_controller.delete_booking(booking_id)
+
+
 @travel_bookings_bp.patch("/<booking_id>/status")
 @roles_required(*_MANAGE)
 @module_required("travel_bookings")

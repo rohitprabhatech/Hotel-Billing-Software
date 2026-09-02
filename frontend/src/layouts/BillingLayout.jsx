@@ -13,8 +13,16 @@ import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
+import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined';
+import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
+import ShoppingCartCheckoutOutlinedIcon from '@mui/icons-material/ShoppingCartCheckoutOutlined';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
+import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined';
+import FlightTakeoffOutlinedIcon from '@mui/icons-material/FlightTakeoffOutlined';
+import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined';
+import LuggageOutlinedIcon from '@mui/icons-material/LuggageOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined';
@@ -65,6 +73,7 @@ function billingBrandSubtitle(user, { isOwner, isManager }) {
   if (type === 'grocery_kirana') return 'Grocery Billing';
   if (type === 'stationery') return 'Stationery Billing';
   if (type === 'hardware' || type === 'building_material') return 'Hardware Billing';
+  if (type === 'travel_agency') return 'Travel Billing';
   if (isOwner) return 'Owner · Billing';
   if (isManager) return 'Manager · Billing';
   return 'Billing';
@@ -431,6 +440,182 @@ const cafeBillingUserNav = [
   },
 ];
 
+/** Travel agency billing desk — bookings first, then packages and commission. */
+const travelAgencyBillingNav = [
+  { type: 'section', label: 'Travel desk' },
+  {
+    to: PATHS.billingTravelBookings,
+    label: 'Travel Bookings',
+    icon: <LuggageOutlinedIcon />,
+    module: 'travel_bookings',
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingTourPackages,
+    label: 'Tour Packages',
+    icon: <FlightTakeoffOutlinedIcon />,
+    module: 'tour_packages',
+  },
+  {
+    to: PATHS.billingTravelAgents,
+    label: 'Travel Agents',
+    icon: <HandshakeOutlinedIcon />,
+    module: 'travel_commission',
+  },
+  { type: 'section', label: 'Billing' },
+  { to: PATHS.billingNew, label: 'New Bill', icon: <ReceiptLongOutlinedIcon /> },
+  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Customers' },
+  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { to: PATHS.billingExpenses, label: 'Expenses', icon: <PaymentsOutlinedIcon /> },
+];
+
+/** Slim sidebar for travel agency Billing Users — desk workflow only. */
+const travelAgencyBillingUserNav = [
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Travel desk' },
+  {
+    to: PATHS.billingTravelBookings,
+    label: 'Travel Bookings',
+    icon: <LuggageOutlinedIcon />,
+    module: 'travel_bookings',
+    emphasize: true,
+  },
+  {
+    to: PATHS.billingTourPackages,
+    label: 'Tour Packages',
+    icon: <FlightTakeoffOutlinedIcon />,
+    module: 'tour_packages',
+  },
+  {
+    to: PATHS.billingTravelAgents,
+    label: 'Travel Agents',
+    icon: <HandshakeOutlinedIcon />,
+    module: 'travel_commission',
+  },
+  { type: 'section', label: 'Billing' },
+  { to: PATHS.billingNew, label: 'New Bill', icon: <ReceiptLongOutlinedIcon /> },
+  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { type: 'section', label: 'Account' },
+  { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  {
+    to: PATHS.billingChangePassword,
+    label: 'Settings',
+    icon: <LockOutlinedIcon />,
+  },
+];
+
+/** Wholesale trade documents — SO, PO, challans, warehouses (shared owner + billing user nav). */
+const wholesaleTradeDocsNav = [
+  { type: 'section', label: 'Trade documents' },
+  {
+    to: PATHS.billingSalesOrders,
+    label: 'Sales Orders',
+    icon: <ShoppingCartCheckoutOutlinedIcon />,
+    module: 'sales_orders',
+  },
+  {
+    to: PATHS.billingPurchaseOrders,
+    label: 'Purchase Orders',
+    icon: <AssignmentOutlinedIcon />,
+    module: 'purchase_orders',
+  },
+  {
+    to: PATHS.billingQuotations,
+    label: 'Quotations',
+    icon: <RequestQuoteOutlinedIcon />,
+    module: 'quotation',
+  },
+  {
+    to: PATHS.billingChallans,
+    label: 'Delivery Challans',
+    icon: <LocalShippingOutlinedIcon />,
+    module: 'delivery_challan',
+  },
+  {
+    to: PATHS.billingWarehouses,
+    label: 'Warehouses',
+    icon: <WarehouseOutlinedIcon />,
+    module: 'warehouse',
+  },
+];
+
+/** Wholesale billing desk — barcode POS first, then credit and catalog. */
+const wholesaleBillingNav = [
+  { type: 'section', label: 'Counter' },
+  {
+    to: PATHS.billingGrocery,
+    label: 'Wholesale POS',
+    icon: <ShoppingCartOutlinedIcon />,
+    module: 'barcode_pos',
+    emphasize: true,
+  },
+  { to: PATHS.billingNew, label: 'Manual Bill', icon: <PointOfSaleOutlinedIcon /> },
+  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Trade pricing' },
+  {
+    to: PATHS.billingPriceLists,
+    label: 'Price Lists',
+    icon: <PriceChangeOutlinedIcon />,
+    module: 'price_lists',
+  },
+  ...wholesaleTradeDocsNav,
+  { type: 'section', label: 'Udhari (Credit)' },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  { type: 'section', label: 'Catalog setup' },
+  { to: PATHS.billingCategories, label: 'Categories', icon: <CategoryOutlinedIcon /> },
+  { to: PATHS.billingItems, label: 'Items', icon: <Inventory2OutlinedIcon /> },
+  { type: 'section', label: 'Stock in' },
+  { to: PATHS.billingSuppliers, label: 'Suppliers', icon: <LocalShippingOutlinedIcon /> },
+  { to: PATHS.billingPurchases, label: 'Purchases', icon: <ShoppingCartOutlinedIcon /> },
+  { type: 'section', label: 'Customers & money' },
+  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { to: PATHS.billingExpenses, label: 'Expenses', icon: <PaymentsOutlinedIcon /> },
+];
+
+/** Slim sidebar for wholesale Billing Users — POS + udhari only. */
+const wholesaleBillingUserNav = [
+  { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
+  { type: 'section', label: 'Counter' },
+  {
+    to: PATHS.billingGrocery,
+    label: 'Wholesale POS',
+    icon: <ShoppingCartOutlinedIcon />,
+    module: 'barcode_pos',
+    emphasize: true,
+  },
+  { to: PATHS.billingBills, label: 'Bills', icon: <ReceiptLongOutlinedIcon /> },
+  { type: 'section', label: 'Trade pricing' },
+  {
+    to: PATHS.billingPriceLists,
+    label: 'Price Lists',
+    icon: <PriceChangeOutlinedIcon />,
+    module: 'price_lists',
+  },
+  ...wholesaleTradeDocsNav,
+  { to: PATHS.billingCustomers, label: 'Customers', icon: <ContactsOutlinedIcon /> },
+  { type: 'section', label: 'Udhari (Credit)' },
+  {
+    to: PATHS.billingCredit,
+    label: 'Credit / Udhari',
+    icon: <AccountBalanceWalletOutlinedIcon />,
+    module: 'customer_credit',
+  },
+  { type: 'section', label: 'Account' },
+  { to: PATHS.billingProfile, label: 'Profile', icon: <PersonOutlinedIcon /> },
+  {
+    to: PATHS.billingChangePassword,
+    label: 'Settings',
+    icon: <LockOutlinedIcon />,
+  },
+];
+
 /** Grocery / Kirana billing desk — counter first, then udhari and catalog. */
 const groceryBillingNav = [
   { type: 'section', label: 'Counter' },
@@ -694,6 +879,12 @@ function pageMeta(pathname, businessType) {
         subtitle: 'Hardware POS → length / weight / area → pay → print.',
       };
     }
+    if (businessType === 'travel_agency') {
+      return {
+        title: 'Travel Billing',
+        subtitle: 'Bookings, package bills, and commission — today’s overview.',
+      };
+    }
     return {
       title: 'Billing Dashboard',
       subtitle: "Today's billing overview and quick actions.",
@@ -827,8 +1018,65 @@ function pageMeta(pathname, businessType) {
   }
   if (pathname.startsWith(PATHS.billingGrocery)) {
     return {
-      title: 'Grocery POS',
-      subtitle: 'Scan-first billing with barcode lookup, weight quantities, and udhari.',
+      title: businessType === 'wholesale' ? 'Wholesale POS' : 'Grocery POS',
+      subtitle:
+        businessType === 'wholesale'
+          ? 'Scan-first trade billing with customer price lists, bulk tiers, and udhari.'
+          : 'Scan-first billing with barcode lookup, weight quantities, and udhari.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingPriceLists)) {
+    return {
+      title: 'Price Lists',
+      subtitle: 'View wholesale and VIP trade rates. Billing users can read prices; owner/manager can edit.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingSalesOrders)) {
+    return {
+      title: 'Sales Orders',
+      subtitle: 'Track dealer SOs (SO-#####). Billing users can view; owner/manager confirms and converts to bill.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingPurchaseOrders)) {
+    return {
+      title: 'Purchase Orders',
+      subtitle: 'Track supplier POs (PO-#####). Billing users can view; owner/manager confirms and converts to purchase.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingQuotations)) {
+    return {
+      title: 'Quotations',
+      subtitle: 'Trade quotes for customers. Billing users can view and download; owner/manager creates and converts.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingChallans)) {
+    return {
+      title: 'Delivery Challans',
+      subtitle: 'Dispatch documents before invoicing. Billing users can view and print PDFs.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingWarehouses)) {
+    return {
+      title: 'Warehouses',
+      subtitle: 'Godown stock by location. Billing users can view balances; owner/manager manages transfers.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingTourPackages)) {
+    return {
+      title: 'Tour Packages',
+      subtitle: 'View packages and create service bills. Owner/manager creates and edits packages.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingTravelBookings)) {
+    return {
+      title: 'Travel Bookings',
+      subtitle: 'Create bookings, record payments, and track status. Owner/manager confirms trips.',
+    };
+  }
+  if (pathname.startsWith(PATHS.billingTravelAgents)) {
+    return {
+      title: 'Travel Agents',
+      subtitle: 'Agent commission report. Billing users can view; owner/manager manages agents and payouts.',
     };
   }
   if (pathname.startsWith(PATHS.billingStationery)) {
@@ -948,8 +1196,10 @@ export default function BillingLayout() {
     const isCafe = businessType === 'cafe_tea';
     const isClothing = businessType === 'clothing';
     const isGrocery = businessType === 'grocery_kirana';
+    const isWholesale = businessType === 'wholesale';
     const isStationery = businessType === 'stationery';
     const isHardware = businessType === 'hardware' || businessType === 'building_material';
+    const isTravelAgency = businessType === 'travel_agency';
     const isBillingUser = role === 'BILLING_USER';
     let items;
 
@@ -985,6 +1235,9 @@ export default function BillingLayout() {
     if (isGrocery && isBillingUser) {
       return pruneEmptySections(filterByModule(withOptionalReports(groceryBillingUserNav), businessType));
     }
+    if (isWholesale && isBillingUser) {
+      return pruneEmptySections(filterByModule(withOptionalReports(wholesaleBillingUserNav), businessType));
+    }
     if (isStationery && isBillingUser) {
       return pruneEmptySections(filterByModule(withOptionalReports(stationeryBillingUserNav), businessType));
     }
@@ -994,11 +1247,22 @@ export default function BillingLayout() {
     if (isHardware && isBillingUser) {
       return pruneEmptySections(filterByModule(withOptionalReports(hardwareBillingUserNav), businessType));
     }
+    if (isTravelAgency && isBillingUser) {
+      return pruneEmptySections(filterByModule(withOptionalReports(travelAgencyBillingUserNav), businessType));
+    }
 
     if (!isOwner) {
       items = [
         { to: PATHS.billingHome, label: 'Dashboard', icon: <DashboardOutlinedIcon />, end: true },
-        ...(isGrocery ? groceryBillingNav : isStationery ? stationeryBillingNav : billingNav.slice(1)),
+        ...(isWholesale
+          ? wholesaleBillingNav
+          : isTravelAgency
+            ? travelAgencyBillingNav
+            : isGrocery
+              ? groceryBillingNav
+              : isStationery
+                ? stationeryBillingNav
+                : billingNav.slice(1)),
       ];
     } else {
       items = [
@@ -1008,7 +1272,15 @@ export default function BillingLayout() {
           icon: <DashboardOutlinedIcon />,
           end: true,
         },
-        ...(isGrocery ? groceryBillingNav : isStationery ? stationeryBillingNav : billingNav),
+        ...(isWholesale
+          ? wholesaleBillingNav
+          : isTravelAgency
+            ? travelAgencyBillingNav
+            : isGrocery
+              ? groceryBillingNav
+              : isStationery
+                ? stationeryBillingNav
+                : billingNav),
       ];
     }
 

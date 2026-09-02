@@ -237,6 +237,15 @@ export default function AppRoutes() {
             <Route path="combos" element={<RequireModule module="addons_combos"><CombosPage /></RequireModule>} />
             <Route path="coupons" element={<RequireModule module="addons_combos"><CouponsPage /></RequireModule>} />
             <Route path="grocery" element={<RequireModule module="barcode_pos"><GroceryPosPage /></RequireModule>} />
+            <Route path="price-lists" element={<RequireModule module="price_lists"><PriceListsPage /></RequireModule>} />
+            <Route path="sales-orders" element={<RequireModule module="sales_orders"><SalesOrdersPage /></RequireModule>} />
+            <Route path="purchase-orders" element={<RequireModule module="purchase_orders"><PurchaseOrdersPage /></RequireModule>} />
+            <Route path="quotations" element={<RequireModule module="quotation"><QuotationsPage /></RequireModule>} />
+            <Route path="challans" element={<RequireModule module="delivery_challan"><ChallansPage /></RequireModule>} />
+            <Route path="warehouses" element={<RequireModule module="warehouse"><WarehousesPage /></RequireModule>} />
+            <Route path="tour-packages" element={<RequireModule module="tour_packages"><TourPackagesPage /></RequireModule>} />
+            <Route path="travel-bookings" element={<RequireModule module="travel_bookings"><TravelBookingsPage /></RequireModule>} />
+            <Route path="travel-agents" element={<RequireModule module="travel_commission"><TravelAgentsPage /></RequireModule>} />
             <Route path="stationery" element={<RequireModule module="barcode_pos"><StationeryPosPage /></RequireModule>} />
             <Route path="hardware" element={<RequireModule module="uom_measurement"><HardwarePosPage /></RequireModule>} />
             <Route path="clothing" element={<RequireModule module="variants"><ClothingPosPage /></RequireModule>} />

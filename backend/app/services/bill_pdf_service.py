@@ -69,8 +69,7 @@ class BillPdfService:
         line(f"Bill No: {bill.bill_number}", bold=True)
         if bill.created_at:
             line(f"Date: {bill.created_at.strftime('%Y-%m-%d %H:%M')}", size=10, gap=14)
-        if bill.customer_name:
-            line(f"Bill to: {bill.customer_name}", size=10, gap=14)
+        line(f"Bill to: {bill.customer_name or 'Walk-in'}", size=10, gap=14)
         if bill.customer_phone_e164:
             line(f"Mobile: {bill.customer_phone_e164}", size=10, gap=14)
         if bill.table_number:

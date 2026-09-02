@@ -186,6 +186,12 @@ export default function QuotationsPage() {
       </PageActions>
 
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+      {!canWrite ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          View only — you can review quotations at the counter. Ask the owner or manager to create or
+          convert quotes.
+        </Alert>
+      ) : null}
       {success ? <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert> : null}
 
       {loading ? (

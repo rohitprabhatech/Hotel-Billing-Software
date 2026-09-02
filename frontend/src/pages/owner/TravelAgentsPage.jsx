@@ -28,10 +28,11 @@ import LoadingBlock from '../../components/LoadingBlock';
 import PageShell from '../../components/PageShell';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { PageActions } from '../../context/PageActionsContext';
-import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import {
   createTravelAgent,
+  deleteTravelAgent,
   getTravelCommissionReport,
   listTravelAgents,
   listTravelCommissions,
@@ -58,8 +59,8 @@ const emptyAgent = {
 
 export default function TravelAgentsPage() {
   const moduleEnabled = useModuleGate('travel_commission');
-  const { role } = useAuth();
-  const canWrite = role === 'OWNER' || role === 'MANAGER';
+  const { isOwner } = usePermissions();
+  const canWrite = isOwner;
 
   const [tab, setTab] = useState(0);
   const [agents, setAgents] = useState([]);
@@ -73,6 +74,7 @@ export default function TravelAgentsPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(emptyAgent);
+  const [removeAgent, setRemoveAgent] = useState(null);
 
   const load = useCallback(async () => {
     if (!moduleEnabled) return;
@@ -151,6 +153,22 @@ export default function TravelAgentsPage() {
     }
   };
 
+  const removeAgentConfirm = async () => {
+    if (!removeAgent) return;
+    setSaving(true);
+    setError('');
+    try {
+      await deleteTravelAgent(removeAgent.id);
+      setSuccess(`${removeAgent.name} removed`);
+      setRemoveAgent(null);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Could not remove agent');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const markPaid = async (entryId) => {
     setSaving(true);
     setError('');
@@ -200,6 +218,12 @@ export default function TravelAgentsPage() {
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
           {success}
+        </Alert>
+      ) : null}
+      {!canWrite ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Billing users can view agents and commission reports. Owner/manager creates agents and
+          marks commissions paid.
         </Alert>
       ) : null}
 
@@ -282,9 +306,16 @@ export default function TravelAgentsPage() {
                     </Typography>
                   </Stack>
                   {canWrite ? (
-                    <Button size="small" onClick={() => openEdit(agent)}>
-                      Edit
-                    </Button>
+                    <Stack direction="row" spacing={1}>
+                      <Button size="small" onClick={() => openEdit(agent)}>
+                        Edit
+                      </Button>
+                      {agent.is_active ? (
+                        <Button size="small" color="error" onClick={() => setRemoveAgent(agent)}>
+                          Remove
+                        </Button>
+                      ) : null}
+                    </Stack>
                   ) : null}
                 </Stack>
               </Box>
@@ -407,6 +438,23 @@ export default function TravelAgentsPage() {
           </Button>
           <Button variant="contained" onClick={saveAgent} disabled={saving}>
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(removeAgent)} onClose={() => !saving && setRemoveAgent(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Remove travel agent?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Deactivate <strong>{removeAgent?.name}</strong>? Existing commission history is kept.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemoveAgent(null)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={removeAgentConfirm} disabled={saving}>
+            {saving ? 'Removing…' : 'Remove'}
           </Button>
         </DialogActions>
       </Dialog>

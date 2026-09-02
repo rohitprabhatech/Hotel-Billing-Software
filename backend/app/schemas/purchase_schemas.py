@@ -28,6 +28,14 @@ class CreatePurchaseSchema(Schema):
     )
 
 
+class UpdatePurchaseSchema(Schema):
+    class Meta:
+        unknown = EXCLUDE
+
+    invoice_number = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=60))
+    notes = fields.String(load_default=None, allow_none=True)
+
+
 class CancelPurchaseSchema(Schema):
     class Meta:
         unknown = EXCLUDE
@@ -36,4 +44,5 @@ class CancelPurchaseSchema(Schema):
 
 
 create_purchase_schema = CreatePurchaseSchema()
+update_purchase_schema = UpdatePurchaseSchema()
 cancel_purchase_schema = CancelPurchaseSchema()

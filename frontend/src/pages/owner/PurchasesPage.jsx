@@ -1,6 +1,7 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import {
   Alert,
@@ -40,7 +41,7 @@ import { PageActions } from '../../context/PageActionsContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { filterControlWideSx } from '../../layouts/shell';
 import { listItems } from '../../services/itemService';
-import { cancelPurchase, createPurchase, getPurchase, listPurchases } from '../../services/purchaseService';
+import { cancelPurchase, createPurchase, getPurchase, listPurchases, updatePurchase } from '../../services/purchaseService';
 import { listSuppliers } from '../../services/supplierService';
 
 const PAGE_SIZE = 25;
@@ -63,7 +64,7 @@ function statusChip(status) {
 }
 
 export default function PurchasesPage() {
-  const { canManagePurchases, canViewPurchases } = usePermissions();
+  const { canManagePurchases, canViewPurchases, isOwner } = usePermissions();
   const [purchases, setPurchases] = useState([]);
   const [meta, setMeta] = useState({ page: 1, per_page: PAGE_SIZE, total: 0 });
   const [q, setQ] = useState('');
@@ -77,6 +78,9 @@ export default function PurchasesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editInvoice, setEditInvoice] = useState('');
+  const [editNotes, setEditNotes] = useState('');
   const [selected, setSelected] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
 
@@ -160,6 +164,33 @@ export default function PurchasesPage() {
     setSelected(purchase);
     setCancelReason('');
     setCancelOpen(true);
+  };
+
+  const openEdit = (purchase) => {
+    setSelected(purchase);
+    setEditInvoice(purchase.invoice_number || '');
+    setEditNotes(purchase.notes || '');
+    setEditOpen(true);
+  };
+
+  const onEditSave = async () => {
+    if (!selected) return;
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await updatePurchase(selected.id, {
+        invoice_number: editInvoice.trim() || null,
+        notes: editNotes.trim() || null,
+      });
+      setEditOpen(false);
+      setSuccess('Purchase updated.');
+      await load(page, q, statusFilter);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Failed to update purchase.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateLine = (index, patch) => {
@@ -328,14 +359,19 @@ export default function PurchasesPage() {
                         <IconActionButton title="View" onClick={() => openDetail(purchase)}>
                           <VisibilityOutlinedIcon fontSize="small" />
                         </IconActionButton>
-                        {canManagePurchases && purchase.status === 'FINALIZED' ? (
-                          <IconActionButton
-                            title="Cancel purchase"
-                            color="error"
-                            onClick={() => openCancel(purchase)}
-                          >
-                            <CancelOutlinedIcon fontSize="small" />
-                          </IconActionButton>
+                        {isOwner && purchase.status === 'FINALIZED' ? (
+                          <>
+                            <IconActionButton title="Edit purchase" onClick={() => openEdit(purchase)}>
+                              <EditOutlinedIcon fontSize="small" />
+                            </IconActionButton>
+                            <IconActionButton
+                              title="Cancel purchase"
+                              color="error"
+                              onClick={() => openCancel(purchase)}
+                            >
+                              <CancelOutlinedIcon fontSize="small" />
+                            </IconActionButton>
+                          </>
                         ) : null}
                       </Stack>
                     </TableCell>
@@ -540,6 +576,36 @@ export default function PurchasesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetailOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editOpen} onClose={() => !saving && setEditOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Edit {selected?.purchase_number}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Invoice number"
+              value={editInvoice}
+              onChange={(e) => setEditInvoice(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Notes"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={onEditSave} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
         </DialogActions>
       </Dialog>
 

@@ -5,6 +5,7 @@ from flask import request
 from app.schemas.travel_booking_schemas import (
     create_travel_booking_schema,
     record_travel_booking_payment_schema,
+    update_travel_booking_schema,
     update_travel_booking_status_schema,
 )
 from app.services.travel_booking_service import TravelBookingService
@@ -33,6 +34,17 @@ def create_booking():
 def update_booking_status(booking_id: str):
     payload = update_travel_booking_status_schema.load(request.get_json() or {})
     data = TravelBookingService.update_status(booking_id, status=payload["status"])
+    return success_response(data=data)
+
+
+def update_booking(booking_id: str):
+    payload = update_travel_booking_schema.load(request.get_json() or {})
+    data = TravelBookingService.update_booking(booking_id, **payload)
+    return success_response(data=data)
+
+
+def delete_booking(booking_id: str):
+    data = TravelBookingService.delete_booking(booking_id)
     return success_response(data=data)
 
 

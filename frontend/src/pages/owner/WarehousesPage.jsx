@@ -216,6 +216,12 @@ export default function WarehousesPage() {
       </PageActions>
 
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+      {!canWrite ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          View only — check godown stock before billing. Ask the owner or manager to add warehouses
+          or transfer stock.
+        </Alert>
+      ) : null}
       {success ? <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert> : null}
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>

@@ -28,6 +28,19 @@ class CreateTravelBookingSchema(Schema):
     commission_percent = fields.Decimal(load_default=None, allow_none=True, as_string=False)
 
 
+class UpdateTravelBookingSchema(Schema):
+    class Meta:
+        unknown = EXCLUDE
+
+    customer_name = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=120))
+    customer_phone = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=30))
+    pax_count = fields.Integer(load_default=None, allow_none=True, validate=validate.Range(min=1, max=500))
+    notes = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=2000))
+    travel_start_at = fields.String(load_default=None, allow_none=True)
+    travel_end_at = fields.String(load_default=None, allow_none=True)
+    agent_id = fields.String(load_default=None, allow_none=True, validate=validate.Length(min=1, max=36))
+
+
 class UpdateTravelBookingStatusSchema(Schema):
     class Meta:
         unknown = EXCLUDE
@@ -51,5 +64,6 @@ class RecordTravelBookingPaymentSchema(Schema):
 
 
 create_travel_booking_schema = CreateTravelBookingSchema()
+update_travel_booking_schema = UpdateTravelBookingSchema()
 update_travel_booking_status_schema = UpdateTravelBookingStatusSchema()
 record_travel_booking_payment_schema = RecordTravelBookingPaymentSchema()

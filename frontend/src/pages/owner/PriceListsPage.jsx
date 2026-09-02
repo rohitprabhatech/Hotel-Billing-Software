@@ -233,6 +233,12 @@ export default function PriceListsPage() {
           {error}
         </Alert>
       ) : null}
+      {!canWrite ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          View only — you can check trade rates at the counter. Ask the owner or manager to create or
+          change price lists.
+        </Alert>
+      ) : null}
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
           {success}
@@ -277,7 +283,11 @@ export default function PriceListsPage() {
                       <Button size="small" onClick={() => openItemsEditor(row)}>
                         Edit prices
                       </Button>
-                    ) : null}
+                    ) : (
+                      <Button size="small" onClick={() => openItemsEditor(row)}>
+                        View prices
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -373,7 +383,7 @@ export default function PriceListsPage() {
       </Dialog>
 
       <Dialog open={itemsOpen} onClose={() => !saving && setItemsOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>Edit prices — {itemsTarget?.name}</DialogTitle>
+        <DialogTitle>{canWrite ? 'Edit' : 'View'} prices — {itemsTarget?.name}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {itemLines.map((line, index) => (
@@ -383,6 +393,8 @@ export default function PriceListsPage() {
                   options={itemOptions}
                   getOptionLabel={(option) => option.name || ''}
                   value={line.item}
+                  readOnly={!canWrite}
+                  disabled={!canWrite}
                   onChange={(_, value) =>
                     setItemLines((rows) =>
                       rows.map((row, i) => (i === index ? { ...row, item: value } : row)),
@@ -399,29 +411,34 @@ export default function PriceListsPage() {
                       rows.map((row, i) => (i === index ? { ...row, unit_price: e.target.value } : row)),
                     )
                   }
+                  InputProps={{ readOnly: !canWrite }}
                   sx={{ width: { sm: 160 } }}
                 />
-                <IconActionButton
-                  title="Remove line"
-                  color="error"
-                  onClick={() =>
-                    setItemLines((rows) => (rows.length === 1 ? [emptyLine] : rows.filter((_, i) => i !== index)))
-                  }
-                >
-                  <DeleteOutlineOutlinedIcon fontSize="small" />
-                </IconActionButton>
+                {canWrite ? (
+                  <IconActionButton
+                    title="Remove line"
+                    color="error"
+                    onClick={() =>
+                      setItemLines((rows) => (rows.length === 1 ? [emptyLine] : rows.filter((_, i) => i !== index)))
+                    }
+                  >
+                    <DeleteOutlineOutlinedIcon fontSize="small" />
+                  </IconActionButton>
+                ) : null}
               </Stack>
             ))}
-            <Button onClick={() => setItemLines((rows) => [...rows, emptyLine])}>Add line</Button>
+            {canWrite ? <Button onClick={() => setItemLines((rows) => [...rows, emptyLine])}>Add line</Button> : null}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setItemsOpen(false)} disabled={saving}>
-            Cancel
+            {canWrite ? 'Cancel' : 'Close'}
           </Button>
-          <Button variant="contained" onClick={submitItems} disabled={saving}>
-            Save prices
-          </Button>
+          {canWrite ? (
+            <Button variant="contained" onClick={submitItems} disabled={saving}>
+              Save prices
+            </Button>
+          ) : null}
         </DialogActions>
       </Dialog>
 

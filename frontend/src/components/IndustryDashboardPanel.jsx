@@ -202,6 +202,9 @@ const OWNER_TO_BILLING = {
   [PATHS.ownerPurchases]: PATHS.billingPurchases,
   [PATHS.ownerReports]: PATHS.billingReports,
   [PATHS.ownerStockMovements]: PATHS.billingStockMovements,
+  [PATHS.ownerTourPackages]: PATHS.billingTourPackages,
+  [PATHS.ownerTravelBookings]: PATHS.billingTravelBookings,
+  [PATHS.ownerTravelAgents]: PATHS.billingTravelAgents,
   [PATHS.billingNew]: PATHS.billingNew,
   [PATHS.billingStockMovements]: PATHS.billingStockMovements,
 };

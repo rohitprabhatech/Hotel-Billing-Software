@@ -40,6 +40,7 @@ import SearchInput from '../../components/ui/SearchInput';
 import { useAuth } from '../../context/AuthContext';
 import { useModuleGate } from '../../context/ModulesContext';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { isValidEmail, resolveBillCustomerEmail } from '../../utils/emailAddress';
 import { uomLabel } from '../../utils/uom';
 import {
   createBill,
@@ -55,7 +56,7 @@ import { PATHS } from '../../routes/paths';
 import { listItemVariants } from '../../services/variantService';
 import { getSerialUnitBySerial, listSerialUnits } from '../../services/serialService';
 import { listItemAccessories } from '../../services/itemService';
-import { listWarehouses } from '../../services/warehouseService';
+import { useBillWarehouse } from '../../hooks/useBillWarehouse';
 import VariantStockGrid from '../../components/VariantStockGrid';
 import {
   DEFAULT_PAYMENT_METHOD,
@@ -98,10 +99,14 @@ export default function NewBillPage() {
   const navigate = useNavigate();
   const { canWriteCategories } = usePermissions();
   const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
+  const isWholesale = user?.tenant?.business_type === 'wholesale';
+  const isGrocery = user?.tenant?.business_type === 'grocery_kirana';
+  const useCompactQty = isHotel || isWholesale || isGrocery;
   const tablesEnabled = useModuleGate('table_management');
   const variantsEnabled = useModuleGate('variants');
   const serialImeiEnabled = useModuleGate('serial_imei');
   const warrantyEnabled = useModuleGate('warranty');
+  const priceListsEnabled = useModuleGate('price_lists');
   const warehouseEnabled = useModuleGate('warehouse');
   const [q, setQ] = useState('');
   const [barcode, setBarcode] = useState('');
@@ -116,8 +121,14 @@ export default function NewBillPage() {
   const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [customerName, setCustomerName] = useState('');
   const [countryCode, setCountryCode] = useState('91');
-  const [warehouses, setWarehouses] = useState([]);
-  const [warehouseId, setWarehouseId] = useState('');
+  const {
+    warehouses,
+    warehouseId,
+    setWarehouseId,
+    resolvedWarehouseId,
+    loading: warehousesLoading,
+    loadError: warehouseLoadError,
+  } = useBillWarehouse(warehouseEnabled);
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -185,18 +196,6 @@ export default function NewBillPage() {
       .then((res) => setCategories((res.data || []).filter((c) => c.is_active)))
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (!warehouseEnabled) return;
-    listWarehouses()
-      .then((res) => {
-        const rows = res.data || [];
-        setWarehouses(rows);
-        const def = rows.find((w) => w.is_default) || rows[0];
-        if (def) setWarehouseId((prev) => prev || def.id);
-      })
-      .catch(() => {});
-  }, [warehouseEnabled]);
 
   // Debounce catalog search so typing stays responsive with large inventories.
   useEffect(() => {
@@ -425,7 +424,7 @@ export default function NewBillPage() {
     setRemoveConfirm(null);
   };
 
-  const bumpHotelQty = (line, delta) => {
+  const bumpQty = (line, delta) => {
     if (line.serial_unit_id) {
       setError('Serialized items are sold one unit at a time.');
       return;
@@ -437,6 +436,8 @@ export default function NewBillPage() {
     }
     setQty(line.line_key, next);
   };
+
+  const bumpHotelQty = bumpQty;
 
   const saveHotelCategory = async () => {
     if (!categoryForm.name.trim()) {
@@ -515,6 +516,12 @@ export default function NewBillPage() {
       );
       return;
     }
+    const resolvedEmail = resolveBillCustomerEmail(customerEmail);
+    if (resolvedEmail.error) {
+      setError(resolvedEmail.error);
+      return;
+    }
+
     setSaving(true);
     setError('');
     try {
@@ -525,9 +532,9 @@ export default function NewBillPage() {
         customer_name: customerName || null,
         customer_phone_country_code: customerPhone ? countryCode : null,
         customer_phone: customerPhone || null,
-        customer_email: customerEmail.trim() || null,
+        customer_email: resolvedEmail.value,
         customer_id: selectedCustomer?.id || null,
-        warehouse_id: warehouseEnabled && warehouseId ? warehouseId : undefined,
+        warehouse_id: resolvedWarehouseId,
         items: cart.map((line) => ({
           item_id: line.item_id,
           variant_id: line.variant_id || undefined,
@@ -651,6 +658,25 @@ export default function NewBillPage() {
             Quick Billing — no table required. For dine-in, use Table Billing.
           </Alert>
         ) : null}
+        {isWholesale ? (
+          <Alert
+            severity="info"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                component={RouterLink}
+                to={PATHS.billingGrocery}
+              >
+                Open Wholesale POS
+              </Button>
+            }
+          >
+            For barcode scanning and trade pricing, use <strong>Wholesale POS</strong>. This page is
+            for manual item search. Link a customer to apply their price list.
+          </Alert>
+        ) : null}
+        {warehouseLoadError ? <Alert severity="warning">{warehouseLoadError}</Alert> : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
 
         <Box
@@ -873,21 +899,30 @@ export default function NewBillPage() {
                     setCustomerName(customer.name || '');
                     setCountryCode(customer.phone_country_code || '91');
                     setCustomerPhone(customer.phone_national || '');
-                    setCustomerEmail(customer.email || '');
+                    setCustomerEmail(
+                      customer.email && isValidEmail(customer.email) ? customer.email : '',
+                    );
                   }}
                   onClear={() => {
                     setSelectedCustomer(null);
                   }}
                 />
+                {isWholesale && priceListsEnabled ? (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75 }}>
+                    {selectedCustomer
+                      ? 'Wholesale / VIP prices apply when this customer has a price list assigned.'
+                      : 'Walk-in customers get the default wholesale price list (if configured).'}
+                  </Typography>
+                ) : null}
               </Box>
 
-              {warehouseEnabled && warehouses.length ? (
-                <FormControl fullWidth size="small" sx={{ mb: 2.5 }}>
+              {warehouseEnabled ? (
+                <FormControl fullWidth size="small" sx={{ mb: 2.5 }} disabled={warehousesLoading}>
                   <InputLabel id="bill-warehouse">Sell from warehouse</InputLabel>
                   <Select
                     labelId="bill-warehouse"
                     label="Sell from warehouse"
-                    value={warehouseId}
+                    value={warehouseId || ''}
                     onChange={(e) => setWarehouseId(e.target.value)}
                   >
                     {warehouses.map((w) => (
@@ -897,6 +932,13 @@ export default function NewBillPage() {
                       </MenuItem>
                     ))}
                   </Select>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75 }}>
+                    {warehousesLoading
+                      ? 'Loading warehouses…'
+                      : warehouses.length
+                        ? 'Stock will be deducted from the selected godown.'
+                        : 'Main warehouse will be used automatically.'}
+                  </Typography>
                 </FormControl>
               ) : null}
 
@@ -926,12 +968,14 @@ export default function NewBillPage() {
               </Stack>
               <TextField
                 label="Customer email (optional)"
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
                 fullWidth
                 sx={{ mb: 2.5 }}
-                helperText="For email PDF bill"
+                helperText="For email PDF bill — leave blank if not needed"
               />
 
               {warrantyEnabled && accessorySuggestions.length ? (
@@ -979,12 +1023,12 @@ export default function NewBillPage() {
                         </Typography>
                       ) : null}
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                        {isHotel && !line.serial_unit_id ? (
+                        {useCompactQty && !line.serial_unit_id ? (
                           <>
                             <IconButton
                               size="small"
                               aria-label="Decrease quantity"
-                              onClick={() => bumpHotelQty(line, -1)}
+                              onClick={() => bumpQty(line, -1)}
                               sx={{
                                 width: 36,
                                 height: 36,
@@ -1001,7 +1045,7 @@ export default function NewBillPage() {
                             <IconButton
                               size="small"
                               aria-label="Increase quantity"
-                              onClick={() => bumpHotelQty(line, 1)}
+                              onClick={() => bumpQty(line, 1)}
                               sx={{
                                 width: 36,
                                 height: 36,
@@ -1045,7 +1089,7 @@ export default function NewBillPage() {
                       title="Remove from bill"
                       color="error"
                       onClick={() =>
-                        isHotel
+                        useCompactQty
                           ? setRemoveConfirm({ lineKey: line.line_key, name: line.name })
                           : removeLine(line.line_key)
                       }

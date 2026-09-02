@@ -190,6 +190,12 @@ export default function PurchaseOrdersPage() {
           {error}
         </Alert>
       ) : null}
+      {!canWrite ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          View only — you can check PO status here. Ask the owner or manager to create, confirm, or
+          convert purchase orders.
+        </Alert>
+      ) : null}
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
           {success}

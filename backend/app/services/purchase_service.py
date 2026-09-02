@@ -232,7 +232,38 @@ class PurchaseService:
         return PurchaseService.serialize(purchase, include_items=True)
 
     @staticmethod
+    def update_purchase(purchase_id: str, *, invoice_number=None, notes=None):
+        from app.utils.owner_access import require_owner
+
+        require_owner()
+        require_permission(PERM_PURCHASES_WRITE)
+        ctx = require_request_context()
+        purchase = PurchaseRepository.get_by_id_and_tenant(purchase_id, ctx.tenant_id)
+        if purchase is None:
+            raise NotFoundError("Purchase not found")
+        if purchase.status != PURCHASE_FINALIZED:
+            raise ValidationError("Only finalized purchases can be edited")
+        old = PurchaseService.serialize(purchase, include_items=False)
+        if invoice_number is not None:
+            purchase.invoice_number = (invoice_number or "").strip() or None
+        if notes is not None:
+            purchase.notes = (notes or "").strip() or None
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="UPDATE_PURCHASE",
+            entity_type="PURCHASE",
+            entity_id=purchase.id,
+            old_data=old,
+            new_data=PurchaseService.serialize(purchase, include_items=False),
+        )
+        db.session.commit()
+        return PurchaseService.serialize(purchase, include_items=True)
+
+    @staticmethod
     def cancel_purchase(purchase_id: str, reason: str):
+        from app.utils.owner_access import require_owner
+
+        require_owner()
         require_permission(PERM_PURCHASES_WRITE)
         ctx = require_request_context()
         purchase = PurchaseRepository.get_by_id_and_tenant(purchase_id, ctx.tenant_id)

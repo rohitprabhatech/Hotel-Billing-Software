@@ -2,7 +2,7 @@
 
 from flask import request
 
-from app.schemas.purchase_schemas import cancel_purchase_schema, create_purchase_schema
+from app.schemas.purchase_schemas import cancel_purchase_schema, create_purchase_schema, update_purchase_schema
 from app.services.purchase_service import PurchaseService
 from app.utils.responses import success_response
 
@@ -37,6 +37,12 @@ def create_purchase():
         payment_method=payload.get("payment_method") or "cash",
     )
     return success_response(data=data, status_code=201)
+
+
+def update_purchase(purchase_id: str):
+    payload = update_purchase_schema.load(request.get_json() or {})
+    data = PurchaseService.update_purchase(purchase_id, **payload)
+    return success_response(data=data)
 
 
 def cancel_purchase(purchase_id: str):

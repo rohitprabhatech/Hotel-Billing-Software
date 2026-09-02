@@ -1015,6 +1015,7 @@ CREATE TABLE tour_packages (
 	name VARCHAR(200) NOT NULL,
 	description TEXT,
 	destination VARCHAR(160),
+	transport_type VARCHAR(60),
 	duration_days INTEGER,
 	base_price DECIMAL(12, 2) NOT NULL,
 	gst_percentage DECIMAL(5, 2) NOT NULL,

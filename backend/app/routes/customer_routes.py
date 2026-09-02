@@ -42,7 +42,7 @@ def update_customer(customer_id):
 
 
 @customers_bp.delete("/<customer_id>")
-@roles_required(*_STAFF)
+@roles_required(ROLE_OWNER)
 @permission_required(PERM_CUSTOMERS_WRITE)
 def deactivate_customer(customer_id):
     return customer_controller.deactivate_customer(customer_id)

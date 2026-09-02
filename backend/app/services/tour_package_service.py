@@ -7,6 +7,7 @@ stock_quantity=NULL so existing bills sell without stock deduction.
 from decimal import Decimal, InvalidOperation
 
 from app.constants.permissions import PERM_BILLING, PERM_ITEMS_READ, PERM_ITEMS_WRITE
+from app.constants.tour_transport import normalize_transport_type, transport_type_label
 from app.extensions import db
 from app.models.category import Category
 from app.models.item import Item
@@ -62,6 +63,13 @@ class TourPackageService:
         return gst
 
     @staticmethod
+    def _parse_transport(value):
+        try:
+            return normalize_transport_type(value)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
+    @staticmethod
     def serialize(row: TourPackage) -> dict:
         item = row.item
         return {
@@ -70,6 +78,8 @@ class TourPackageService:
             "name": row.name,
             "description": row.description,
             "destination": row.destination,
+            "transport_type": row.transport_type,
+            "transport_type_label": transport_type_label(row.transport_type),
             "duration_days": row.duration_days,
             "base_price": float(row.base_price),
             "gst_percentage": float(row.gst_percentage),
@@ -157,6 +167,7 @@ class TourPackageService:
         base_price,
         description=None,
         destination=None,
+        transport_type=None,
         duration_days=None,
         gst_percentage=0,
         is_active=True,
@@ -197,6 +208,7 @@ class TourPackageService:
             name=name_value,
             description=(description or "").strip() or None,
             destination=(destination or "").strip() or None,
+            transport_type=TourPackageService._parse_transport(transport_type),
             duration_days=int(duration_days) if duration_days is not None else None,
             base_price=price,
             gst_percentage=gst,
@@ -246,6 +258,8 @@ class TourPackageService:
             row.description = (fields["description"] or "").strip() or None
         if "destination" in fields:
             row.destination = (fields["destination"] or "").strip() or None
+        if "transport_type" in fields:
+            row.transport_type = TourPackageService._parse_transport(fields.get("transport_type"))
         if "duration_days" in fields:
             row.duration_days = (
                 int(fields["duration_days"]) if fields["duration_days"] is not None else None
@@ -263,6 +277,30 @@ class TourPackageService:
         AuditService.log(
             tenant_id=ctx.tenant_id,
             action="UPDATE_TOUR_PACKAGE",
+            entity_type="TOUR_PACKAGE",
+            entity_id=row.id,
+            old_data=old,
+            new_data=TourPackageService.serialize(row),
+        )
+        db.session.commit()
+        return TourPackageService.serialize(row)
+
+    @staticmethod
+    def delete_package(package_id: str):
+        """Deactivate a tour package (owner only)."""
+        from app.utils.owner_access import require_owner
+
+        require_owner()
+        ctx, _ = TourPackageService._require(write=True)
+        row = TourPackageRepository.get_by_id(ctx.tenant_id, package_id)
+        if row is None:
+            raise NotFoundError("Tour package not found")
+        old = TourPackageService.serialize(row)
+        row.is_active = False
+        TourPackageService._sync_linked_item(row)
+        AuditService.log(
+            tenant_id=ctx.tenant_id,
+            action="DELETE_TOUR_PACKAGE",
             entity_type="TOUR_PACKAGE",
             entity_id=row.id,
             old_data=old,

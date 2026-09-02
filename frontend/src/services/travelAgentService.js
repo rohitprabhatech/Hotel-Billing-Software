@@ -15,6 +15,11 @@ export async function updateTravelAgent(agentId, payload) {
   return data;
 }
 
+export async function deleteTravelAgent(agentId) {
+  const { data } = await apiClient.delete(`/travel/agents/${agentId}`);
+  return data;
+}
+
 export async function listTravelCommissions(params = {}) {
   const { data } = await apiClient.get('/travel/commissions', { params });
   return data;

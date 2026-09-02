@@ -22,6 +22,7 @@ _READ = (ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 _WRITE = (ROLE_OWNER,)
 _BOOKING_WRITE = (ROLE_OWNER, ROLE_MANAGER, ROLE_BILLING_USER)
 _MANAGE = (ROLE_OWNER, ROLE_MANAGER)
+_OWNER = (ROLE_OWNER,)
 
 
 @tour_packages_bp.get("")
@@ -54,6 +55,14 @@ def get_package(package_id):
 @permission_required(PERM_ITEMS_WRITE)
 def update_package(package_id):
     return tour_package_controller.update_package(package_id)
+
+
+@tour_packages_bp.delete("/<package_id>")
+@roles_required(ROLE_OWNER)
+@module_required("tour_packages")
+@permission_required(PERM_ITEMS_WRITE)
+def delete_package(package_id):
+    return tour_package_controller.delete_package(package_id)
 
 
 @tour_packages_bp.post("/<package_id>/bill")
@@ -97,6 +106,14 @@ def travel_update_package(package_id):
     return tour_package_controller.update_package(package_id)
 
 
+@travel_bp.delete("/packages/<package_id>")
+@roles_required(ROLE_OWNER)
+@module_required("tour_packages")
+@permission_required(PERM_ITEMS_WRITE)
+def travel_delete_package(package_id):
+    return tour_package_controller.delete_package(package_id)
+
+
 @travel_bp.post("/packages/<package_id>/bill")
 @roles_required(*_READ)
 @module_required("tour_packages")
@@ -127,6 +144,22 @@ def travel_create_booking():
 @permission_required(PERM_BILLING)
 def travel_get_booking(booking_id):
     return travel_booking_controller.get_booking(booking_id)
+
+
+@travel_bp.patch("/bookings/<booking_id>")
+@roles_required(ROLE_OWNER)
+@module_required("travel_bookings")
+@permission_required(PERM_BILLING)
+def travel_update_booking(booking_id):
+    return travel_booking_controller.update_booking(booking_id)
+
+
+@travel_bp.delete("/bookings/<booking_id>")
+@roles_required(ROLE_OWNER)
+@module_required("travel_bookings")
+@permission_required(PERM_BILLING)
+def travel_delete_booking(booking_id):
+    return travel_booking_controller.delete_booking(booking_id)
 
 
 @travel_bp.patch("/bookings/<booking_id>/status")
@@ -210,7 +243,7 @@ def travel_list_agents():
 
 
 @travel_bp.post("/agents")
-@roles_required(*_MANAGE)
+@roles_required(*_OWNER)
 @module_required("travel_commission")
 @permission_required(PERM_BILLING)
 def travel_create_agent():
@@ -226,11 +259,19 @@ def travel_get_agent(agent_id):
 
 
 @travel_bp.patch("/agents/<agent_id>")
-@roles_required(*_MANAGE)
+@roles_required(*_OWNER)
 @module_required("travel_commission")
 @permission_required(PERM_BILLING)
 def travel_update_agent(agent_id):
     return travel_agent_controller.update_agent(agent_id)
+
+
+@travel_bp.delete("/agents/<agent_id>")
+@roles_required(ROLE_OWNER)
+@module_required("travel_commission")
+@permission_required(PERM_BILLING)
+def travel_delete_agent(agent_id):
+    return travel_agent_controller.delete_agent(agent_id)
 
 
 @travel_bp.get("/commissions")
@@ -250,7 +291,7 @@ def travel_commission_report():
 
 
 @travel_bp.post("/commissions")
-@roles_required(*_MANAGE)
+@roles_required(*_OWNER)
 @module_required("travel_commission")
 @permission_required(PERM_BILLING)
 def travel_create_commission():
@@ -258,7 +299,7 @@ def travel_create_commission():
 
 
 @travel_bp.patch("/commissions/<entry_id>/status")
-@roles_required(*_MANAGE)
+@roles_required(*_OWNER)
 @module_required("travel_commission")
 @permission_required(PERM_BILLING)
 def travel_update_commission_status(entry_id):

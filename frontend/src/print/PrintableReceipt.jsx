@@ -1,42 +1,25 @@
 import './receipt.css';
 import { paymentMethodLabel } from '../utils/paymentMethod';
+import {
+  commonGstRate,
+  formatDate,
+  formatMoney,
+  receiptDimensions,
+} from './receiptUtils';
 
 /** Food-service types where FSSAI is typically relevant (mirrors backend). */
 const FSSAI_RELEVANT_TYPES = new Set([
   'hotel_restaurant',
   'cafe_tea',
   'bakery_sweet',
-  // legacy codes (pre–BIZ-01) — safe if old payloads remain
   'restaurant',
   'hotel',
 ]);
 
-function formatMoney(value) {
-  return Number(value || 0).toFixed(2);
-}
-
-function formatDate(value) {
-  if (!value) return '';
-  const d = new Date(value);
-  return d.toLocaleString('en-IN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function commonGstRate(items = []) {
-  const rates = [...new Set(items.map((i) => Number(i.gst_percentage)))];
-  if (rates.length === 1) return rates[0];
-  return null;
-}
-
 function showFssai(tenant = {}) {
   if (!tenant.fssai_number) return false;
   const type = String(tenant.business_type || '').toLowerCase();
-  if (!type) return true; // legacy tenants without type still print if number set
+  if (!type) return true;
   return FSSAI_RELEVANT_TYPES.has(type);
 }
 
@@ -50,13 +33,7 @@ export default function PrintableReceipt({ bill, width = '80', billingSettings =
   const cityLine = [tenant.city, tenant.pincode].filter(Boolean).join(' / ');
   const businessName = tenant.business_name || 'BUSINESS';
   const settings = billingSettings || tenant.billing_settings || {};
-  const customStyle =
-    width === 'custom' && settings.width_mm
-      ? {
-          width: `${settings.width_mm}mm`,
-          minHeight: settings.height_mm ? `${settings.height_mm}mm` : undefined,
-        }
-      : undefined;
+  const customStyle = receiptDimensions(width, settings);
 
   return (
     <div className={`receipt receipt--${width}`} style={customStyle}>

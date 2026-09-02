@@ -386,7 +386,7 @@ export default function TourPackagesPage() {
               }
               fullWidth
               required
-              helperText="How travellers go — bus, car, train, flight, etc."
+              helperText="Bus, car, van, bike, or specify other transport."
             >
               <MenuItem value="">
                 <em>Select transport</em>

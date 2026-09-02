@@ -99,9 +99,350 @@
   font-weight: 700;
 }
 
+.receipt--travel {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  padding: 0;
+  background: #fff;
+}
+
+.receipt--travel.receipt--a5 {
+  width: 148mm;
+  min-height: 210mm;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.receipt--travel.receipt--a4 {
+  width: 210mm;
+  min-height: 297mm;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.receipt--travel.receipt--80 {
+  width: 80mm;
+  min-height: 200mm;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.receipt--travel.receipt--58 {
+  width: 58mm;
+  min-height: 180mm;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.travel-voucher {
+  border: 2px solid #111;
+  outline: 1px solid #111;
+  outline-offset: 3px;
+  margin: 6px;
+  padding: 18px 20px 22px;
+  min-height: calc(100% - 12px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.receipt--travel.receipt--a4 .travel-voucher {
+  padding: 28px 32px 32px;
+  gap: 18px;
+}
+
+.receipt--travel.receipt--a5 .travel-voucher {
+  padding: 22px 24px 26px;
+  gap: 16px;
+}
+
+.travel-voucher__header {
+  text-align: center;
+  border-bottom: 2px solid #111;
+  padding-bottom: 12px;
+}
+
+.travel-voucher__brand {
+  font-size: 1.45em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.receipt--travel.receipt--a4 .travel-voucher__brand {
+  font-size: 1.7em;
+}
+
+.travel-voucher__sub {
+  margin-top: 4px;
+  font-size: 0.92em;
+  color: #333;
+}
+
+.travel-voucher__badge {
+  text-align: center;
+}
+
+.travel-voucher__badge span {
+  display: inline-block;
+  padding: 8px 22px;
+  border: 2px solid #111;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  font-size: 0.95em;
+  background: #f7f7f7;
+}
+
+.receipt--travel.receipt--a4 .travel-voucher__badge span {
+  padding: 10px 28px;
+  font-size: 1.05em;
+}
+
+.travel-voucher__cancelled {
+  text-align: center;
+  color: #b00020;
+  font-weight: 800;
+  font-size: 1.1em;
+  letter-spacing: 0.08em;
+}
+
+.travel-voucher__details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.receipt--travel.receipt--80 .travel-voucher__details,
+.receipt--travel.receipt--58 .travel-voucher__details {
+  grid-template-columns: 1fr;
+}
+
+.travel-voucher__detail-block {
+  border: 1px solid #333;
+  padding: 10px 12px;
+  background: #fafafa;
+}
+
+.travel-voucher__detail-title {
+  font-weight: 800;
+  font-size: 0.88em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed #666;
+}
+
+.travel-voucher__detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+  font-size: 0.95em;
+}
+
+.travel-voucher__detail-row span {
+  color: #444;
+  flex-shrink: 0;
+}
+
+.travel-voucher__detail-row strong {
+  text-align: right;
+  word-break: break-word;
+}
+
+.travel-voucher__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.travel-voucher__table th,
+.travel-voucher__table td {
+  border: 1px solid #333;
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+.travel-voucher__table thead th {
+  background: #111;
+  color: #fff;
+  font-weight: 700;
+  text-align: left;
+}
+
+.travel-voucher__table .col-sno {
+  width: 32px;
+  text-align: center;
+}
+
+.travel-voucher__table .col-qty,
+.travel-voucher__table .col-rate,
+.travel-voucher__table .col-amt {
+  width: 72px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.receipt--travel.receipt--a4 .travel-voucher__table .col-qty,
+.receipt--travel.receipt--a4 .travel-voucher__table .col-rate,
+.receipt--travel.receipt--a4 .travel-voucher__table .col-amt {
+  width: 90px;
+}
+
+.travel-voucher__summary {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.travel-voucher__summary-lines {
+  min-width: 220px;
+  flex: 1;
+  max-width: 320px;
+}
+
+.travel-voucher__summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dotted #999;
+}
+
+.travel-voucher__total-box {
+  min-width: 200px;
+  border: 2px solid #111;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #f3f3f3;
+}
+
+.travel-voucher__total-box span {
+  font-size: 0.9em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.travel-voucher__total-box strong {
+  font-size: 1.35em;
+  text-align: right;
+}
+
+.receipt--travel.receipt--a4 .travel-voucher__total-box strong {
+  font-size: 1.55em;
+}
+
+.travel-voucher__footer {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px dashed #666;
+  text-align: center;
+  font-size: 0.92em;
+}
+
+.travel-voucher__note {
+  margin: 10px 0;
+  font-weight: 700;
+  padding: 8px 10px;
+  border: 1px dashed #333;
+  background: #fffef5;
+}
+
+.travel-voucher__signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin: 18px 0 12px;
+  text-align: center;
+  font-size: 0.88em;
+}
+
+.travel-voucher__sign-line {
+  border-top: 1px solid #111;
+  margin-bottom: 6px;
+  height: 28px;
+}
+
+.travel-voucher__thanks {
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.travel-voucher__wish {
+  margin-top: 4px;
+  color: #444;
+}
+
+.receipt--travel .receipt__business {
+  letter-spacing: 0.06em;
+}
+
+.receipt__title--travel {
+  font-size: 1.05em;
+  letter-spacing: 0.08em;
+}
+
+.receipt__divider--double {
+  border-top-width: 2px;
+  border-top-style: solid;
+}
+
+.receipt__muted {
+  font-size: 0.92em;
+}
+
+.receipt__field {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.receipt__label {
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.receipt__cols--travel {
+  grid-template-columns: 1fr 36px 64px;
+}
+
+.receipt--58 .receipt__cols--travel {
+  grid-template-columns: 1fr 28px 52px;
+}
+
+.receipt__item-note {
+  font-size: 0.88em;
+  margin: 0 0 4px 2px;
+  opacity: 0.85;
+}
+
+.receipt__note {
+  margin-top: 10px;
+  font-weight: 700;
+  font-size: 0.95em;
+}
+
 @media print {
   @page {
     margin: 0;
+  }
+
+  .receipt--travel.receipt--a5 {
+    width: 148mm;
+    min-height: 210mm;
+  }
+
+  .receipt--travel.receipt--a4 {
+    width: 210mm;
+    min-height: 297mm;
   }
 
   html,

@@ -11,6 +11,7 @@ from app.constants.business_types import (
 )
 from app.extensions import db
 from app.repositories.tenant_repository import TenantRepository
+from app.constants.billing_format import normalize_bill_format
 from app.schemas.billing_settings_schemas import ALLOWED_PAPER_SIZES
 from app.services.audit_service import AuditService
 from app.services.module_service import ModuleService
@@ -22,6 +23,10 @@ PAPER_PRESET_DIMENSIONS = {
     "80mm": {"width_mm": 80, "height_mm": None},
     "A4": {"width_mm": 210, "height_mm": 297},
     "A5": {"width_mm": 148, "height_mm": 210},
+}
+
+DEFAULT_PAPER_BY_BUSINESS = {
+    "travel_agency": "A5",
 }
 
 
@@ -107,9 +112,10 @@ class TenantService:
 
     @staticmethod
     def _resolve_billing_dimensions(tenant) -> dict:
-        paper = tenant.bill_paper_size or "80mm"
+        business_type = coerce_business_type(tenant.business_type)
+        paper = tenant.bill_paper_size or DEFAULT_PAPER_BY_BUSINESS.get(business_type, "80mm")
         if paper not in ALLOWED_PAPER_SIZES:
-            paper = "80mm"
+            paper = DEFAULT_PAPER_BY_BUSINESS.get(business_type, "80mm")
         preset = PAPER_PRESET_DIMENSIONS.get(paper)
         if preset:
             width = preset["width_mm"]
@@ -121,6 +127,10 @@ class TenantService:
             "paper_size": paper,
             "width_mm": width,
             "height_mm": height,
+            "bill_format": normalize_bill_format(
+                getattr(tenant, "bill_format", None),
+                business_type=business_type,
+            ),
         }
 
     @staticmethod
@@ -150,6 +160,12 @@ class TenantService:
             dims = PAPER_PRESET_DIMENSIONS[paper]
             tenant.bill_width_mm = dims["width_mm"]
             tenant.bill_height_mm = dims["height_mm"]
+
+        if "bill_format" in payload:
+            tenant.bill_format = normalize_bill_format(
+                payload.get("bill_format"),
+                business_type=coerce_business_type(tenant.business_type),
+            )
 
         new = TenantService._resolve_billing_dimensions(tenant)
         AuditService.log(

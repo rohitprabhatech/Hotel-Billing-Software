@@ -217,6 +217,7 @@ CREATE TABLE tenants (
 	bill_paper_size VARCHAR(20),
 	bill_width_mm INTEGER,
 	bill_height_mm INTEGER,
+	bill_format VARCHAR(20),
 	status VARCHAR(20) NOT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

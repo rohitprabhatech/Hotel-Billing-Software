@@ -4,37 +4,22 @@ from __future__ import annotations
 
 BUS = "bus"
 CAR = "car"
-TRAIN = "train"
-FLIGHT = "flight"
 VAN = "van"
-TEMPO = "tempo"
-CRUISE = "cruise"
-BOAT = "boat"
 BIKE = "bike"
 OTHER = "other"
 
 SUGGESTED_TRANSPORT_TYPES: tuple[str, ...] = (
     BUS,
     CAR,
-    TRAIN,
-    FLIGHT,
     VAN,
-    TEMPO,
-    CRUISE,
-    BOAT,
     BIKE,
 )
 
 TRANSPORT_TYPE_LABELS: dict[str, str] = {
     BUS: "Bus",
     CAR: "Car",
-    TRAIN: "Train",
-    FLIGHT: "Flight",
     VAN: "Van",
-    TEMPO: "Tempo Traveller",
-    CRUISE: "Cruise",
-    BOAT: "Boat",
-    BIKE: "Bike / Scooter",
+    BIKE: "Bike",
 }
 
 

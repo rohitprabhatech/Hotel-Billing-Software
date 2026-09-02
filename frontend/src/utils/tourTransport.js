@@ -5,13 +5,8 @@ export const TOUR_TRANSPORT_OTHER = 'other';
 export const TOUR_TRANSPORT_OPTIONS = [
   { value: 'bus', label: 'Bus' },
   { value: 'car', label: 'Car' },
-  { value: 'train', label: 'Train' },
-  { value: 'flight', label: 'Flight' },
   { value: 'van', label: 'Van' },
-  { value: 'tempo', label: 'Tempo Traveller' },
-  { value: 'cruise', label: 'Cruise' },
-  { value: 'boat', label: 'Boat' },
-  { value: 'bike', label: 'Bike / Scooter' },
+  { value: 'bike', label: 'Bike' },
   { value: TOUR_TRANSPORT_OTHER, label: 'Other' },
 ];
 

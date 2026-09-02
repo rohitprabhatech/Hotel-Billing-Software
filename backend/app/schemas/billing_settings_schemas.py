@@ -2,6 +2,8 @@
 
 from marshmallow import EXCLUDE, Schema, ValidationError, fields, validate, validates_schema
 
+from app.constants.billing_format import ALLOWED_BILL_FORMATS
+
 ALLOWED_PAPER_SIZES = frozenset({"58mm", "80mm", "A4", "A5", "custom"})
 
 
@@ -12,6 +14,11 @@ class BillingSettingsSchema(Schema):
     paper_size = fields.String(required=True, validate=validate.OneOf(sorted(ALLOWED_PAPER_SIZES)))
     width_mm = fields.Integer(load_default=None, allow_none=True)
     height_mm = fields.Integer(load_default=None, allow_none=True)
+    bill_format = fields.String(
+        load_default=None,
+        allow_none=True,
+        validate=validate.OneOf(sorted(ALLOWED_BILL_FORMATS)),
+    )
 
     @validates_schema
     def validate_dimensions(self, data, **kwargs):

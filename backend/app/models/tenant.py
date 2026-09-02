@@ -32,6 +32,7 @@ class Tenant(db.Model, TimestampMixin):
     bill_paper_size: Mapped[str | None] = mapped_column(String(20))
     bill_width_mm: Mapped[int | None] = mapped_column(Integer)
     bill_height_mm: Mapped[int | None] = mapped_column(Integer)
+    bill_format: Mapped[str | None] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
 
     users = relationship("User", back_populates="tenant", lazy="dynamic")

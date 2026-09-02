@@ -42,6 +42,11 @@ import {
 } from '../../services/tenantService';
 import BillPreview from '../../print/BillPreview';
 import '../../print/receipt.css';
+import {
+  BILL_FORMAT_OPTIONS,
+  BILL_FORMAT_TRAVEL,
+  defaultBillFormat,
+} from '../../utils/billFormat';
 
 const emptyBusiness = {
   name: '',
@@ -91,14 +96,17 @@ export default function SettingsPage() {
   });
   const [waSimulating, setWaSimulating] = useState(false);
   const [billingForm, setBillingForm] = useState({
-    paper_size: '80mm',
-    width_mm: 80,
-    height_mm: '',
+    paper_size: 'A5',
+    width_mm: 148,
+    height_mm: 210,
+    bill_format: BILL_FORMAT_TRAVEL,
   });
   const [savingBilling, setSavingBilling] = useState(false);
   const [showBillPreview, setShowBillPreview] = useState(false);
 
   const isHotel = user?.tenant?.business_type === 'hotel_restaurant';
+  const isTravelAgency = user?.tenant?.business_type === 'travel_agency';
+  const showBillingSettings = isHotel || isTravelAgency;
 
   useEffect(() => {
     setLoading(true);
@@ -136,10 +144,12 @@ export default function SettingsPage() {
           access_token: '',
         }));
         const bs = billingRes.data || {};
+        const travelDefaults = t.business_type === 'travel_agency';
         setBillingForm({
-          paper_size: bs.paper_size || '80mm',
-          width_mm: bs.width_mm || 80,
-          height_mm: bs.height_mm ?? '',
+          paper_size: bs.paper_size || (travelDefaults ? 'A5' : '80mm'),
+          width_mm: bs.width_mm || (travelDefaults ? 148 : 80),
+          height_mm: bs.height_mm ?? (travelDefaults ? 210 : ''),
+          bill_format: bs.bill_format || defaultBillFormat(t.business_type),
         });
       })
       .catch((err) => {
@@ -200,11 +210,15 @@ export default function SettingsPage() {
             ? Number(billingForm.height_mm)
             : null,
       };
+      if (isTravelAgency) {
+        payload.bill_format = billingForm.bill_format;
+      }
       const response = await updateBillingSettings(payload);
       setBillingForm({
         paper_size: response.data?.paper_size || billingForm.paper_size,
         width_mm: response.data?.width_mm || billingForm.width_mm,
         height_mm: response.data?.height_mm ?? '',
+        bill_format: response.data?.bill_format || billingForm.bill_format,
       });
       setSuccess('Billing / invoice settings saved.');
     } catch (err) {
@@ -215,42 +229,55 @@ export default function SettingsPage() {
   };
 
   const previewBill = {
-    bill_number: 'PREVIEW-001',
+    bill_number: isTravelAgency ? 'TRV-PREVIEW-001' : 'PREVIEW-001',
     created_at: new Date().toISOString(),
-    table_number: 'T-01',
+    table_number: isTravelAgency ? 'BKG-1024' : 'T-01',
     created_by_name: user?.name || 'Staff',
     payment_method: 'cash',
-    subtotal: 450,
+    customer_name: isTravelAgency ? 'Sample Guest' : undefined,
+    subtotal: isTravelAgency ? 25000 : 450,
     discount: 0,
-    taxable_amount: 450,
-    cgst_amount: 11.25,
-    sgst_amount: 11.25,
+    taxable_amount: isTravelAgency ? 25000 : 450,
+    cgst_amount: isTravelAgency ? 625 : 11.25,
+    sgst_amount: isTravelAgency ? 625 : 11.25,
     round_off: 0,
-    grand_total: 472.5,
+    grand_total: isTravelAgency ? 26250 : 472.5,
     status: 'FINALIZED',
-    items: [
-      {
-        id: '1',
-        item_name: 'Sample Dish',
-        quantity: 2,
-        unit_price: 150,
-        gst_percentage: 5,
-      },
-      {
-        id: '2',
-        item_name: 'Sample Beverage',
-        quantity: 1,
-        unit_price: 150,
-        gst_percentage: 5,
-      },
-    ],
+    items: isTravelAgency
+      ? [
+          {
+            id: '1',
+            item_name: 'Goa Beach Tour — 3 Days (Bus)',
+            quantity: 2,
+            unit_price: 12500,
+            gst_percentage: 5,
+          },
+        ]
+      : [
+          {
+            id: '1',
+            item_name: 'Sample Dish',
+            quantity: 2,
+            unit_price: 150,
+            gst_percentage: 5,
+          },
+          {
+            id: '2',
+            item_name: 'Sample Beverage',
+            quantity: 1,
+            unit_price: 150,
+            gst_percentage: 5,
+          },
+        ],
     tenant: {
       business_name: business.business_name || 'Your Business',
       business_type: business.business_type,
       address: business.address,
       city: business.city,
+      state: business.state,
       pincode: business.pincode,
       phone: business.phone,
+      email: business.email,
       gst_number: business.gst_number,
       fssai_number: business.fssai_number,
       billing_settings: {
@@ -260,6 +287,7 @@ export default function SettingsPage() {
           billingForm.height_mm === '' || billingForm.height_mm == null
             ? null
             : Number(billingForm.height_mm),
+        bill_format: billingForm.bill_format,
       },
     },
   };
@@ -467,12 +495,35 @@ export default function SettingsPage() {
         </Stack>
       </FormSection>
 
-      {isHotel ? (
+      {showBillingSettings ? (
         <FormSection
           title="Billing / Invoice Settings"
-          description="Configure the printed bill format for all billing users. Counter staff only see Print — not these controls."
+          description={
+            isTravelAgency
+              ? 'Choose the travel voucher layout and paper size for all billing users. Counter staff only see Print — not these controls.'
+              : 'Configure the printed bill format for all billing users. Counter staff only see Print — not these controls.'
+          }
         >
           <Stack component="form" spacing={2.5} onSubmit={onSaveBilling} maxWidth={640}>
+            {isTravelAgency ? (
+              <FormControl fullWidth>
+                <InputLabel id="bill-format-label">Bill Format</InputLabel>
+                <Select
+                  labelId="bill-format-label"
+                  label="Bill Format"
+                  value={billingForm.bill_format}
+                  onChange={(e) =>
+                    setBillingForm((prev) => ({ ...prev, bill_format: e.target.value }))
+                  }
+                >
+                  {BILL_FORMAT_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
             <FormControl fullWidth>
               <InputLabel id="paper-size-label">Paper / Bill Size</InputLabel>
               <Select

@@ -38,6 +38,8 @@ def main() -> int:
         stmts.append("ALTER TABLE tenants ADD COLUMN bill_width_mm INT NULL")
     if not has_col("tenants", "bill_height_mm"):
         stmts.append("ALTER TABLE tenants ADD COLUMN bill_height_mm INT NULL")
+    if not has_col("tenants", "bill_format"):
+        stmts.append("ALTER TABLE tenants ADD COLUMN bill_format VARCHAR(20) NULL")
 
     with engine.begin() as conn:
         if not stmts:
@@ -52,6 +54,7 @@ def main() -> int:
         ("tenants", "bill_paper_size"),
         ("tenants", "bill_width_mm"),
         ("tenants", "bill_height_mm"),
+        ("tenants", "bill_format"),
     ]
     for table, col in checks:
         names = {c["name"] for c in insp.get_columns(table)}
